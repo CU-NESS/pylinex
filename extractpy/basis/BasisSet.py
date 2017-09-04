@@ -1,7 +1,7 @@
 """
-File: $PERSES/perses/basis/BasisSet.py
+File: extractpy/basis/BasisSet.py
 Author: Keith Tauscher
-Date: 10 Jun 2017
+Date: 3 Sep 2017
 
 Description: File containing a set of Basis objects representing different
              things but combined into a single Basis. This allows for
@@ -10,6 +10,7 @@ Description: File containing a set of Basis objects representing different
 """
 import numpy as np
 import matplotlib.pyplot as pl
+from .util import sequence_types
 from .Basis import Basis, load_basis_from_hdf5_group
 
 class BasisSet(Basis):
@@ -66,9 +67,9 @@ class BasisSet(Basis):
         
         value: a list of Basis objects
         """
-        if isinstance(value, list):
+        if type(value) in sequence_types:
             if all([isinstance(basis, Basis) for basis in value]):
-                self._component_bases = value
+                self._component_bases = [basis for basis in value]
             else:
                 raise ValueError("Not all elements of the component_bases " +\
                                  "list were Basis objects.")
@@ -91,7 +92,7 @@ class BasisSet(Basis):
         """
         Allows for the setting of names corresponding to each component basis.
         
-        value: a list of strings of the same length as the component_bases
+        value: a sequence of strings of the same length as the component_bases
                property
         """
         if len(value) == len(set(value)):

@@ -1,7 +1,7 @@
 """
-File: $PERSES/perses/quantity/CompiledQuantity.py
+File: extractpy/quantity/CompiledQuantity.py
 Author: Keith Tauscher
-Date: 27 Jun 2017
+Date: 3 Sep 2017
 
 Description: File containing a class representing a list of Quantities to be
              evaluated with the same (or overlapping) arguments. When it is

@@ -1,7 +1,7 @@
 """
 File: extractpy/util/Loading.py
 Author: Keith Tauscher
-Date: 26 Aug 2017
+Date: 3 Sep 2017
 
 Description: File containing functions which load objects from hdf5 files. They
              require the use of h5py, a common Python library.

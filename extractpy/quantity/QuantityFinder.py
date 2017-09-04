@@ -1,7 +1,7 @@
 """
-File: $PERSES/perses/quantity/QuantityFinder.py
+File: extractpy/quantity/QuantityFinder.py
 Author: Keith Tauscher
-Date: 15 Aug 2017
+Date: 3 Sep 2017
 
 Description: File containing a class which stores a CompiledQuantity filled
              with Quantities it will find.

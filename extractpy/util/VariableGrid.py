@@ -1,7 +1,7 @@
 """
 File: extractpy/util/VariableGrid.py
 Author: Keith Tauscher
-Date: 26 Aug 2017
+Date: 3 Sep 2017
 
 Description: File containing a class representing an object which can store
              dimensions of a grid of arbitrary dimension, D1, embedded in a

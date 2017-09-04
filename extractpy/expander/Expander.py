@@ -1,7 +1,7 @@
 """
 File: extractpy/expander/Expander.py
 Author: Keith Tauscher
-Date: 26 Aug 2017
+Date: 3 Sep 2017
 
 Description: File containing class representing an object which expands vectors
              from one space to another.

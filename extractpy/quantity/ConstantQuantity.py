@@ -1,7 +1,7 @@
 """
-File: $PERSES/perses/quantity/ConstantQuantity.py
+File: extractpy/quantity/ConstantQuantity.py
 Author: Keith Tauscher
-Date: 27 Jun 2017
+Date: 3 Sep 2017
 
 Description: File containing a subclass of the Quantity class representing a
              quantity which always has the same value, given to the

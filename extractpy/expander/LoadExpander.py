@@ -1,10 +1,10 @@
 """
 File: extractpy/expander/LoadExpander.py
 Author: Keith Tauscher
-Date: 26 Aug 2017
+Date: 3 Sep 2017
 
-Description: File containing functions which load Expander objects from hdf5
-             files by name or by hdf5 file group.
+Description: File containing function which load Expander objects from hdf5
+             file group.
 """
 from .NullExpander import NullExpander
 from .PadExpander import PadExpander

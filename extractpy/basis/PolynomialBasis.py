@@ -1,7 +1,7 @@
 """
 File: extractpy/basis/PolynomialBasis.py
 Author: Keith Tauscher
-Date: 26 Aug 2017
+Date: 3 Sep 2017
 
 Description: File containing class representing basis set whose basis vectors
              are integer powers of a given set of x values.

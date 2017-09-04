@@ -1,7 +1,7 @@
 """
 File: extractpy/fitter/MetaFitter.py
 Author: Keith Tauscher
-Date: 27 Aug 2017
+Date: 3 Sep 2017
 
 Description: File containing class which employs many Fitter objects to form
              grids of fit statistics with which to perform parameter number

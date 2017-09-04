@@ -1,7 +1,7 @@
 """
-File: $PERSES/perses/quantity/Quantity.py
+File: extractpy/quantity/Quantity.py
 Author: Keith Tauscher
-Date: 27 Jun 2017
+Date: 3 Sep 2017
 
 Description: An abstract class representing a quantity which is to be
              calculated after it is defined and can be calculated many times

@@ -1,7 +1,7 @@
 """
-File: $PERSES/perses/basis/__init__.py
+File: extractpy/basis/__init__.py
 Author: Keith Tauscher
-Date: 28 Jun 2017
+Date: 3 Sep 2017
 
 Description: The basis module contains code which creates basis vectors,
              combines them into single objects, and uses many basis sets to fit

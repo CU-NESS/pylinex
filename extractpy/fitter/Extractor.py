@@ -1,7 +1,7 @@
 """
 File: extractpy/fitter/Extractor.py
 Author: Keith Tauscher
-Date: 26 Aug 2017
+Date: 3 Sep 2017
 
 Description: Class which uses the rest of the module to perform an end-to-end
              extraction. The inputs of the class are data and error vectors,
@@ -36,6 +36,30 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         compiled_quantity, quantity_to_minimize, expanders=None,\
         save_training_sets=False, verbose=True):
         """
+        Initializes an Extractor object with the given data and error vectors,
+        names, training sets, dimensions, compiled quantity, quantity to
+        minimize, and expanders.
+        
+        data: 1D numpy.ndarray of observed values of some quantity
+        error: 1D numpy.ndarray of error values on the observed data
+        names: names of distinct bases to separate
+        training_sets: training sets corresponding to given names of bases.
+                       Must be 2D array where the first dimension represents
+                       the number of the curve.
+        dimensions: the dimensions of the grid in which to search for the
+                    chosen solution. Should be a list of dictionaries of arrays
+                    where each element of the list is a dimension and the
+                    arrays in each dictionary must be of equal length
+        compiled_quantity: Quantity or CompiledQuantity to find at each point
+                           in the grid described by dimensions
+        quantity_to_minimize: the name of the Quantity object in the
+                              CompiledQuantity to minimize to perform model
+                              selection
+        expanders: list of Expander objects which expand each of the basis sets
+        save_training_sets: if True, when Extractor is written to hdf5 group,
+                                     the training sets are saved in it.
+                            otherwise, training sets are excluded
+        verbose: if True, messages should be printed to the screen
         """
         self.data = data
         self.error = error

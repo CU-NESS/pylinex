@@ -1,7 +1,7 @@
 """
-File: $PERSES/perses/quantity/FunctionQuantity.py
+File: extractpy/quantity/FunctionQuantity.py
 Author: Keith Tauscher
-Date: 27 Jun 2017
+Date: 3 Sep 2017
 
 Description: File containing a class representing a quantity that is calculated
              through the use of a member function of an object. It stores

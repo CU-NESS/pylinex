@@ -1,7 +1,7 @@
 """
 File: extractpy/fitter/Fitter.py
 Author: Keith Tauscher
-Date: 27 Aug 2017
+Date: 3 Sep 2017
 
 Description: File containing a class which computes fits of data using linear
              models through analytical calculations. It has functions to output

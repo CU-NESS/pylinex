@@ -1,3 +1,12 @@
+"""
+File: extractpy/expander/__init__.py
+Author: Keith Tauscher
+Date: 3 Sep 2017
+
+Description: Imports all expander classes included in extractpy.expander
+             submodule and a function which loads an Expander object from an
+             hdf5 group.
+"""
 from .Expander import Expander
 from .NullExpander import NullExpander
 from .PadExpander import PadExpander

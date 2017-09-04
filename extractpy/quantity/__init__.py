@@ -1,7 +1,7 @@
 """
-File: $PERSES/perses/quantity/__init__.py
+File: extractpy/quantity/__init__.py
 Author: Keith Tauscher
-Date: 28 Jun 2017
+Date: 3 Sep 2017
 
 Description: The quantity module contains classes which can be instantiated
              which represent quantities to retrieve from objects which may not

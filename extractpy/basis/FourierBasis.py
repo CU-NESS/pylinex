@@ -1,7 +1,7 @@
 """
 File: extractpy/basis/FourierBasis.py
 Author: Keith Tauscher
-Date: 26 Aug 2017
+Date: 3 Sep 2017
 
 Description: File containing a class representing a set of Fourier basis
              vectors.

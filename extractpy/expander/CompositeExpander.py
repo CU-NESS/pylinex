@@ -1,7 +1,7 @@
 """
 File: extractpy/expander/CompositeExpander.py
 Author: Keith Tauscher
-Date: 26 Aug 2017
+Date: 3 Sep 2017
 
 Description: File containing a class representing an Expander which expands by
              successively applying a sequence of individual Expander objects.

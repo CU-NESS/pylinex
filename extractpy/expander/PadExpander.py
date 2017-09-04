@@ -1,10 +1,10 @@
 """
 File: extractpy/expander/PadExpander.py
 Author: Keith Tauscher
-Date: 26 Aug 2017
+Date: 3 Sep 2017
 
 Description: File containing class representing an Expander which expands the
-             data by padding it with zeros.
+             data by padding it with zeros (or any other value).
 """
 import numpy as np
 from ..util import int_types, numerical_types
@@ -13,7 +13,7 @@ from .Expander import Expander
 class PadExpander(Expander):
     """
     Class representing an Expander which expands the data by padding it with
-    zeros.
+    zeros (or any other value).
     """
     def __init__(self, pads_before, pads_after, pad_value=0):
         """

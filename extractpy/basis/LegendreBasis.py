@@ -1,7 +1,7 @@
 """
-File: extractpy/basis/LegenderBasis.py
+File: extractpy/basis/LegendreBasis.py
 Author: Keith Tauscher
-Date: 26 Aug 2017
+Date: 3 Sep 2017
 
 Description: File containing a class representing a set of Legendre polynomial-
              like basis vectors.
@@ -10,8 +10,8 @@ from .GramSchmidtBasis import orthonormal_polynomial_basis, GramSchmidtBasis
 
 class LegendreBasis(GramSchmidtBasis):
     """
-    Class representing a set of Legendre basis vectors (orthogonal basis
-    vectors made of polynomials).
+    Class representing a set of generalized Legendre basis vectors (orthogonal
+    basis vectors made of polynomials).
     """
     def __init__(self, npoints, max_degree, error=None, expander=None):
         """

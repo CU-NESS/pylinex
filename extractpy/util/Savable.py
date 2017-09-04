@@ -1,10 +1,11 @@
 """
 File: extractpy/util/Savable.py
 Author: Keith Tauscher
-Date: 26 Aug 2017
+Date: 3 Sep 2017
 
 Description: File containing class representing any object which can be saved
-             to an hdf5 file.
+             to an hdf5 file. Any subclass must implement a
+             fill_hdf5_group(self, group) function.
 """
 try:
     import h5py
@@ -37,7 +38,7 @@ class Savable(object):
                    be saved
         """
         if have_h5py:
-            hdf5_file = h5py.file(file_name, 'w')
+            hdf5_file = h5py.File(file_name, 'w')
             self.fill_hdf5_group(hdf5_file)
             hdf5_file.close()
         else:

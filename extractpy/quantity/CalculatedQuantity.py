@@ -1,7 +1,7 @@
 """
-File: $PERSES/perses/quantity/CalculatedQuantity.py
+File: extractpy/quantity/CalculatedQuantity.py
 Author: Keith Tauscher
-Date: 27 Jun 2017
+Date: 3 Sep 2017
 
 Description: File containing a subclass of the Quantity class which performs
              functions on groups of quantities to produce a single quantity

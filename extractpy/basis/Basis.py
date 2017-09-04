@@ -1,10 +1,16 @@
 """
 File: extractpy/basis/Basis.py
 Author: Keith Tauscher
-Date: 26 Aug 2017
+Date: 3 Sep 2017
 
 Description: File containing a class which represents a single set of basis
-             vectors.
+             vectors. It allows for memory-efficient expansion of the data
+             (e.g. repetition, modulation, FFT, etc.) through the use of the
+             extractpy.expander module. It also has convenience methods which
+             compute projection matrices, gram matrices, and values at specific
+             points in parameter space. Basis can also be concatenated through
+             the use of the '+' operator and a subbasis can be taken using
+             square bracket notation.
 """
 import numpy as np
 import numpy.linalg as la
@@ -20,67 +26,33 @@ class Basis(Savable):
     priors, concatenate bases (through the '+' operator), take subsets of the
     basis, and find the overlap of the basis with another.
     """
-    def __init__(self, basis_vectors, expander=None, normed_importances=None):
+    def __init__(self, basis_vectors, expander=None):
         """
         Initializes this Basis with the given basis vectors and expander.
         
         basis_vectors: 2D numpy.ndarray of shape (k,N) where k is the number of
                        basis vectors and N is the number of data channels in
                        the smaller (i.e. unexpanded) channel set
-        expander: if None, no expansion is performed
-                  otherwise, expander must be Expander object
-        normed_importances: (optional) the importances of the constituent modes
-                            normed so that they add to 1. Default: None.
+        expander: if None, no expansion is performed and value of basis at each
+                           parameter space point is of the same length as the
+                           basis vectors themselves
+                  otherwise, expander must be an instance of extractpy's
+                             Expander class.
         """
         self.basis = basis_vectors
         self.expander = expander
-        self.normed_importances = normed_importances
-    
-    @property
-    def normed_importances(self):
-        """
-        Property storing the importances of each mode. This is a 1D array of
-        nonnegative numbers. If none is provided at initialization, then all of
-        the importances are set to 0.
-        """
-        if not hasattr(self, '_normed_importances'):
-            self._normed_importances = np.zeros(self.num_basis_vectors)
-        return self._normed_importances
-    
-    @normed_importances.setter
-    def normed_importances(self, value):
-        """
-        Allows the user to supply the importances of the basis vectors.
-        
-        value: must be a 1D numpy.ndarray of non-negative real numbers. The
-               array should have an element for each basis vector.
-        """
-        if value is not None:
-            value = np.array(value)
-            if value.shape == (self.num_basis_vectors,):
-                self._normed_importances = value
-            else:
-                raise ValueError("normed_importances was not a " +\
-                                 "numpy.ndarray with the same length as " +\
-                                 "the number of basis vectors.")
-    
-    @property
-    def total_normed_importance(self):
-        """
-        Property storing the sum of the importances of all modes.
-        """
-        if not hasattr(self, '_total_normed_importance'):
-            self._total_normed_importance = np.sum(self.normed_importances)
-        return self._total_normed_importance
     
     def dot(self, other, error=None):
         """
         Finds the degree of overlap between the two basis objects.
         
-        other: another Basis object 
+        other: another Basis object with the same number of channels (in the
+               expanded space) as this one
         
-        returns: a number in [0,1) indicating the degree of overlap of the two
-                 Basis objects.
+        returns: a single number in [0,1) indicating the degree of overlap of
+                 the two Basis objects. This number gives a measure of how
+                 successful a simultaneous least square fit with the two bases
+                 and the given data error would be.
         """
         if not isinstance(other, Basis):
             raise TypeError("Basis objects can only be multiplied by other " +\
@@ -103,29 +75,59 @@ class Basis(Savable):
         to_trace = np.dot(overlap_matrix.T, to_trace)
         return np.trace(to_trace)
     
-    def __add__(self, other):
+    def __mul__(self, other):
         """
-        Allows for the addition of two Basis objects.
+        Finds the degree of overlap using the dot() function between this Basis
+        and other. When the '*' operator is used, the error in the data is
+        assumed to be flat across the different data channels
         
-        other: another Basis object
+        other: another Basis object with the same number of channels (in the
+               expanded space) as this one
         
-        returns: Basis object with the basis vectors from both of the
+        returns: a single number in [0,1) indicating the degree of overlap of
+                 the two Basis objects. This number gives a measure of how
+                 successful a simultaneous least square fit with the two bases
+                 and a flat error spectrum would be.
+        """
+        return self.dot(other)
+    
+    def combine(self, other):
+        """
+        Combines this basis with other.
+        
+        other: Basis object with the same exact expander and number of channels
+               as this one
+        
+        returns: Basis object including the basis vectors from both of the
                  constituent objects
         """
         if isinstance(other, Basis):
-            if self.expander == other.expander:
+            expanders_equal = (self.expander == other.expander)
+            nscsi_equal = (self.num_smaller_channel_set_indices ==\
+                other.num_smaller_channel_set_indices)
+            if expanders_equal and nscsi_equal:
                 new_basis = np.concatenate([self.basis, other.basis], axis=0)
-                new_importances = np.concatenate(\
-                    [self.normed_importances, other.normed_importances])
-                return Basis(new_basis, expander=self.expander,\
-                    normed_importances=new_importances)
+                return Basis(new_basis, expander=self.expander)
             else:
                 raise NotImplementedError("Two basis objects cannot be " +\
-                                          "added together when their " +\
-                                          "expanders are not identical.")
+                                          "combined when their expanders " +\
+                                          "and basis vector lengths are " +\
+                                          "not both identical.")
         else:
             raise TypeError("Cannot add Basis to object which is not " +\
                             "another Basis.")
+    
+    def __add__(self, other):
+        """
+        Allows for the combination of two Basis objects using the '+' operator.
+        
+        other: another Basis object with the same exact expander and number of
+               channels in the smaller (i.e. unexpanded) space
+        
+        returns: Basis object including the basis vectors from both of the
+                 constituent objects
+        """
+        return self.combine(other)
     
     @property
     def basis(self):
@@ -143,7 +145,7 @@ class Basis(Savable):
         """
         Allows user to supply basis vectors as a 2D numpy.ndarray.
         
-        value: a 2D numpy.ndarray of shape (k,N) where k<N
+        value: a 2D numpy.ndarray of shape (k,N) where k<=N
         """
         value = np.array(value)
         if value.ndim == 2:
@@ -170,8 +172,9 @@ class Basis(Savable):
     def expander(self):
         """
         Property storing the expander of this basis. It is an Expander object
-        which expands the data from the space of the basis vectors to the space
-        of the data which they are meant to fit.
+        from the extactpy.expander submodule which expands the data from the
+        space of the basis vectors to the space of the data which they are
+        meant to fit.
         """
         if not hasattr(self, '_expander'):
             raise AttributeError("expander was referenced before it was set.")
@@ -180,7 +183,7 @@ class Basis(Savable):
     @expander.setter
     def expander(self, value):
         """
-        The function called when the expander is set.
+        Allows user to set Expander object used by this Basis.
         
         value: if None, no expansion is performed
                otherwise, value must be an Expander object which expands the
@@ -198,7 +201,8 @@ class Basis(Savable):
     @property
     def expanded_basis(self):
         """
-        Property storing the basis after it is expanded by the expander.
+        Property storing the basis vectors after they have been expanded by the
+        expander.
         """
         if not hasattr(self, '_expanded_basis'):
             self._expanded_basis = np.array([self.expander(self.basis[i])\
@@ -243,7 +247,8 @@ class Basis(Savable):
     def gaussian_prior(self):
         """
         Property storing the GaussianDistribution of this Basis if it has been
-        generated using the Basis.generate_gaussian_prior() method.
+        generated using the Basis.generate_gaussian_prior() method. If not, an
+        AttributeError is raised.
         """
         if not hasattr(self, '_gaussian_prior'):
             raise AttributeError("gaussian_prior was referenced before it " +\
@@ -353,10 +358,10 @@ class Basis(Savable):
         """
         Gets the value of this basis given a specific set of coefficients.
         
-        parameter values: 1D numpy.ndarray of length k where k is the number of
-                          basis vectors in this object containing the
-                          coefficients by which each basis vector should be
-                          multiplied.
+        parameter values: 1 or 2 dimensional numpy.ndarray of shape (...,k)
+                          where k is the number of basis vectors in this object
+                          containing the coefficients by which each basis
+                          vector should be multiplied. 
         expanded: Boolean determining whether the basis vectors alone should be
                   used (False) or the expanded basis vectors should be used
                   (True). Default: True
@@ -392,10 +397,7 @@ class Basis(Savable):
         
         returns: a Basis object with only the given basis vectors
         """
-        new_basis = self.basis[basis_indices]
-        new_normed_importances = self.normed_importances[basis_indices]
-        return Basis(new_basis, expander=self.expander,\
-            normed_importances=new_normed_importances)
+        return Basis(self.basis[basis_indices], expander=self.expander)
     
     def __getitem__(self, basis_indices_to_keep):
         """

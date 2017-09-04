@@ -1,7 +1,7 @@
 """
 File: extractpy/expander/NullExpander.py
 Author: Keith Tauscher
-Date: 26 Aug 2017
+Date: 3 Sep 2017
 
 Description: File containing a class representing an Expander which doesn't
              actually do anything to its inputs. It simply returns them back.

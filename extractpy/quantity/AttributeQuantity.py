@@ -1,7 +1,7 @@
 """
-File: $PERSES/perses/quantity/AttributeQuantity.py
+File: extractpy/quantity/AttributeQuantity.py
 Author: Keith Tauscher
-Date: 27 Jun 2017
+Date: 3 Sep 2017
 
 Description: File containing a class representing a quantity which is an
              attribute of an object (which may or may not exist at the time of

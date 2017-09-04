@@ -1,3 +1,11 @@
+"""
+File: extractpy/util/TypeCategories.py
+Author: Keith Tauscher
+Date: 3 Sep 2017
+
+Description: File containing types of common quantities for use in
+             error-checking throughout the extractpy package.
+"""
 import numpy as np
 
 bool_types = [bool, np.bool_]

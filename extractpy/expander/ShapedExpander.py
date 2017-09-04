@@ -1,7 +1,7 @@
 """
 File: extractpy/expander/ShapedExpander.py
 Author: Keith Tauscher
-Date: 26 Aug 2017
+Date: 3 Sep 2017
 
 Description: File containing an Expander which has arbitrarily shaped inputs
              and outputs.

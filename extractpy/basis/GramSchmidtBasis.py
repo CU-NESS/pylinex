@@ -1,7 +1,7 @@
 """
 File: extractpy/basis/GramSchmidtBasis.py
 Author: Keith Tauscher
-Date: 26 Aug 2017 2017
+Date: 3 Sep 2017
 
 Description: File containing subclass of Basis which implements a set of basis
              vectors created through a Gram-Schmidt orthogonalization
