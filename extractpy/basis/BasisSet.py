@@ -10,7 +10,7 @@ Description: File containing a set of Basis objects representing different
 """
 import numpy as np
 import matplotlib.pyplot as pl
-from .util import sequence_types
+from ..util import sequence_types
 from .Basis import Basis, load_basis_from_hdf5_group
 
 class BasisSet(Basis):
