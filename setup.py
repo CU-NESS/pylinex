@@ -12,7 +12,9 @@ except ImportError:
     from distutils.core import setup
         
 setup(name='pylinex', version='0.1',\
-    description='Linear signal extraction in Python', packages=['pylinex'])
+    description='Linear signal extraction in Python',\
+    packages=['pylinex.quantity', 'pylinex.expander', 'pylinex.basis',\
+    'pylinex.fitter'])
 
     
     
