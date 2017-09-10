@@ -1,3 +1,11 @@
+"""
+File: examples/expander/pad_expander.py
+Author: Keith Tauscher
+Date: 10 Sep 2017
+
+Description: Example showing how to use PadExpander to have multiplicative or
+             additive padding regions and any pad value.
+"""
 import os
 import numpy as np
 from pylinex import PadExpander, load_expander_from_hdf5_file

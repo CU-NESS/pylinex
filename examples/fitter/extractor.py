@@ -1,3 +1,14 @@
+"""
+File: examples/fitter/extractor.py
+Author: Keith Tauscher
+Date: 10 Sep 2017
+
+Description: Example of how to use Extractor class to go from training set,
+             data, and error to find subbasis fits. In this example, only one
+             component basis is used, but in general, the Extractor class can
+             deal with an arbitrary number of subbasis to separate from each
+             other.
+"""
 import numpy as np
 import numpy.random as rand
 from distpy import GaussianDistribution

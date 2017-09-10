@@ -1,3 +1,12 @@
+"""
+File: examples/expander/composite_expander.py
+Author: Keith Tauscher
+Date: 10 Sep 2017
+
+Description: Example showing usage of the CompositeExpander class which
+             concatenates usage of multiple individual Expander objects. In
+             this case, data is padded with zeros and then repeated.
+"""
 import os
 import numpy as np
 from pylinex import PadExpander, RepeatExpander, CompositeExpander,\

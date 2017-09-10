@@ -1,3 +1,11 @@
+"""
+File: examples/quantity/compiled_quantity.py
+Author: Keith Tauscher
+Date: 10 Sep 2017
+
+Description: Example showing how to use the CompiledQuantity which is really
+             just a bundle of Quantity objects into a single Quantity.
+"""
 from pylinex import AttributeQuantity, CompiledQuantity
 
 class A(object):

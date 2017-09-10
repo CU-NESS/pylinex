@@ -1,3 +1,14 @@
+"""
+File: examples/fitter/meta_fitter.py
+Author: Keith Tauscher
+Date: 10 Sep 2017
+
+Description: Example showing how to use MetaFitter class to perform many least
+             square fits and autonomously choose the "best" basis based on a
+             given statistic (BPIC in this case). The MetaFitter class can
+             handle any number of dimensions and can calculate any number of
+             quantities at each grid square.
+"""
 import numpy as np
 import numpy.random as rand
 from pylinex import AttributeQuantity, PolynomialBasis, BasisSet, MetaFitter

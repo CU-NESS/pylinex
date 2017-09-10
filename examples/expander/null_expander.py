@@ -1,3 +1,11 @@
+"""
+File: examples/expander/null_expander.py
+Author: Keith Tauscher
+Date: 10 Sep 2017
+
+Description: Example of how to create and use a NullExpander object, which does
+             nothing to its inputs.
+"""
 import os
 import numpy as np
 import numpy.random as rand

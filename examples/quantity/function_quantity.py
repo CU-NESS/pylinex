@@ -1,3 +1,12 @@
+"""
+File: examples/quantity/function_quantity.py
+Author: Keith Tauscher
+Date: 10 Sep 2017
+
+Description: Example showing how the FunctionQuantity class is used. It calls a
+             given member function using specific args list and a specific
+             kwargs dictionary.
+"""
 from pylinex import FunctionQuantity
 
 class A(object):

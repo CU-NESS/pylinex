@@ -1,3 +1,12 @@
+"""
+File: examples/quantity/AttributeQuantity.py
+Author: Keith Tauscher
+Date: 10 Sep 2017
+
+Description: Example showing how the AttributeQuantity class. Basically, it
+             defers the calling of an attribute/property until desired but
+             still encodes what will be called.
+"""
 from pylinex import AttributeQuantity
 
 class A(object):

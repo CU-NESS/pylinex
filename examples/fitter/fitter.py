@@ -1,3 +1,13 @@
+"""
+File: examples/fitter/fitter.py
+Author: Keith Tauscher
+Date: 10 Sep 2017
+
+Description: Example of how to use Fitter class to perform least square fit
+             with single basis. Even though in this example, there is only one
+             component basis, the fitter class can handle an arbitrary number
+             of component basis sets to separate.
+"""
 import numpy as np
 import numpy.random as rand
 from pylinex import PolynomialBasis, BasisSet, Fitter

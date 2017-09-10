@@ -1,3 +1,11 @@
+"""
+File: examples/expander/matrix_expander.py
+Author: Keith Tauscher
+Date: 10 Sep 2017
+
+Description: Example showing how to use a MatrixExpander object to perform
+             Fourier transforms of data.
+"""
 import os
 import numpy as np
 import numpy.random as rand

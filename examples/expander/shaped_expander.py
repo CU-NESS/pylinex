@@ -1,3 +1,11 @@
+"""
+File: examples/expander/shaped_expander.py
+Author: Keith Tauscher
+Date: 10 Sep 2017
+
+Description: Example showing how to use the ShapedExpander class which allows
+             Expander's to deal with non-flat arrays.
+"""
 import os
 import numpy as np
 from pylinex import NullExpander, ShapedExpander, load_expander_from_hdf5_file

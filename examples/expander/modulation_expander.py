@@ -1,3 +1,10 @@
+"""
+File: examples/expander/modulation_expander.py
+Author: Keith Tauscher
+Date: 10 Sep 2017
+
+Description: Example showing how to use the ModulationExpander class.
+"""
 import os
 import numpy as np
 from pylinex import ModulationExpander, load_expander_from_hdf5_file
