@@ -28,7 +28,7 @@ class BasisSet(Basis):
         if isinstance(names, list) and isinstance(bases, list):
             if len(names) == len(bases):
                 full_basis = []
-                for index in xrange(len(names)):
+                for index in range(len(names)):
                     name = names[index]
                     basis = bases[index]
                     full_basis.append(basis.expanded_basis)
@@ -105,7 +105,7 @@ class BasisSet(Basis):
         """
         if not hasattr(self, '_name_dict'):
             self._name_dict =\
-                {self.names[iname]: iname for iname in xrange(len(self.names))}
+                {self.names[iname]: iname for iname in range(len(self.names))}
         return self._name_dict
     
     @property
@@ -134,9 +134,9 @@ class BasisSet(Basis):
         returns: 2D square numpy.ndarray of dot products
         """
         dot_products = np.ndarray((len(self.names),) * 2)
-        for ibasis1 in xrange(len(self.component_bases)):
+        for ibasis1 in range(len(self.component_bases)):
             basis1 = self.component_bases[ibasis1]
-            for ibasis2 in xrange(ibasis1, len(self.component_bases)):
+            for ibasis2 in range(ibasis1, len(self.component_bases)):
                 basis2 = self.component_bases[ibasis2]
                 dot_product = basis1.dot(basis2, error=error)
                 dot_products[ibasis1,ibasis2] = dot_product

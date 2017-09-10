@@ -113,7 +113,7 @@ class TrainingSetIterator(object):
                 num_args += 1
             if num_args == self.num_training_sets:
                 test_expression = value
-                for iarg in xrange(num_args):
+                for iarg in range(num_args):
                     test_expression = test_expression.split('{%i}' % (iarg,))
                     test_expression = ('0').join(test_expression)
                 try:
@@ -300,17 +300,17 @@ class TrainingSetIterator(object):
         indices = np.unravel_index(np.arange(start, end), self.shape)
         if self.mode == 'add':
             block = np.zeros((end - start, self.num_channels))
-            for itraining_set in xrange(self.num_training_sets):
+            for itraining_set in range(self.num_training_sets):
                 block = block +\
                     self.training_sets[itraining_set][indices[itraining_set]]
         elif self.mode == 'multiply':
             block = np.ones((end - start, self.num_channels))
-            for itraining_set in xrange(self.num_training_sets):
+            for itraining_set in range(self.num_training_sets):
                 block = block *\
                     self.training_sets[itraining_set][indices[itraining_set]]
         else:
             expression = self.mode
-            for iarg in xrange(self.num_training_sets):
+            for iarg in range(self.num_training_sets):
                 to_remove = ('{%i}' % (iarg,))
                 to_add = ('self.training_sets[%i][indices[%i]]' % (iarg, iarg))
                 expression = expression.split(to_remove)
@@ -318,7 +318,7 @@ class TrainingSetIterator(object):
             block = eval(expression)
         if self.return_constituents:
             constituents = [self.training_sets[i][indices[i]]\
-                                       for i in xrange(self.num_training_sets)]
+                                       for i in range(self.num_training_sets)]
             return block, constituents
         else:
             return block

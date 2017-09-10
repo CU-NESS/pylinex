@@ -8,11 +8,11 @@ Description: The quantity module contains classes which can be instantiated
              yet exist. The values of the quantities are retrieved by calling
              the Quantity object.
 """
-from .Quantity import Quantity
-from .ConstantQuantity import ConstantQuantity
-from .AttributeQuantity import AttributeQuantity
-from .FunctionQuantity import FunctionQuantity
-from .CompiledQuantity import CompiledQuantity
-from .CalculatedQuantity import CalculatedQuantity
-from .QuantityFinder import QuantityFinder
+from pylinex.quantity.Quantity import Quantity
+from pylinex.quantity.ConstantQuantity import ConstantQuantity
+from pylinex.quantity.AttributeQuantity import AttributeQuantity
+from pylinex.quantity.FunctionQuantity import FunctionQuantity
+from pylinex.quantity.CompiledQuantity import CompiledQuantity
+from pylinex.quantity.CalculatedQuantity import CalculatedQuantity
+from pylinex.quantity.QuantityFinder import QuantityFinder
 

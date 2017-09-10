@@ -295,7 +295,7 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         if type(value) in sequence_types:
             num_expanders = len(value)
             if num_expanders == self.num_bases:
-                for ibasis in xrange(self.num_bases):
+                for ibasis in range(self.num_bases):
                     expander = value[ibasis]
                     if isinstance(expander, Expander):
                         ts_len = self.training_set_lengths[ibasis]
@@ -325,7 +325,7 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         """
         if not hasattr(self, '_basis_set'):
             bases = []
-            for ibasis in xrange(self.num_bases):
+            for ibasis in range(self.num_bases):
                 training_set = self.training_sets[ibasis]
                 num_basis_vectors = self.maxima[self.names[ibasis]]
                 expander = self.expanders[ibasis]
@@ -370,8 +370,8 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             self._fitter =\
                 self.meta_fitter.minimize_quantity(self.quantity_to_minimize)
             if self.verbose:
-                print "Chose the following numbers of parameters: %s" %\
-                    (self._fitter.sizes,)
+                print("Chose the following numbers of parameters: " +\
+                    "{!s}".format(self._fitter.sizes))
         return self._fitter
     
     def fill_hdf5_group(self, group):
@@ -394,7 +394,7 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             subgroup.create_dataset(name, data=self.meta_fitter[name])
         if self.save_training_sets:
             subgroup = group.create_group('training_sets')
-            for ibasis in xrange(self.num_bases):
+            for ibasis in range(self.num_bases):
                 subgroup.create_dataset(self.names[ibasis],\
                     data=self.training_sets[ibasis])
         

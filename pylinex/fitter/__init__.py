@@ -14,7 +14,7 @@ Description: Imports classes from the pylinex.fitter module:
              Extractor: Finds a model for and separates each component of a
                         data vector using training sets.
 """
-from .Fitter import Fitter
-from .MetaFitter import MetaFitter
-from .Extractor import Extractor
+from pylinex.fitter.Fitter import Fitter
+from pylinex.fitter.MetaFitter import MetaFitter
+from pylinex.fitter.Extractor import Extractor
 

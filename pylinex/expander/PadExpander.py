@@ -209,15 +209,15 @@ class PadExpander(Expander):
         """
         if self.pads_before_multiplicative and self.pads_after_multiplicative:
             original_space_size =\
-                expanded_space_size / (1 + self.pads_before + self.pads_after)
+                expanded_space_size // (1 + self.pads_before + self.pads_after)
             return (self.pads_before * original_space_size,\
                 self.pads_after * original_space_size)
         elif self.pads_before_multiplicative:
-            original_space_size = (expanded_space_size - self.pads_after) /\
+            original_space_size = (expanded_space_size - self.pads_after) //\
                 (1 + self.pads_before)
             return (self.pads_before * original_space_size, self.pads_after)
         elif self.pads_after_multiplicative:
-            original_space_size = (expanded_space_size - self.pads_before) /\
+            original_space_size = (expanded_space_size - self.pads_before) //\
                 (1 + self.pads_after)
             return (self.pads_before, self.pads_after * original_space_size)
         else:

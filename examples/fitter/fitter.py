@@ -1,0 +1,17 @@
+import numpy as np
+import numpy.random as rand
+from pylinex import PolynomialBasis, BasisSet, Fitter
+
+xs = np.linspace(-1, 1, 100)
+
+noise_level = 1e-1
+noiseless_data = np.polyval([4, 3, 2, 1, 0, 0, 9], xs)
+data = noiseless_data + (rand.normal(0, 1, xs.shape) * noise_level)
+
+name = 'polynomial'
+basis = PolynomialBasis(xs, 15)
+basis_set = BasisSet([name], [basis])
+fitter = Fitter(basis_set, data)
+fitter.plot_subbasis_fit(nsigma=1, name=name, true_curve=noiseless_data,\
+    x_values=xs, colors='r', show=True)
+

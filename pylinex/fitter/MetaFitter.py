@@ -50,7 +50,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder):
         """
         if not hasattr(self, '_grids'):
             self._grids =\
-                [np.zeros(self.shape) for index in xrange(self.num_quantities)]
+                [np.zeros(self.shape) for index in range(self.num_quantities)]
             for indices in np.ndindex(*self.shape):
                 analyzer = self.analyzer_from_indices(indices)
                 quantity_values = self.compiled_quantity(analyzer)
@@ -148,7 +148,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder):
         grid = self[index]
         quantity = self.compiled_quantity[index]
         if verbose:
-            print "Minimizing " + quantity.name + " over grid."
+            print("Minimizing {} over grid.".format(quantity.name))
         indices_of_minimum = np.unravel_index(np.argmin(grid), grid.shape)
         return self.analyzer_from_indices(indices_of_minimum)
     
@@ -258,7 +258,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder):
         pl.xlabel(xlabel)
         pl.ylabel(ylabel)
         naxes = nrows * ncols
-        for iplot in xrange(naxes):
+        for iplot in range(naxes):
             irow = iplot / ncols
             icol = iplot % ncols
             ax = fig.add_subplot(nrows, ncols, iplot + 1)

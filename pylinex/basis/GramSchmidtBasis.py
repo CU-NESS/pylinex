@@ -33,7 +33,7 @@ def orthonormal_basis(seed_vectors, error=None):
     def dot_product(u, v):
         return np.dot(u * inverse_error, v * inverse_error)
     basis = []
-    for degree in xrange(len(seed_vectors)):
+    for degree in range(len(seed_vectors)):
         pbv = seed_vectors[degree]
         cpbv = np.dot(pbv, correction_matrix)
         basis.append(np.dot(covariance, cpbv) / np.sqrt(np.dot(pbv, cpbv)))
@@ -54,7 +54,7 @@ def orthonormal_polynomial_basis(num_points, max_degree, error=None):
              given and np is the num_points given
     """
     xs = np.linspace(-1, 1, num_points)
-    seed_vectors = [(xs ** degree) for degree in xrange(max_degree + 1)]
+    seed_vectors = [(xs ** degree) for degree in range(max_degree + 1)]
     return orthonormal_basis(seed_vectors, error=error)
 
 def orthonormal_harmonic_basis(num_points, max_degree, error=None):
@@ -77,7 +77,7 @@ def orthonormal_harmonic_basis(num_points, max_degree, error=None):
             return np.sin(((index + 1) / 2) * xs)
         else:
             return np.cos(((index + 1) / 2) * xs)
-    seed_vectors = np.array([vector(i) for i in xrange(num_basis)])
+    seed_vectors = np.array([vector(i) for i in range(num_basis)])
     return orthonormal_basis(seed_vectors, error=error)
 
 class GramSchmidtBasis(Basis):

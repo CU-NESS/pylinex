@@ -1342,6 +1342,8 @@ class Fitter(Savable):
         else:
             mean = self.subbasis_channel_mean(name=name)
             error = self.subbasis_channel_error(name=name)
+        if isinstance(colors, str):
+            colors = [colors] * 3
         if self.data.ndim == 2:
             mean = mean[which_data]
         if (fig is None) or (ax is None):
@@ -1383,7 +1385,7 @@ class Fitter(Savable):
                     mean - to_subtract - (nsigma * self.error),\
                     mean - to_subtract + (nsigma * self.error),\
                     alpha=noise_level_alpha, color=colors[2])
-        if not error_first:
+        if not full_error_first:
             ax.fill_between(x_values, mean - to_subtract - (nsigma * error),\
                 mean - to_subtract + (nsigma * error), alpha=full_error_alpha,\
                 color=colors[1])

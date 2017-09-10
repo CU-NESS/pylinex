@@ -23,6 +23,6 @@ class PolynomialBasis(Basis):
         expander: Expander object to use to expand basis vectors to full space
         """
         basis_vectors =\
-            np.array([(xs ** i) for i in xrange(num_basis_vectors)])
+            np.array([(xs ** i) for i in range(num_basis_vectors)])
         Basis.__init__(self, basis_vectors, expander=expander)
 

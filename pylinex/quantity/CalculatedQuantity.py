@@ -7,7 +7,9 @@ Description: File containing a subclass of the Quantity class which performs
              functions on groups of quantities to produce a single quantity
              output.
 """
+from types import FunctionType
 from .Quantity import Quantity
+from .CompiledQuantity import CompiledQuantity
 
 class CalculatedQuantity(Quantity):
     """
@@ -63,7 +65,7 @@ class CalculatedQuantity(Quantity):
         underlying this object.
         """
         if not hasattr(self, '_num_arguments'):
-            self._num_arguments = self.function.func_code.co_argcount
+            self._num_arguments = self.function.__code__.co_argcount
         return self._num_arguments
     
     @property
@@ -86,6 +88,9 @@ class CalculatedQuantity(Quantity):
                if value is another Quantity, it is made into a CompiledQuantity
                                              of one
         """
+        if isinstance(value, Quantity) and\
+            (not isinstance(value, CompiledQuantity)):
+            value = CompiledQuantity('sole', value)
         if isinstance(value, CompiledQuantity):
             if value.num_quantities == self.num_arguments:
                 self._compiled_quantity = value

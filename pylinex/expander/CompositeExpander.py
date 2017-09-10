@@ -126,7 +126,7 @@ class CompositeExpander(Expander):
         """
         if isinstance(other, CompositeExpander):
             if self.num_expanders == other.num_expanders:
-                for iexpander in xrange(self.num_expanders):
+                for iexpander in range(self.num_expanders):
                     this_expander = self.expanders[iexpander]
                     other_expander = other.expanders[iexpander]
                     if this_expander != other_expander:

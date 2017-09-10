@@ -206,7 +206,7 @@ class Basis(Savable):
         """
         if not hasattr(self, '_expanded_basis'):
             self._expanded_basis = np.array([self.expander(self.basis[i])\
-                for i in xrange(self.num_basis_vectors)])
+                for i in range(self.num_basis_vectors)])
         return self._expanded_basis
     
     def generate_gaussian_prior(self, curves, error=None,\
