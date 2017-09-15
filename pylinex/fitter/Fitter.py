@@ -224,6 +224,16 @@ class Fitter(Savable):
             raise ValueError("data was neither 1- or 2-dimensional.")
     
     @property
+    def multiple_data_curves(self):
+        """
+        Property storing a bool describing whether this Fitter contains
+        multiple data curves (True) or not (False).
+        """
+        if not hasattr(self, '_multiple_data_curves'):
+            self._multiple_data_curves = (self.data.ndim == 2)
+        return self._multiple_data_curves
+    
+    @property
     def error(self):
         """
         Property storing 1D error vector with which to weight the least square
@@ -263,7 +273,7 @@ class Fitter(Savable):
     @property
     def data_significance(self):
         if not hasattr(self, '_data_significance'):
-            if self.data.ndim == 2:
+            if self.multiple_data_curves:
                 self._data_significance = np.einsum('ij,ij->i',\
                     self.weighted_data, self.weighted_data)
             else:
@@ -312,7 +322,7 @@ class Fitter(Savable):
         if not hasattr(self, '_model_complexity_logL_variance'):
             self._model_complexity_logL_variance = self.num_parameters
             bias_term = np.dot(self.weighted_basis, self.weighted_bias.T).T
-            if self.data.ndim == 2:
+            if self.multiple_data_curves:
                 bias_term = np.einsum('ij,ik,jk->i', bias_term, bias_term,\
                     self.parameter_covariance)
             else:
@@ -346,10 +356,10 @@ class Fitter(Savable):
         covariance of the posterior distribution.
         """
         if not hasattr(self, '_weighted_data'):
-            if self.data.ndim == 1:
-                self._weighted_data = self.data / self.error
-            else:
+            if self.multiple_data_curves:
                 self._weighted_data = self.data / self.error[np.newaxis,:]
+            else:
+                self._weighted_data = self.data / self.error
         return self._weighted_data
     
     @property
@@ -400,6 +410,113 @@ class Fitter(Savable):
                     self._parameter_inverse_covariance +\
                     self.prior_inverse_covariance
         return self._parameter_inverse_covariance
+    
+    @property
+    def likelihood_parameter_covariance(self):
+        """
+        Property storing the parameter covariance implied by the likelihood
+        (always has bigger determinant than the posterior covariance).
+        """
+        if not hasattr(self, '_likelihood_parameter_covariance'):
+            if self.has_priors:
+                self._likelihood_parameter_covariance =\
+                    npla.inv(self.overlap_matrix)
+            else:
+                self._likelihood_parameter_covariance =\
+                    self.parameter_covariance
+        return self._likelihood_parameter_covariance
+    
+    @property
+    def likelihood_parameter_mean(self):
+        """
+        Property storing the parameter mean implied by the likelihood (i.e.
+        disregarding priors).
+        """
+        if not hasattr(self, '_likelihood_parameter_mean'):
+            if self.has_priors:
+                self._likelihood_parameter_mean =\
+                    np.dot(self.likelihood_parameter_covariance,\
+                    np.dot(self.weighted_basis, self.weighted_data.T)).T
+            else:
+                self._likelihood_parameter_mean = self.parameter_mean
+        return self._likelihood_parameter_mean
+    
+    @property
+    def likelihood_channel_mean(self):
+        """
+        Property storing the channel mean associated with the likelihood
+        parameter mean (i.e. the result if there are no priors).
+        """
+        if not hasattr(self, '_likelihood_channel_mean'):
+            if self.has_priors:
+                self._likelihood_channel_mean = np.dot(self.basis_set.basis.T,\
+                    self.likelihood_parameter_mean.T).T
+            else:
+                self._likelihood_channel_mean = self.channel_mean
+        return self._likelihood_channel_mean
+    
+    @property
+    def likelihood_channel_bias(self):
+        """
+        Property storing the channel-space bias associated with the likelihood
+        parameter mean (i.e. the result if there are no priors).
+        """
+        if not hasattr(self, '_likelihood_channel_bias'):
+            if self.has_priors:
+                self._likelihood_channel_bias =\
+                    self.likelihood_channel_mean - self.data
+            else:
+                self._likelihood_channel_bias = self.channel_bias
+        return self._likelihood_channel_bias
+    
+    @property
+    def likelihood_weighted_bias(self):
+        """
+        Property storing the likelihood_channel_bias weighted by the error.
+        """
+        if not hasattr(self, '_likelihood_weighted_bias'):
+            if self.has_priors:
+                if self.multiple_data_curves:
+                    self._likelihood_weighted_bias =\
+                        self.likelihood_channel_bias / self.error[np.newaxis,:]
+                else:
+                    self._likelihood_weighted_bias =\
+                        self.likelihood_channel_bias / self.error
+            else:
+                self._likelihood_weighted_bias = self.weighted_bias
+        return self._likelihood_weighted_bias
+    
+    @property
+    def likelihood_bias_statistic(self):
+        """
+        Property storing the maximum value of the loglikelihood. This is a
+        negative number equal to (delta^T C^{-1} delta) where delta is the
+        likelihood_channel_bias. It is equal to -2 times the loglikelihood.
+        """
+        if not hasattr(self, '_likelihood_bias_statistic'):
+            if self.has_priors:
+                if self.multiple_data_curves:
+                    self._likelihood_bias_statistic = np.einsum('ij,ij->i',\
+                        self.likelihood_weighted_bias,\
+                        self.likelihood_weighted_bias)
+                else:
+                    self._likelihood_bias_statistic = np.dot(\
+                        self.likelihood_weighted_bias,\
+                        self.likelihood_weighted_bias)
+            else:
+                self._likelihood_bias_statistic = self.bias_statistic
+        return self._likelihood_bias_statistic
+    
+    @property
+    def maximum_loglikelihood(self):
+        """
+        Property storing the maximum value of the Gaussian loglikelihood (when
+        the normalizing constant outside the exponential is left off).
+        """
+        if not hasattr(self, '_maximum_loglikelihood'):
+            self._maximum_loglikelihood =\
+                (-(self.likelihood_bias_statistic / 2.))
+        return self._maximum_loglikelihood
     
     @property
     def parameter_covariance(self):
@@ -469,7 +586,7 @@ class Fitter(Savable):
             self._parameter_mean =\
                 np.dot(self.weighted_basis, self.weighted_data.T)
             if self.has_priors:
-                if self.data.ndim == 2:
+                if self.multiple_data_curves:
                     self._parameter_mean = self._parameter_mean +\
                         self.prior_inverse_covariance_times_mean[:,np.newaxis]
                 else:
@@ -486,7 +603,7 @@ class Fitter(Savable):
         mean and S is the posterior parameter covariance matrix.
         """
         if not hasattr(self, '_posterior_significance'):
-            if self.data.ndim == 2:
+            if self.multiple_data_curves:
                 self._posterior_significance = np.einsum('ij,ik,jk->i',\
                     self.parameter_mean, self.parameter_inverse_covariance,\
                     self.parameter_mean)
@@ -523,7 +640,7 @@ class Fitter(Savable):
         """
         """
         if not hasattr(self, '_channel_bias_RMS'):
-            if self.data.ndim == 2:
+            if self.multiple_data_curves:
                 self._channel_bias_RMS = np.sqrt(np.einsum('ij,ij->i',\
                     self.channel_bias, self.channel_bias) / self.num_channels)
             else:
@@ -535,12 +652,11 @@ class Fitter(Savable):
     @property
     def weighted_bias(self):
         """
-        Property storing the basis functions weighted down by the errors. This
-        is the basis actually used in the calculation of the mean and
-        covariance of the parameters.
+        Property storing the posterior channel bias weighted down by the
+        errors.
         """
         if not hasattr(self, '_weighted_bias'):
-            if self.data.ndim == 2:
+            if self.multiple_data_curves:
                 self._weighted_bias =\
                     self.channel_bias / self.error[np.newaxis,:]
             else:
@@ -555,13 +671,25 @@ class Fitter(Savable):
         chi^2(N) distribution where N is the number of data points.
         """
         if not hasattr(self, '_bias_statistic'):
-            if self.data.ndim == 2:
+            if self.multiple_data_curves:
                 self._bias_statistic = np.einsum('ij,ij->i',\
                     self.weighted_bias, self.weighted_bias)
             else:
                 self._bias_statistic =\
                     np.dot(self.weighted_bias, self.weighted_bias)
         return self._bias_statistic
+    
+    @property
+    def loglikelihood_at_posterior_maximum(self):
+        """
+        Property storing the value of the Gaussian loglikelihood (without the
+        normalizing factor outside the exponential) at the maximum of the
+        posterior distribution.
+        """
+        if not hasattr(self, '_loglikelihood_at_posterior_maximum'):
+            self._loglikelihood_at_posterior_maximum =\
+                (-(self.bias_statistic / 2.))
+        return self._loglikelihood_at_posterior_maximum
     
     @property
     def normalized_bias_statistic(self):
@@ -582,7 +710,7 @@ class Fitter(Savable):
         in the log evidence.
         """
         if not hasattr(self, '_significance_difference'):
-            if self.data.ndim == 2:
+            if self.multiple_data_curves:
                 parameter_mean_sum =\
                     self.parameter_mean + self.prior_mean[np.newaxis,:]
                 parameter_mean_difference =\
@@ -667,7 +795,8 @@ class Fitter(Savable):
         information about the complexity of the model.
         """
         if not hasattr(self, '_bayesian_information_criterion'):
-            self._bayesian_information_criterion = self.bias_statistic +\
+            self._bayesian_information_criterion =\
+                self.likelihood_bias_statistic +\
                 (self.num_parameters * np.log(self.num_channels))
         return self._bayesian_information_criterion
     
@@ -686,7 +815,7 @@ class Fitter(Savable):
         """
         if not hasattr(self, '_akaike_information_criterion'):
             self._akaike_information_criterion =\
-               self.bias_statistic + 2 * self.num_parameters
+               self.likelihood_bias_statistic + 2 * self.num_parameters
         return self._akaike_information_criterion
     
     @property
@@ -741,7 +870,7 @@ class Fitter(Savable):
         and the prior parameter mean.
         """
         if not hasattr(self, '_posterior_prior_mean_difference'):
-            if self.data.ndim == 2:
+            if self.multiple_data_curves:
                 self._posterior_prior_mean_difference =\
                     self.parameter_mean - self.prior_mean[np.newaxis,:]
             else:
@@ -772,7 +901,7 @@ class Fitter(Savable):
                     self.posterior_prior_mean_difference.T).T +\
                     (2 * np.dot(self.weighted_basis, self.weighted_bias.T).T)
             squared_weighted_bias = ()
-            if self.data.ndim == 2:
+            if self.multiple_data_curves:
                 if self.has_priors:
                     self._bayesian_predictive_information_criterion +=\
                         (np.einsum('ij,ij->i', term_v1, term_v2) /\
@@ -1085,7 +1214,7 @@ class Fitter(Savable):
                 raise ValueError("true_curve must be given to " +\
                                  "subbasis_channel_bias if the name of a " +\
                                  "subbasis is specified.")
-            elif self.data.ndim == 2:
+            elif self.multiple_data_curves:
                 if true_curve.ndim == 1:
                     return self.subbasis_channel_mean(name=name,\
                         expanded=expanded) - true_curve[np.newaxis,:]
@@ -1153,7 +1282,7 @@ class Fitter(Savable):
             subbasis_channel_error = self.error
         else:
             subbasis_channel_error = self.subbasis_channel_error(name=name)
-        if self.data.ndim == 2:
+        if self.multiple_data_curves:
             return subbasis_channel_bias / subbasis_channel_error[np.newaxis,:]
         else:
             return subbasis_channel_bias / subbasis_channel_error
@@ -1178,7 +1307,7 @@ class Fitter(Savable):
         """
         weighted_bias = self.subbasis_weighted_bias(name=name,\
             true_curve=true_curve, compare_likelihood=compare_likelihood)
-        if self.data.ndim == 2:
+        if self.multiple_data_curves:
             return np.einsum('ij,ij->i', weighted_bias, weighted_bias)
         else:
             return np.dot(weighted_bias, weighted_bias)
@@ -1197,10 +1326,10 @@ class Fitter(Savable):
         num_channels = training_sets.values()[0].shape[1]
         if any([ts.shape[1] != num_channels for ts in training_sets.values()]):
             raise ValueError("The lengths of the curves in the training " +\
-                             "sets must be equal.")
+                "sets must be equal.")
         if set(self.basis_set.names) != set(training_sets.keys()):
-            raise ValueError("There must be the same number of basis sets " +\
-                             "as training sets.")
+            raise ValueError("There must be the same basis sets as " +\
+                "training sets.")
         if (bases_to_score is None) or (not bases_to_score):
             bases_to_score = self.basis_set.names
         score = 0.
@@ -1334,7 +1463,7 @@ class Fitter(Savable):
         show: If True, matplotlib.pyplot.show() is called before this function
               returns.
         """
-        if (self.data.ndim == 2) and (which_data is None):
+        if self.multiple_data_curves and (which_data is None):
             which_data = 0
         if name is None:
             mean = self.channel_mean
@@ -1344,7 +1473,7 @@ class Fitter(Savable):
             error = self.subbasis_channel_error(name=name)
         if isinstance(colors, str):
             colors = [colors] * 3
-        if self.data.ndim == 2:
+        if self.multiple_data_curves:
             mean = mean[which_data]
         if (fig is None) or (ax is None):
             fig = pl.figure()
@@ -1353,7 +1482,7 @@ class Fitter(Savable):
             x_values = np.arange(len(mean))
         if (true_curve is None) and (name is None):
             true_curve = self.data
-            if self.data.ndim == 2:
+            if self.multiple_data_curves:
                 true_curve = true_curve[which_data]
         if (true_curve is None) and (name is not None) and subtract_truth:
             raise ValueError("Truth cannot be subtracted because it is not " +\

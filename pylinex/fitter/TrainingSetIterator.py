@@ -10,13 +10,7 @@ Description: File containing class which combines multiple training sets into
              memory.
 """
 import numpy as np
-from .TypeCategories import int_types, sequence_types
-
-def ceil_div(a, b):
-    """
-    Finds the result of integer division of a/b when rounding towards +inf.
-    """
-    return -(-a // b)
+from ..util import int_types, sequence_types
 
 class TrainingSetIterator(object):
     """
@@ -38,7 +32,7 @@ class TrainingSetIterator(object):
               else, mode must be an expression which is calculable using numpy
                     whose pieces are of the form {###} where ### is the index
                     (starting at 0) of the specific training set
-                    (e.g. '{0}*np.power({1}, {2})')
+                    (e.g. '{0}*np.power({1},{2})')
         return_constituents: if True, return constituent training sets used to
                                       each output combined training set
                              if False, only combined training set curves are
@@ -109,12 +103,13 @@ class TrainingSetIterator(object):
             self._mode = value
         elif isinstance(value, str):
             num_args = 0
-            while ('{%i}' % (num_args,)) in value:
+            while ('{{{}}}'.format(num_args)) in value:
                 num_args += 1
             if num_args == self.num_training_sets:
                 test_expression = value
                 for iarg in range(num_args):
-                    test_expression = test_expression.split('{%i}' % (iarg,))
+                    test_expression =\
+                        test_expression.split('{{{}}}'.format(iarg))
                     test_expression = ('0').join(test_expression)
                 try:
                     test_value = eval(test_expression)
@@ -311,8 +306,9 @@ class TrainingSetIterator(object):
         else:
             expression = self.mode
             for iarg in range(self.num_training_sets):
-                to_remove = ('{%i}' % (iarg,))
-                to_add = ('self.training_sets[%i][indices[%i]]' % (iarg, iarg))
+                to_remove = ('{{{}}}'.format(iarg))
+                to_add = ('self.training_sets[{0}][indices[{1}]]'.format(iarg,\
+iarg))
                 expression = expression.split(to_remove)
                 expression = to_add.join(expression)
             block = eval(expression)
@@ -333,6 +329,7 @@ class TrainingSetIterator(object):
         """
         if self.iblock == self.num_blocks:
             raise StopIteration
+        desired_block = self.get_block(self.iblock)
         self.iblock = self.iblock + 1
-        return self.get_block(self.iblock - 1)
+        return desired_block
 

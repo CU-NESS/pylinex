@@ -11,14 +11,13 @@ Description: Imports the most important elements from all submodules. The
 """
 from pylinex.quantity import Quantity, ConstantQuantity, AttributeQuantity,\
     FunctionQuantity, CompiledQuantity, CalculatedQuantity, QuantityFinder
-from pylinex.expander import Expander, NullExpander, PadExpander, RepeatExpander,\
-    ModulationExpander, MatrixExpander, CompositeExpander, ShapedExpander,\
-    load_expander_from_hdf5_group
-from pylinex.basis import Basis, PolynomialBasis, GramSchmidtBasis, FourierBasis,\
-    LegendreBasis, TrainedBasis, BasisSet, load_basis_from_hdf5_group,\
-    load_basis_set_from_hdf5_group
-from pylinex.fitter import Fitter, MetaFitter, Extractor
-from pylinex.util import Savable, VariableGrid, TrainingSetIterator,\
-    load_expander_from_hdf5_file, load_basis_from_hdf5_file,\
-    load_basis_set_from_hdf5_file
+from pylinex.expander import Expander, NullExpander, PadExpander,\
+    RepeatExpander, ModulationExpander, MatrixExpander, CompositeExpander,\
+    ShapedExpander, load_expander_from_hdf5_group
+from pylinex.basis import Basis, PolynomialBasis, GramSchmidtBasis,\
+    FourierBasis, LegendreBasis, TrainedBasis, BasisSet,\
+    load_basis_from_hdf5_group, load_basis_set_from_hdf5_group
+from pylinex.fitter import Fitter, MetaFitter, Extractor, TrainingSetIterator
+from pylinex.util import Savable, VariableGrid, load_expander_from_hdf5_file,\
+    load_basis_from_hdf5_file, load_basis_set_from_hdf5_file
 
