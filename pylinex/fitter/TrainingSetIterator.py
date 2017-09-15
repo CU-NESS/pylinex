@@ -308,7 +308,7 @@ class TrainingSetIterator(object):
             for iarg in range(self.num_training_sets):
                 to_remove = ('{{{}}}'.format(iarg))
                 to_add = ('self.training_sets[{0}][indices[{1}]]'.format(iarg,\
-iarg))
+                    iarg))
                 expression = expression.split(to_remove)
                 expression = to_add.join(expression)
             block = eval(expression)
