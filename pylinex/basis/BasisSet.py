@@ -12,6 +12,12 @@ import numpy as np
 import matplotlib.pyplot as pl
 from ..util import sequence_types
 from .Basis import Basis, load_basis_from_hdf5_group
+try:
+    # this runs with no issues in python 2 but raises error in python 3
+    basestring
+except:
+    # this try/except allows for python 2/3 compatible string type checking
+    basestring = str
 
 class BasisSet(Basis):
     """
@@ -38,7 +44,7 @@ class BasisSet(Basis):
                 self.expander = None
             else:
                 raise ValueError("Lengths of names and bases are not equal.")
-        elif isinstance(names, str) and isinstance(bases, Basis):
+        elif isinstance(names, basestring) and isinstance(bases, Basis):
             self.names = [names]
             self.basis = bases.basis
             self.component_bases = [bases]
@@ -180,7 +186,7 @@ class BasisSet(Basis):
         returns: if key is None or a dict, returns a BasisSet object
                  otherwise, returns Basis object
         """
-        if isinstance(key, str):
+        if isinstance(key, basestring):
             return self.component_bases[self.name_dict[key]]
         elif isinstance(key, dict):
             return self.basis_subsets(**key)
@@ -225,9 +231,30 @@ class BasisSet(Basis):
         group: the hdf5 file group to fill
         """
         for (iname, name) in enumerate(self.names):
-            subgroup = group.create_group('basis_%i' % (iname,))
+            subgroup = group.create_group('basis_{}'.format(iname))
             self[name].fill_hdf5_group(subgroup)
             subgroup.attrs['name'] = name
+    
+    def __iter__(self):
+        """
+        Returns an iterator over the sets of basis functions in this BasisSet.
+        This object acts as its own iterator. This method simply resets private
+        attribute values to restart the internal iterator.
+        """
+        self._index_of_basis_to_return = 0
+        return self
+    
+    def next(self):
+        """
+        Since this BasisSet is its own iterator, it must have a next() method
+        which returns the next basis. In this case, the "private"
+        _index_of_basis_to_return property is used to store the index of the
+        name of the next basis to return.
+        """
+        if self._index_of_basis_to_return == len(self.names):
+            raise StopIteration
+        self._index_of_basis_to_return += 1
+        return self[self.names[self._index_of_basis_to_return - 1]]
 
 def load_basis_set_from_hdf5_group(group):
     """
@@ -240,8 +267,8 @@ def load_basis_set_from_hdf5_group(group):
     names = []
     component_bases = []
     iname = 0
-    while ('basis_%i' % (iname,)) in group:
-        subgroup = group['basis_%i' % (iname,)]
+    while ('basis_{}'.format(iname)) in group:
+        subgroup = group['basis_{}'.format(iname)]
         names.append(subgroup.attrs['name'])
         component_bases.append(load_basis_from_hdf5_group(subgroup))
         iname += 1

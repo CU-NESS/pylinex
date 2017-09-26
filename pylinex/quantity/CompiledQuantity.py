@@ -7,10 +7,16 @@ Description: File containing a class representing a list of Quantities to be
              evaluated with the same (or overlapping) arguments. When it is
              called, each underlying Quantity is called.
 """
-from ..util import int_types, sequence_types
+from ..util import int_types, sequence_types, Savable
 from .Quantity import Quantity
+try:
+    # this runs with no issues in python 2 but raises error in python 3
+    basestring
+except:
+    # this try/except allows for python 2/3 compatible string type checking
+    basestring = str
 
-class CompiledQuantity(Quantity):
+class CompiledQuantity(Quantity, Savable):
     """
     Class representing a list of Quantities to be evaluated with the same (or
     overlapping) arguments. When it is called, each underlying Quantity is
@@ -113,7 +119,7 @@ class CompiledQuantity(Quantity):
         """
         if type(index) in int_types:
             return self.quantities[index]
-        elif isinstance(index, str):
+        elif isinstance(index, basestring):
             if self.can_index_by_string:
                 return self.quantities[self.index_dict[index]]
             else:
@@ -123,6 +129,31 @@ class CompiledQuantity(Quantity):
         else:
             raise IndexError("CompiledQuantity can only be indexed by an " +\
                              "integer index or a string quantity name.")
+    
+    def __add__(self, other):
+        """
+        Appends other to this CompiledQuantity.
+        
+        other: CompiledQuantity (or some other Quantity)
+        
+        returns: if other is another CompiledQuantity, names quantity lists of
+                                                       both CompiledQuantity
+                                                       objects are combined
+                 otherwise, other must be a Quantity object. It will be added
+                            to the quantity list of this CompiledQuantity
+                            (whose name won't change)
+        """
+        if isinstance(other, CompiledQuantity):
+            new_name = '{0!s}+{1!s}'.format(self.name, other.name)
+            new_quantities = self.quantities + other.quantities
+        elif isinstance(other, Quantity):
+            new_name = self.name
+            new_quantities = [quantity for quantity in self.quantities]
+            new_quantities.append(other)
+        else:
+            raise TypeError("Only Quantity objects can be added to " +\
+                "compiled quantities.")
+        return CompiledQuantity(new_name, *new_quantities)
     
     def __call__(self, *args, **kwargs):
         """
@@ -146,8 +177,22 @@ class CompiledQuantity(Quantity):
         
         returns: True if there exists at least one Quantity named key
         """
+        return any([(quantity.name == key) for quantity in self.quantities])
+    
+    def fill_hdf5_group(self, group, exclude=[]):
+        """
+        Fills given hdf5 file group with data about this CompiledQuantity.
+        
+        group: hdf5 file group to fill with data about this CompiledQuantity
+        """
+        iquantity = 0
+        group.attrs['name'] = self.name
+        group.attrs['class'] = 'CompiledQuantity'
         for quantity in self.quantities:
-            if quantity.name == key:
-                return True
-        return False
+            excluded = (quantity.name in exclude)
+            savable = isinstance(quantity, Savable)
+            if (not excluded) and savable:
+                subgroup = group.create_group('quantity_{}'.format(iquantity))
+                quantity.fill_hdf5_group(subgroup)
+                iquantity += 1
 

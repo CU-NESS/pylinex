@@ -7,10 +7,10 @@ Description: File containing a subclass of the Quantity class representing a
              quantity which always has the same value, given to the
              ConstantQuantity upon initialization.
 """
-from ..util import numerical_types, sequence_types
+from ..util import numerical_types, sequence_types, Savable
 from .Quantity import Quantity
 
-class ConstantQuantity(Quantity):
+class ConstantQuantity(Quantity, Savable):
     """
     Class representing a Quantity which always has the same constant value.
     That value is given at initialization.
@@ -27,7 +27,7 @@ class ConstantQuantity(Quantity):
         """
         self.constant = constant
         if name is None:
-            name = "%s" % (self.constant,)
+            name = "{!s}".format(self.constant)
         Quantity.__init__(self, name)
     
     @property
@@ -62,4 +62,15 @@ class ConstantQuantity(Quantity):
         returns: the constant value of this ConstantQuantity
         """
         return self.constant
+    
+    def fill_hdf5_group(self, group):
+        """
+        Fills the given hdf5 group with data about this ConstantQuantity.
+        
+        group: hdf5 file group to fill with data about this ConstantQuantity.
+        """
+        group.attrs['name'] = self.name
+        group.attrs['class'] = 'ConstantQuantity'
+        group.attrs['constant'] = self.constant
+    
 

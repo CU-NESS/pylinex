@@ -9,10 +9,10 @@ Description: File containing a class representing a quantity that is calculated
              when called. When called, it must be given an object on which to
              call the function.
 """
-from ..util import sequence_types
+from ..util import sequence_types, Savable
 from .Quantity import Quantity
 
-class FunctionQuantity(Quantity):
+class FunctionQuantity(Quantity, Savable):
     """
     Class representing a quantity that is calculated through the use of a
     member function of an object. It stores the arguments and keyword arguments
@@ -89,4 +89,28 @@ class FunctionQuantity(Quantity):
         """
         return eval("container." + self.name + "(*self.function_args, " +\
                     "**self.function_kwargs)")
+    
+    def fill_hdf5_group(self, group):
+        """
+        Fills the given hdf5 group with data about this FunctionQuantity.
+        
+        group: hdf5 file group to fill with data about this FunctionQuantity
+        """
+        group.attrs['class'] = 'FunctionQuantity'
+        group.attrs['name'] = self.name
+        subgroup = group.create_group('args')
+        for iarg in range(len(self.function_args)):
+            try:
+                subgroup.attrs['arg_{}'.format(iarg)] =\
+                    self.function_args[iarg]
+            except:
+                raise ValueError(("arg_{} of FunctionQuantity couldn't be " +\
+                    "saved to an hdf5 file group attribute.").format(iarg))
+        subgroup = group.create_group('kwargs')
+        for key in self.function_kwargs:
+            try:
+                subgroup.attrs[key] = self.function_kwargs[key]
+            except:
+                raise ValueError(("Keyword argument with key {!s} couldn't " +\
+                    "be saved to an hdf5 file group attribute.").format(key))
 

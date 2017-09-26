@@ -57,7 +57,8 @@ class RepeatExpander(Expander):
         
         returns: 1D vector from expanded space
         """
-        return np.tile(vector, (self.nrepeats,))
+        vector = np.array(vector)
+        return np.tile(vector, ((1,) * (vector.ndim - 1)) + (self.nrepeats,))
     
     def contract_error(self, error):
         """

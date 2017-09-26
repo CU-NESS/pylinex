@@ -122,11 +122,13 @@ class ShapedExpander(Expander):
         """
         Expands vector from smaller original space to larger expanded space.
         
-        vector: 1D vector from original space
+        vector: 1D vector from original space (or 2D array where axis just
+                described is second one)
         
         returns: 1D vector from expanded space
         """
-        return np.reshape(self.expander(vector.flatten()), self.output_shape)
+        full_output_shape = vector.shape[:-1] + self.output_shape
+        return np.reshape(self.expander(vector), full_output_shape)
     
     def contract_error(self, error):
         """

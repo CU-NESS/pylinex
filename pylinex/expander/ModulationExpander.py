@@ -79,8 +79,16 @@ class ModulationExpander(Expander):
         
         returns: 1D vector from expanded space
         """
-        return\
-            (self.modulating_factors * vector[self.expansion_slice]).flatten()
+        vector = np.array(vector)
+        extra_dims = vector.ndim - 1
+        extra_dim_slices = ((slice(None),) * extra_dims)
+        extra_dim_newaxes = ((np.newaxis,) * extra_dims)
+        modulating_factors_expansion_slice = (extra_dim_newaxes +\
+            ((slice(None),) * self.modulating_factors.ndim))
+        full_expansion_slice = extra_dim_slices + self.expansion_slice
+        return np.reshape(\
+            self.modulating_factors[modulating_factors_expansion_slice] *\
+            vector[full_expansion_slice], vector.shape[:-1] + (-1,))
     
     def contract_error(self, error):
         """

@@ -13,6 +13,12 @@ Description: File containing a class representing an object which can store
 """
 import numpy as np
 from .TypeCategories import sequence_types
+try:
+    # this runs with no issues in python 2 but raises error in python 3
+    basestring
+except:
+    # this try/except allows for python 2/3 compatible string type checking
+    basestring = str
 
 class VariableGrid(object):
     """
@@ -40,7 +46,7 @@ class VariableGrid(object):
         value: must be sequence of strings
         """
         if type(value) in sequence_types:
-            if all([isinstance(element, str) for element in value]):
+            if all([isinstance(element, basestring) for element in value]):
                 self._names = value
             else:
                 raise TypeError("Not every element of names was a string.")
@@ -84,11 +90,10 @@ class VariableGrid(object):
                         if previous_idimension is None:
                             self._dimensions_by_name[name] = idimension
                         else:
-                            raise KeyError("Variable, " + name + ", was " +\
-                                           "given in both dimension " +\
-                                           ("#%i " % (previous_idimension,)) +\
-                                           "and dimension " +\
-                                           ("#%i." % (idimension,)))
+                            raise KeyError(("Variable, {0!s}, was given in " +\
+                                "both dimension #{1} and dimension " +\
+                                "#{2}.").format(name, previous_idimension,\
+                                idimension))
                         variable_range = dimension[name]
                         if type(variable_range) in sequence_types:
                             variable_range = np.array(variable_range)

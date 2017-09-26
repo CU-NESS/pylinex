@@ -112,7 +112,7 @@ class CompositeExpander(Expander):
         """
         group.attrs['class'] = 'CompositeExpander'
         for (iexpander, expander) in enumerate(self.expanders):
-            subgroup = group.create_group('expander_%i' % (iexpander,))
+            subgroup = group.create_group('expander_{}'.format(iexpander))
             expander.fill_hdf5_group(subgroup)
     
     def __eq__(self, other):

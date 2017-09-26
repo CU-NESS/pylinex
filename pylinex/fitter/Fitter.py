@@ -11,8 +11,15 @@ import numpy as np
 import numpy.linalg as npla
 import scipy.linalg as scila
 import matplotlib.pyplot as pl
-from ..util import Savable, TrainingSetIterator
+from ..util import Savable
 from ..basis import Basis, BasisSet
+from .TrainingSetIterator import TrainingSetIterator
+try:
+    # this runs with no issues in python 2 but raises error in python 3
+    basestring
+except:
+    # this try/except allows for python 2/3 compatible string type checking
+    basestring = str
 
 class Fitter(Savable):
     """
@@ -508,6 +515,18 @@ class Fitter(Savable):
         return self._likelihood_bias_statistic
     
     @property
+    def normalized_likelihood_bias_statistic(self):
+        """
+        Property storing the normalized version of the likelihood bias
+        statistic. This is a statistic that should be close to 1 which measures
+        how well the total data is fit.
+        """
+        if not hasattr(self, '_normalized_likelihood_bias_statistic'):
+            self._normalized_likelihood_bias_statistic =\
+                self.likelihood_bias_statistic / self.num_channels
+        return self._normalized_likelihood_bias_statistic
+    
+    @property
     def maximum_loglikelihood(self):
         """
         Property storing the maximum value of the Gaussian loglikelihood (when
@@ -584,16 +603,16 @@ class Fitter(Savable):
         """
         if not hasattr(self, '_parameter_mean'):
             self._parameter_mean =\
-                np.dot(self.weighted_basis, self.weighted_data.T)
+                np.dot(self.weighted_basis, self.weighted_data.T).T
             if self.has_priors:
                 if self.multiple_data_curves:
                     self._parameter_mean = self._parameter_mean +\
-                        self.prior_inverse_covariance_times_mean[:,np.newaxis]
+                        self.prior_inverse_covariance_times_mean[np.newaxis,:]
                 else:
                     self._parameter_mean = self._parameter_mean +\
                         self.prior_inverse_covariance_times_mean
             self._parameter_mean =\
-                np.dot(self.parameter_covariance, self._parameter_mean).T
+                np.dot(self.parameter_covariance, self._parameter_mean.T).T
         return self._parameter_mean
     
     @property
@@ -1144,11 +1163,15 @@ class Fitter(Savable):
                  the subbasis (which may or may not be different than the
                  length of the expanded basis vectors).
         """
-        subbasis = self.basis_set[name]
-        subbasis_channel_covariance = np.dot(subbasis.basis.T,\
-            np.dot(self.subbasis_parameter_covariance(name=name),\
-            subbasis.basis))
-        return np.sqrt(np.diag(subbasis_channel_covariance))
+        if name is None:
+            return self.channel_error
+        else:
+            return np.sqrt(np.diag(\
+                np.dot(self.basis_set[name].basis.T,\
+                np.dot(self.subbasis_parameter_covariance(name=name), self.basis_set[name].basis))))
+            #return np.einsum('ji,ki,jk->i', self.basis_set[name].basis,\
+            #    self.basis_set[name].basis,\
+            #    self.subbasis_parameter_covariance(name=name))
     
     def subbasis_parameter_mean(self, name=None):
         """
@@ -1260,8 +1283,7 @@ class Fitter(Savable):
         """
         return self.basis_set[name].basis / self.error[np.newaxis,:]
     
-    def subbasis_weighted_bias(self, name=None, true_curve=None,\
-        compare_likelihood=True):
+    def subbasis_weighted_bias(self, name=None, true_curve=None):
         """
         The bias of the contribution of a given subbasis to the data. This
         function requires knowledge of the "truth".
@@ -1278,18 +1300,14 @@ class Fitter(Savable):
         """
         subbasis_channel_bias =\
             self.subbasis_channel_bias(name=name, true_curve=true_curve)
-        if compare_likelihood:
-            subbasis_channel_error = self.error
-        else:
-            subbasis_channel_error = self.subbasis_channel_error(name=name)
+        subbasis_channel_error = self.subbasis_channel_error(name=name)
         if self.multiple_data_curves:
             return subbasis_channel_bias / subbasis_channel_error[np.newaxis,:]
         else:
             return subbasis_channel_bias / subbasis_channel_error
         
     
-    def subbasis_bias_statistic(self, name=None, true_curve=None,\
-        compare_likelihood=True):
+    def subbasis_bias_statistic(self, name=None, true_curve=None):
         """
         The bias statistic of the fit to the contribution of the given
         subbasis. The bias statistic is the difference between the given true
@@ -1306,14 +1324,14 @@ class Fitter(Savable):
         returns: single float number representing roughly 
         """
         weighted_bias = self.subbasis_weighted_bias(name=name,\
-            true_curve=true_curve, compare_likelihood=compare_likelihood)
+            true_curve=true_curve)
         if self.multiple_data_curves:
             return np.einsum('ij,ij->i', weighted_bias, weighted_bias)
         else:
             return np.dot(weighted_bias, weighted_bias)
     
     def bias_score(self, training_sets, max_block_size=2**20,\
-        bases_to_score=None):
+        num_curves_to_score=None, bases_to_score=None):
         """
         Evaluates the candidate basis_set given the available training sets.
         
@@ -1323,31 +1341,32 @@ class Fitter(Savable):
         
         returns: scalar value of Delta
         """
-        num_channels = training_sets.values()[0].shape[1]
-        if any([ts.shape[1] != num_channels for ts in training_sets.values()]):
-            raise ValueError("The lengths of the curves in the training " +\
-                "sets must be equal.")
-        if set(self.basis_set.names) != set(training_sets.keys()):
-            raise ValueError("There must be the same basis sets as " +\
-                "training sets.")
+        if len(self.basis_set.names) != len(training_sets):
+            raise ValueError("There must be the same number of basis sets " +\
+                "as training sets.")
         if (bases_to_score is None) or (not bases_to_score):
             bases_to_score = self.basis_set.names
         score = 0.
-        ordered_training_sets =\
-            [training_sets[key] for key in self.basis_set.names]
-        iterator = TrainingSetIterator(ordered_training_sets,\
-            return_constituents=True, max_block_size=max_block_size)
+        expanders = [basis.expander for basis in self.basis_set]
+        iterator = TrainingSetIterator(training_sets, expanders=expanders,\
+            max_block_size=max_block_size, mode='add',\
+            curves_to_return=num_curves_to_score, return_constituents=True)
         for (block, constituents) in iterator:
-            fitter = Fitter(self.basis_set, block, self.error)
+            num_channels = block.shape[1]
+            fitter = Fitter(self.basis_set, block, self.error, **self.priors)
             for basis_to_score in bases_to_score:
                 true_curve =\
                     constituents[self.basis_set.names.index(basis_to_score)]
-                score += np.sum(fitter.subbasis_bias_statistic(\
-                    name=basis_to_score, true_curve=true_curve,\
-                    compare_likelihood=True))
-        num_training_set_curves =\
-            np.prod([len(ts) for ts in ordered_training_sets])
-        return score / (num_training_set_curves * num_channels)
+                result = fitter.subbasis_bias_statistic(\
+                    name=basis_to_score, true_curve=true_curve)
+                score += np.sum(result)
+        if num_curves_to_score is None:
+            num_curves_to_score =\
+                np.prod([ts.shape[0] for ts in training_sets])
+        score = score / (num_curves_to_score * num_channels)
+        print("basis_set.sizes={!s}, score={!s}".format(self.basis_set.sizes,\
+            score))
+        return score
     
     def fill_hdf5_group(self, root_group):
         """
@@ -1356,10 +1375,14 @@ class Fitter(Savable):
         
         root_group: the hdf5 file group to fill
         """
+        root_group.create_dataset('data', data=self.data)
+        root_group.create_dataset('error', data=self.error)
         group = root_group.create_group('posterior')
         group.create_dataset('parameter_mean', data=self.parameter_mean)
         group.create_dataset('parameter_covariance',\
             data=self.parameter_covariance)
+        group.create_dataset('channel_mean', data=self.channel_mean)
+        group.create_dataset('channel_error', data=self.channel_error)
         for name in self.names:
             subgroup = group.create_group(name)
             subgroup.create_dataset('parameter_covariance',\
@@ -1375,6 +1398,8 @@ class Fitter(Savable):
         root_group.attrs['DIC'] = self.DIC
         root_group.attrs['AIC'] = self.AIC
         root_group.attrs['BIC'] = self.BIC
+        root_group.attrs['normalized_likelihood_bias_statistic'] =\
+            self.normalized_likelihood_bias_statistic
         if self.has_priors:
             root_group.attrs['log_evidence_per_data_channel'] =\
                 self.log_evidence_per_data_channel
@@ -1443,7 +1468,7 @@ class Fitter(Savable):
         true_curve=None, subtract_truth=False, shorter_error=None,\
         x_values=None, title=None, xlabel='x', ylabel='y', fig=None, ax=None,\
         show_noise_level=False, noise_level_alpha=0.5, full_error_alpha=0.2,\
-        colors='b', full_error_first=True, show=False):
+        colors='b', full_error_first=True, yscale='linear', show=False):
         """
         Plots the fit of the contribution to the data from a given subbasis.
         
@@ -1471,7 +1496,7 @@ class Fitter(Savable):
         else:
             mean = self.subbasis_channel_mean(name=name)
             error = self.subbasis_channel_error(name=name)
-        if isinstance(colors, str):
+        if isinstance(colors, basestring):
             colors = [colors] * 3
         if self.multiple_data_curves:
             mean = mean[which_data]
@@ -1481,10 +1506,11 @@ class Fitter(Savable):
         if x_values is None:
             x_values = np.arange(len(mean))
         if (true_curve is None) and (name is None):
-            true_curve = self.data
             if self.multiple_data_curves:
-                true_curve = true_curve[which_data]
-        if (true_curve is None) and (name is not None) and subtract_truth:
+                true_curve = self.data[which_data]
+            else:
+                true_curve = self.data
+        if (true_curve is None) and subtract_truth:
             raise ValueError("Truth cannot be subtracted because it is not " +\
                              "known. Supply it as the true_curve argument " +\
                              "if you wish for it to be subtracted.")
@@ -1518,6 +1544,7 @@ class Fitter(Savable):
             ax.fill_between(x_values, mean - to_subtract - (nsigma * error),\
                 mean - to_subtract + (nsigma * error), alpha=full_error_alpha,\
                 color=colors[1])
+        ax.set_yscale(yscale)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         if title is None:

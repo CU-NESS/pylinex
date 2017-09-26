@@ -8,11 +8,17 @@ Description: Class which uses the rest of the module to perform an end-to-end
              training set matrices and expanders.
 """
 import numpy as np
-from ..util import Savable, VariableGrid, sequence_types, bool_types
-from ..quantity import QuantityFinder
+from ..util import Savable, VariableGrid, sequence_types, int_types, bool_types
+from ..quantity import QuantityFinder, FunctionQuantity, CompiledQuantity
 from ..expander import Expander, NullExpander
 from ..basis import TrainedBasis, BasisSet
 from .MetaFitter import MetaFitter
+try:
+    # this runs with no issues in python 2 but raises error in python 3
+    basestring
+except:
+    # this try/except allows for python 2/3 compatible string type checking
+    basestring = str
 
 class Extractor(Savable, VariableGrid, QuantityFinder):
     """
@@ -33,8 +39,10 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
     extracts components of the data.
     """
     def __init__(self, data, error, names, training_sets, dimensions,\
-        compiled_quantity, quantity_to_minimize, expanders=None,\
-        save_training_sets=False, verbose=True):
+        compiled_quantity=CompiledQuantity('empty'),\
+        quantity_to_minimize='bias_score', expanders=None,\
+        save_training_sets=False, save_all_fitters=False,\
+        num_curves_to_score=None, verbose=True):
         """
         Initializes an Extractor object with the given data and error vectors,
         names, training sets, dimensions, compiled quantity, quantity to
@@ -59,18 +67,78 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         save_training_sets: if True, when Extractor is written to hdf5 group,
                                      the training sets are saved in it.
                             otherwise, training sets are excluded
+        save_all_fitters: if True, all Fitter objects for each point on the
+                                   grid are saved.
+                          otherwise, only "optimal" Fitter is saved.
+        num_curves_to_score: the approximate number of combined training set
+                             curves to use when computing the bias_score
+                             quantity
         verbose: if True, messages should be printed to the screen
         """
         self.data = data
         self.error = error
         self.names = names
+        self.num_curves_to_score = num_curves_to_score
         self.training_sets = training_sets
         self.expanders = expanders
         self.dimensions = dimensions
-        self.compiled_quantity = compiled_quantity
+        if ('bias_score' in compiled_quantity) or\
+            ((self.num_curves_to_score is not None) and\
+            (self.num_curves_to_score == 0)):
+            self.compiled_quantity = compiled_quantity
+        else:
+            self.compiled_quantity =\
+                compiled_quantity + self.bias_score_quantity
         self.quantity_to_minimize = quantity_to_minimize
         self.save_training_sets = save_training_sets
+        self.save_all_fitters = save_all_fitters
         self.verbose = verbose
+    
+    @property
+    def num_curves_to_score(self):
+        """
+        Property storing the approximate number of curves for which to
+        calculate the bias_score.
+        """
+        if not hasattr(self, '_num_curves_to_score'):
+            raise AttributeError("num_curves_to_score referenced before it " +\
+                "was set.")
+        return self._num_curves_to_score
+    
+    @num_curves_to_score.setter
+    def num_curves_to_score(self, value):
+        """
+        Setter for the maximum number of curves to score.
+        
+        value: if None, all combinations of training set curves are scored
+               if value == 0, bias_score quantity is not calculated at all
+               otherwise, value must be an integer number of curves to score
+                          (+-1 block). If integer is greater than number of
+                          curves, all curves are returned as if None was passed
+                          as value
+        """
+        if value is None:
+            self._num_curves_to_score = None
+        elif type(value) in int_types:
+            if value >= 0:
+                self._num_curves_to_score = value
+            else:
+                raise ValueError("Cannot score non-positive number of curves.")
+        else:
+            raise TypeError("num_curves_to_score was neither None nor of " +\
+                "an integer type.")
+    
+    @property
+    def bias_score_quantity(self):
+        """
+        Property storing the quantity which will calculate the training set
+        based bias score.
+        """
+        if not hasattr(self, '_bias_score_quantity'):
+            self._bias_score_quantity =\
+                FunctionQuantity('bias_score', self.training_sets,\
+                num_curves_to_score=self.num_curves_to_score)
+        return self._bias_score_quantity
     
     @property
     def verbose(self):
@@ -118,6 +186,29 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             raise TypeError("save_training_sets was set to a non-bool.")
     
     @property
+    def save_all_fitters(self):
+        """
+        Property storing the boolean switch determining whether or not training
+        sets are saved when this Extractor is saved.
+        """
+        if not hasattr(self, '_save_all_fitters'):
+            raise AttributeError("save_all_fitters was referenced before " +\
+                                 "it was set.")
+        return self._save_all_fitters
+    
+    @save_all_fitters.setter
+    def save_all_fitters(self, value):
+        """
+        Sets the save_all_fitters boolean switch.
+        
+        value: must be a bool
+        """
+        if type(value) in bool_types:
+            self._save_all_fitters = value
+        else:
+            raise TypeError("save_all_fitters was set to a non-bool.")
+    
+    @property
     def quantity_to_minimize(self):
         """
         Property storing string name of quantity to minimize.
@@ -132,7 +223,7 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         """
         Allows user to supply string name of the quantity to minimize.
         """
-        if isinstance(value, str):
+        if isinstance(value, basestring):
             if value in self.compiled_quantity:
                 self._quantity_to_minimize = value
             else:
@@ -163,10 +254,10 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         except:
             raise TypeError("data given to Extractor couldn't be cast as a " +\
                             "numpy.ndarray.")
-        if value.ndim == 1:
+        if value.ndim in [1, 2]:
             self._data = value
         else:
-            raise ValueError("data must be 1D.")
+            raise ValueError("data must be 1D or 2D.")
     
     @property
     def num_channels(self):
@@ -174,7 +265,7 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         Property storing the number of channels in the data. A positive integer
         """
         if not hasattr(self, '_num_channels'):
-            self._num_channels = len(self.data)
+            self._num_channels = self.data.shape[-1]
         return self._num_channels
     
     @property
@@ -203,8 +294,8 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             self._error = value
         else:
             raise ValueError("error was set to a numpy.ndarray which " +\
-                             "didn't have the expected shape (i.e. data " +\
-                             "shape).")
+                             "didn't have the expected shape (i.e. 1D with " +\
+                             "length given by number of data channels.")
     
     @property
     def num_bases(self):
@@ -240,8 +331,16 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             num_training_sets = len(value)
             if num_training_sets == self.num_bases:
                 if all([isinstance(ts, np.ndarray) for ts in value]):
-                    if all([(ts.ndim > 1) for ts in value]):
-                        self._training_sets = value
+                    if all([(ts.ndim == 2) for ts in value]):
+                        if (self.num_curves_to_score is None) or\
+                            (self.num_curves_to_score == 0):
+                            self._training_sets = [ts for ts in value]
+                        else:
+                            lengths = [len(ts) for ts in value]
+                            perms =\
+                                [np.random.permutation(l) for l in lengths]
+                            self._training_sets = [value[its][perms[its]]\
+                                for its in range(len(value))]
                     else:
                         raise ValueError("At least one of the training " +\
                                          "sets given to Extractor was not 2D.")
@@ -250,10 +349,9 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
                                     "sets given to Extractor was not a " +\
                                     "numpy.ndarray.")
             else:
-                raise ValueError("The number of names given to Extractor " +\
-                                 ("(%i) was not equal " % (self.num_bases,)) +\
-                                 "to the number of training sets given " +\
-                                 ("(%i)." % (num_training_sets,)))
+                raise ValueError(("The number of names given to Extractor " +\
+                   "({0}) was not equal to the number of training sets " +\
+                   "given ({1})").format(self.num_bases, num_training_sets))
         else:
             raise TypeError("training_sets of Extractor class was set to a " +\
                             "non-sequence.")
@@ -268,6 +366,15 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             self._training_set_lengths =\
                 [ts.shape[-1] for ts in self.training_sets]
         return self._training_set_lengths
+    
+    @property
+    def total_number_of_combined_training_set_curves(self):
+        """
+        """
+        if not hasattr(self, '_total_number_of_combined_training_set_curves'):
+            self._total_number_of_combined_training_set_curves =\
+                np.prod(self.training_set_lengths)
+        return self._total_number_of_combined_training_set_curves
     
     @property
     def expanders(self):
@@ -311,10 +418,9 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
                                         "objects.")
                 self._expanders = value
             else:
-                raise ValueError("The number of expanders " +\
-                                 ("(%i) given was not " % (num_expanders,)) +\
-                                 "equal to the number of names and " +\
-                                 ("training sets (%i)." % (self.num_bases,)))
+                raise ValueError(("The number of expanders ({0}) given was " +\
+                    "not equal to the number of names and training sets " +\
+                    "({1}).").format(num_expanders, self.num_bases))
         else:
             raise TypeError("expanders was set to a non-sequence.")
     
@@ -367,11 +473,19 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         named quantity_to_minimize.
         """
         if not hasattr(self, '_fitter'):
-            self._fitter =\
-                self.meta_fitter.minimize_quantity(self.quantity_to_minimize)
-            if self.verbose:
-                print("Chose the following numbers of parameters: " +\
-                    "{!s}".format(self._fitter.sizes))
+            if self.data.ndim == 1:
+                self._fitter = self.meta_fitter.minimize_quantity(\
+                    self.quantity_to_minimize)
+                if self.verbose:
+                    print("Chose the following numbers of parameters: " +\
+                        "{!s}".format(self._fitter.sizes))
+            elif self.data.ndim == 2:
+                self._fitter = [self.meta_fitter.minimize_quantity(\
+                    self.quantity_to_minimize, index)\
+                    for index in range(self.data.shape[0])]
+                if self.verbose:
+                    print("Chose the following numbers of parameters: " +\
+                        "{!s}".format([fit.sizes for fit in self._fitter]))
         return self._fitter
     
     def fill_hdf5_group(self, group):
@@ -383,10 +497,22 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         group: the hdf5 file group into which to save data
         """
         group.attrs['quantity_to_minimize'] = self.quantity_to_minimize
-        self.fitter.fill_hdf5_group(group.create_group('optimal_fitter'))
+        self.compiled_quantity.fill_hdf5_group(group.create_group(\
+            'compiled_quantity'), exclude=['bias_score'])
+        if self.data.ndim == 1:
+            self.fitter.fill_hdf5_group(group.create_group('optimal_fitter'))
+        elif self.data.ndim == 2:
+            subgroup = group.create_group('optimal_fitters')
+            for ifitter in range(len(self.fitter)):
+                self.fitter[ifitter].fill_hdf5_group(subgroup.create_group(\
+                    'data_curve_{}'.format(ifitter)))
+        if self.save_all_fitters:
+            self.meta_fitter.save_all_fitters_to_hdf5_group(\
+                group.create_group('fitters'))
         subgroup = group.create_group('dimensions')
         for (idimension, dimension) in enumerate(self.dimensions):
-            subsubgroup = subgroup.create_group('dimension_%i' % (idimension,))
+            subsubgroup =\
+                subgroup.create_group('dimension_{}'.format(idimension))
             for name in dimension:
                 subsubgroup.create_dataset(name, data=dimension[name])
         subgroup = group.create_group('grids')
@@ -397,4 +523,5 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             for ibasis in range(self.num_bases):
                 subgroup.create_dataset(self.names[ibasis],\
                     data=self.training_sets[ibasis])
-        
+    
+

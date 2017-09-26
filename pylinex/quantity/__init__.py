@@ -13,6 +13,7 @@ from pylinex.quantity.ConstantQuantity import ConstantQuantity
 from pylinex.quantity.AttributeQuantity import AttributeQuantity
 from pylinex.quantity.FunctionQuantity import FunctionQuantity
 from pylinex.quantity.CompiledQuantity import CompiledQuantity
+from pylinex.quantity.LoadQuantity import load_quantity_from_hdf5_group
 from pylinex.quantity.CalculatedQuantity import CalculatedQuantity
 from pylinex.quantity.QuantityFinder import QuantityFinder
 

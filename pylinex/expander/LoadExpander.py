@@ -47,8 +47,8 @@ def load_expander_from_hdf5_group(group):
     elif class_name == 'CompositeExpander':
         expanders = []
         iexpander = 0
-        while ('expander_%i' % (iexpander,)) in group:
-            subgroup = group['expander_%i' % (iexpander,)]
+        while ('expander_{}'.format(iexpander)) in group:
+            subgroup = group['expander_{}'.format(iexpander)]
             expanders.append(load_expander_from_hdf5_group(subgroup))
             iexpander += 1
         return CompositeExpander(*expanders)
@@ -58,6 +58,6 @@ def load_expander_from_hdf5_group(group):
         expander = load_expander_from_hdf5_group(group['expander'])
         return ShapedExpander(expander, input_shape, output_shape)
     else:
-        raise ValueError("The given hdf5 file does not appear to contain " +\
+        raise ValueError("The given hdf5 group does not appear to contain " +\
                          "an Expander")
 

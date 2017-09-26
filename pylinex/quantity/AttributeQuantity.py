@@ -7,9 +7,10 @@ Description: File containing a class representing a quantity which is an
              attribute of an object (which may or may not exist at the time of
              initialization).
 """
+from ..util import Savable
 from .Quantity import Quantity
 
-class AttributeQuantity(Quantity):
+class AttributeQuantity(Quantity, Savable):
     """
     Class representing a quantity which is an attribute of an object. That
     object may or may not exist at the time of the initialization of this
@@ -38,4 +39,14 @@ class AttributeQuantity(Quantity):
         kwargs: dictionary of other keyword arguments (they go unused)
         """
         return getattr(container, self.name)
+    
+    def fill_hdf5_group(self, group):
+        """
+        Fills the given hdf5 file group with information about this Quantity.
+        
+        group: hdf5 file group to fill with information about this Quantity
+        """
+        group.attrs['name'] = self.name
+        group.attrs['class'] = 'AttributeQuantity'
+        group.attrs['attribute_name'] = self.attribute_name
         

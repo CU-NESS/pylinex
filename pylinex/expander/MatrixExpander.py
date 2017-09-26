@@ -55,7 +55,7 @@ class MatrixExpander(Expander):
         """
         value = np.array(value)
         if value.ndim > 1:
-            self._matrix = value
+            self._matrix = np.reshape(value, (-1, value.shape[-1]))
         else:
             raise TypeError("matrix was set to an array of less than 2 " +\
                             "dimensions.")
@@ -68,7 +68,7 @@ class MatrixExpander(Expander):
         
         returns: 1D vector from expanded space
         """
-        return np.dot(self.matrix, vector).flatten()
+        return np.dot(self.matrix, vector.T).T
     
     def contract_error(self, error):
         """

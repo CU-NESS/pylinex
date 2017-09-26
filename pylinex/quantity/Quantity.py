@@ -9,6 +9,13 @@ Description: An abstract class representing a quantity which is to be
              that it can be called (with or without) arguments to retrieve its
              value.
 """
+try:
+    # this runs with no issues in python 2 but raises error in python 3
+    basestring
+except:
+    # this try/except allows for python 2/3 compatible string type checking
+    basestring = str
+
 class Quantity(object):
     """
     A class which represents any quantity that can be defined and then
@@ -41,7 +48,7 @@ class Quantity(object):
         
         value: must be a string
         """
-        if isinstance(value, str):
+        if isinstance(value, basestring):
             self._name = value
         else:
             raise TypeError("name property of Quantity must be a string.")
@@ -52,6 +59,6 @@ class Quantity(object):
         to be directly instantiated.
         """
         raise NotImplementedError("Quantity class should not be directly " +\
-                                  "instantiated because it doesn't know " +\
-                                  "how to be called or what its name is.")
+            "instantiated because it doesn't know how to be called or what " +\
+            "its name is.")
 

@@ -9,8 +9,16 @@ Description: File containing class which combines multiple training sets into
              splitting up of the output into blocks so as to not overtax
              memory.
 """
+from __future__ import division
 import numpy as np
 from ..util import int_types, sequence_types
+from ..expander import Expander, NullExpander
+try:
+    # this runs with no issues in python 2 but raises error in python 3
+    basestring
+except:
+    # this try/except allows for python 2/3 compatible string type checking
+    basestring = str
 
 class TrainingSetIterator(object):
     """
@@ -19,7 +27,8 @@ class TrainingSetIterator(object):
     functions which aid in the splitting up of the output into blocks so as to
     not overtax memory.
     """
-    def __init__(self, training_sets, max_block_size=536870912, mode='add',\
+    def __init__(self, training_sets, expanders=None,\
+        max_block_size=2**20, mode='add', curves_to_return=None,\
         return_constituents=False):
         """
         Initializes this TrainingSetIterator with the given training sets.
@@ -33,6 +42,9 @@ class TrainingSetIterator(object):
                     whose pieces are of the form {###} where ### is the index
                     (starting at 0) of the specific training set
                     (e.g. '{0}*np.power({1},{2})')
+        curves_to_return: the number of curves that the user wishes for this
+                          iterator to return. The actual number of returned
+                          curves is usually within a block or so of this number
         return_constituents: if True, return constituent training sets used to
                                       each output combined training set
                              if False, only combined training set curves are
@@ -40,12 +52,56 @@ class TrainingSetIterator(object):
         """
         self.max_block_size = max_block_size
         self.training_sets = training_sets
+        self.expanders = expanders
         if self.num_channels > self.max_block_size:
             raise ValueError("max_block_size must be greater than " +\
                              "num_channels.")
         self.mode = mode
         self.return_constituents = return_constituents
+        self.curves_to_return = curves_to_return
         self.iblock = 0
+    
+    @property
+    def expanders(self):
+        """
+        Property storing the Expander objects (see pylinex.expander module)
+        which expand the individual training set curves of each type.
+        """
+        if not hasattr(self, '_expanders'):
+            raise AttributeError("expanders referenced before it was set.")
+        return self._expanders
+    
+    @expanders.setter
+    def expanders(self, value):
+        """
+        Setter for the expanders to use to expand each given training set.
+        
+        value: if None, expanders is set to a list of NullExpander objects
+               otherwise, value should be a sequence of the same length as
+                          self.training_sets of objects which are either None
+                          or Expander objects
+        """
+        if value is None:
+            self._expanders =\
+                [NullExpander() for i in range(self.num_training_sets)]
+        elif type(value) in sequence_types:
+            if len(value) == self.num_training_sets:
+                self._expanders = []
+                for element in value:
+                    if element is None:
+                        self._expanders.append(NullExpander())
+                    elif isinstance(element, Expander):
+                        self._expanders.append(element)
+                    else:
+                        raise TypeError("At least one element in the " +\
+                            "expanders sequence was neither None nor an " +\
+                            "Expander object.")
+            else:
+                raise ValueError("expanders was set to a sequence of the " +\
+                    "wrong length.")
+        else:
+            raise TypeError("expanders was set to a non-sequence.")
+        
     
     @property
     def return_constituents(self):
@@ -101,7 +157,7 @@ class TrainingSetIterator(object):
         """
         if value in ['add', 'multiply']:
             self._mode = value
-        elif isinstance(value, str):
+        elif isinstance(value, basestring):
             num_args = 0
             while ('{{{}}}'.format(num_args)) in value:
                 num_args += 1
@@ -180,33 +236,58 @@ class TrainingSetIterator(object):
         """
         if type(value) in sequence_types:
             if all([(training_set.ndim == 2) for training_set in value]):
-                if len(set([tset.shape[1] for tset in value])) == 1:
-                    self._training_sets = value
-                else:
-                    raise ValueError("All elements of training_sets must " +\
-                                     "have the same second dimension length.")
+                self._training_sets = value
             else:
                 raise ValueError("Each element of training_sets must be 2D.")
         else:
             raise TypeError("training_sets must be a sequence.")
     
     @property
+    def training_set_lengths(self):
+        """
+        Property storing the number of channels in each kind of training set.
+        """
+        if not hasattr(self, '_training_set_lengths'):
+            self._training_set_lengths =\
+                [training_set.shape[1] for training_set in self.training_sets]
+        return self._training_set_lengths
+    
+    @property
     def num_channels(self):
         """
-        Property storing the number of channels in the training set curves.
+        Property storing the number of channels in the output training set
+        curves.
         """
         if not hasattr(self, '_num_channels'):
-            self._num_channels = self.training_sets[0].shape[1]
+            self._num_channels =\
+                len(self.expanders[0](self.training_sets[0][0]))
         return self._num_channels
+    
+    @property
+    def channels_per_output_curve(self):
+        """
+        Property storing the number of channels per output curve. If
+        constituents aren't returned, this is simply the number of channels in
+        the output curve. Otherwise, this is the sum of the number of channels
+        in the output curve and the numbers of channels in each training set.
+        """
+        if not hasattr(self, '_channels_per_output_curve'):
+            if self.return_constituents:
+                self._channels_per_output_curve =\
+                    self.num_channels + sum(self.training_set_lengths)
+            else:
+                self._channels_per_output_curve = self.num_channels
+        return self._channels_per_output_curve
     
     @property
     def num_curves_in_block(self):
         """
-        Property storing the positive integer number of curves in each block.
+        Property storing the positive integer number of output curves in each
+        block.
         """
         if not hasattr(self, '_num_curves_in_block'):
             self._num_curves_in_block =\
-                self.max_block_size // self.num_channels
+                self.max_block_size // self.channels_per_output_curve
         return self._num_curves_in_block
     
     @property
@@ -215,7 +296,8 @@ class TrainingSetIterator(object):
         Property storing the integer number of numbers in each returned block.
         """
         if not hasattr(self, '_block_size'):
-            self._block_size = self.num_channels * self.num_curves_in_block
+            self._block_size =\
+                self.channels_per_output_curve * self.num_curves_in_block
         return self._block_size
 
     @property
@@ -235,7 +317,7 @@ class TrainingSetIterator(object):
         Property storing the number of different training sets to combine.
         """
         if not hasattr(self, '_num_training_sets'):
-            self._num_training_sets = len(self.shape)
+            self._num_training_sets = len(self.training_sets)
         return self._num_training_sets
     
     @property
@@ -255,7 +337,8 @@ class TrainingSetIterator(object):
         of this iterator's execution.
         """
         if not hasattr(self, '_total_size'):
-            self._total_size = self.num_channels * self.num_training_set_curves
+            self._total_size =\
+                self.channels_per_output_curve * self.num_training_set_curves
         return self._total_size
     
     @property
@@ -266,7 +349,7 @@ class TrainingSetIterator(object):
         """
         if not hasattr(self, '_num_blocks'):
             self._num_blocks =\
-                np.ceil((1. * self.total_size) / self.block_size)
+                int(np.ceil(self.total_size / self.block_size))
         return self._num_blocks
     
     def __iter__(self):
@@ -296,28 +379,87 @@ class TrainingSetIterator(object):
         if self.mode == 'add':
             block = np.zeros((end - start, self.num_channels))
             for itraining_set in range(self.num_training_sets):
-                block = block +\
-                    self.training_sets[itraining_set][indices[itraining_set]]
+                block = block + self.expanders[itraining_set](\
+                    self.training_sets[itraining_set][indices[itraining_set]])
         elif self.mode == 'multiply':
             block = np.ones((end - start, self.num_channels))
             for itraining_set in range(self.num_training_sets):
-                block = block *\
-                    self.training_sets[itraining_set][indices[itraining_set]]
+                block = block * self.expanders[itraining_set](\
+                    self.training_sets[itraining_set][indices[itraining_set]])
         else:
             expression = self.mode
             for iarg in range(self.num_training_sets):
                 to_remove = ('{{{}}}'.format(iarg))
-                to_add = ('self.training_sets[{0}][indices[{1}]]'.format(iarg,\
-                    iarg))
+                to_add = ('self.expanders[{0}](self.training_sets[{1}]' +\
+                    '[indices[{2}]])').format(iarg, iarg, iarg)
                 expression = expression.split(to_remove)
                 expression = to_add.join(expression)
             block = eval(expression)
         if self.return_constituents:
-            constituents = [self.training_sets[i][indices[i]]\
-                                       for i in range(self.num_training_sets)]
+            constituents = [self.training_sets[itrain][indices[itrain]]\
+                for itrain in range(self.num_training_sets)]
             return block, constituents
         else:
             return block
+    
+    @property
+    def curves_to_return(self):
+        """
+        Property storing the number of curves that the user wishes for this
+        iterator to return. The actual number of returned curves is usually
+        within a block or so of this number.
+        """
+        if not hasattr(self, '_curves_to_return'):
+            self._curves_to_return = self.num_training_set_curves
+        return self._curves_to_return
+    
+    @curves_to_return.setter
+    def curves_to_return(self, value):
+        """
+        Setter for the number of curves that the user wishes for this iterator
+        to return. The actual number of returned curves is usually within a
+        block or so of this number. If the user has no limit of curves they'd
+        like, this property can be set to None.
+        
+        value: if None, all curves in combined training set are returned
+               otherwise, value should be an int number of curves that the user
+                          wishes for this iterator to return
+        """
+        if value is None:
+            pass
+        elif type(value) in int_types:
+            if value > 0:
+                if value > self.num_training_set_curves:
+                    pass
+                else:
+                    self._curves_to_return = value
+            else:
+                raise ValueError("curves_to_return was non-positive! That " +\
+                    "leaves the job of this TrainingSetIterator unnecessary.")
+        else:
+            raise TypeError("curves_to_return was set to a non-integer.")
+    
+    @property
+    def blocks_to_return(self):
+        """
+        Property storing the number of blocks to return in total.
+        """
+        if not hasattr(self, '_blocks_to_return'):
+            self._blocks_to_return =\
+                (self.curves_to_return // self.num_curves_in_block)
+            if (self.curves_to_return % self.num_curves_in_block) != 0:
+                self._blocks_to_return = self._blocks_to_return + 1
+        return self._blocks_to_return
+    
+    @property
+    def block_sequence(self):
+        """
+        Property storing the sequence of numbers of blocks to return.
+        """
+        if not hasattr(self, '_block_sequence'):
+            block_stride = (self.num_blocks // self.blocks_to_return)
+            self._block_sequence = np.arange(0, self.num_blocks, block_stride)
+        return self._block_sequence
     
     def next(self):
         """
@@ -327,9 +469,9 @@ class TrainingSetIterator(object):
                  indices of the training set curves and the second dimension
                  tracks the data channels
         """
-        if self.iblock == self.num_blocks:
+        if self.iblock == self.blocks_to_return:
             raise StopIteration
-        desired_block = self.get_block(self.iblock)
+        desired_block = self.get_block(self.block_sequence[self.iblock])
         self.iblock = self.iblock + 1
         return desired_block
 

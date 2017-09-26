@@ -9,6 +9,12 @@ Description: File containing class representing an Expander which expands the
 import numpy as np
 from ..util import int_types, numerical_types
 from .Expander import Expander
+try:
+    # this runs with no issues in python 2 but raises error in python 3
+    basestring
+except:
+    # this try/except allows for python 2/3 compatible string type checking
+    basestring = str
     
 class PadExpander(Expander):
     """
@@ -52,7 +58,7 @@ class PadExpander(Expander):
                 return (pad_number, False)
             else:
                 raise ValueError("pad_number cannot be negative.")
-        elif isinstance(pad_number, str):
+        elif isinstance(pad_number, basestring):
             if pad_number[-1] in ['+', '*']:
                 try:
                     int_part = int(pad_number[:-1])
@@ -232,12 +238,15 @@ class PadExpander(Expander):
         
         returns: 1D vector from expanded space
         """
-        vector_length = len(vector)
+        vector_length = vector.shape[-1]
         (pad_size_before, pad_size_after) =\
             self.get_pad_sizes_from_original_space_length(vector_length)
-        pad_array_before = np.ones(pad_size_before) * self.pad_value
-        pad_array_after = np.ones(pad_size_after) * self.pad_value
-        return np.concatenate([pad_array_before, vector, pad_array_after])
+        pad_before_shape = vector.shape[:-1] + (pad_size_before,)
+        pad_after_shape = vector.shape[:-1] + (pad_size_after,)
+        pad_array_before = np.ones(pad_before_shape) * self.pad_value
+        pad_array_after = np.ones(pad_after_shape) * self.pad_value
+        return np.concatenate([pad_array_before, vector, pad_array_after],\
+            axis=-1)
     
     def contract_error(self, error):
         """
@@ -277,13 +286,13 @@ class PadExpander(Expander):
         """
         group.attrs['class'] = 'PadExpander'
         if self.pads_before_multiplicative:
-            group.attrs['pads_before'] = ('%i*' % (self.pads_before,))
+            group.attrs['pads_before'] = ('{}*'.format(self.pads_before))
         else:
-            group.attrs['pads_before'] = ('%i+' % (self.pads_before,))
+            group.attrs['pads_before'] = ('{}+'.format(self.pads_before))
         if self.pads_after_multiplicative:
-            group.attrs['pads_after'] = ('%i*' % (self.pads_after,))
+            group.attrs['pads_after'] = ('{}*'.format(self.pads_after))
         else:
-            group.attrs['pads_after'] = ('%i+' % (self.pads_after,))
+            group.attrs['pads_after'] = ('{}+'.format(self.pads_after))
         group.attrs['pad_value'] = self.pad_value
     
     def __eq__(self, other):

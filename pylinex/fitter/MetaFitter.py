@@ -14,6 +14,12 @@ from distpy import GaussianDistribution
 from ..util import VariableGrid, int_types, sequence_types
 from ..quantity import QuantityFinder
 from .Fitter import Fitter
+try:
+    # this runs with no issues in python 2 but raises error in python 3
+    basestring
+except:
+    # this try/except allows for python 2/3 compatible string type checking
+    basestring = str
 
 class MetaFitter(Fitter, VariableGrid, QuantityFinder):
     """
@@ -24,7 +30,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder):
     def __init__(self, basis_set, data, error, compiled_quantity, *dimensions,\
         **priors):
         """
-        Initializes a new Analyzer object using the given inputs.
+        Initializes a new MetaFitter object using the given inputs.
         
         basis_set: a BasisSet object (or a Basis object, which is converted
                    internally to a BasisSet of one Basis with the name 'Sole')
@@ -49,16 +55,16 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder):
         is a list of numpy.ndarray objects.
         """
         if not hasattr(self, '_grids'):
-            self._grids =\
-                [np.zeros(self.shape) for index in range(self.num_quantities)]
+            self._grids = [np.zeros(self.shape + self.data.shape[:-1])\
+                for index in range(self.num_quantities)]
             for indices in np.ndindex(*self.shape):
-                analyzer = self.analyzer_from_indices(indices)
-                quantity_values = self.compiled_quantity(analyzer)
+                fitter = self.fitter_from_indices(indices)
+                quantity_values = self.compiled_quantity(fitter)
                 for (iquantity, quantity) in enumerate(quantity_values):
                     self._grids[iquantity][indices] = quantity
         return self._grids
     
-    def analyzer_from_subsets(self, **subsets):
+    def fitter_from_subsets(self, **subsets):
         """
         Finds the Fitter object associated with the given subbasis
         subsets.
@@ -72,7 +78,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder):
         sub_prior_sets = self.prior_subsets(**subsets)
         return Fitter(sub_basis_set, self.data, self.error, **sub_prior_sets)
     
-    def analyzer_from_indices(self, indices):
+    def fitter_from_indices(self, indices):
         """
         Finds the Fitter object corresponding to the given tuple of indices.
         
@@ -80,7 +86,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder):
         
         returns: Fitter corresponding to the given grid position
         """
-        return self.analyzer_from_subsets(**self.point_from_indices(indices))
+        return self.fitter_from_subsets(**self.point_from_indices(indices))
     
     def prior_subsets(self, **subsets):
         """
@@ -121,7 +127,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder):
         """
         if type(index) in int_types:
             return self.grids[index]
-        elif isinstance(index, str):
+        elif isinstance(index, basestring):
             return self.grids[self.compiled_quantity.index_dict[index]]
         else:
             raise AttributeError("index of MetaFitter must be an index " +\
@@ -130,7 +136,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder):
                                  "MetaFitter must have can_index_by_string " +\
                                  "be True.")
     
-    def minimize_quantity(self, index=0, verbose=True):
+    def minimize_quantity(self, index=0, which_data=None, verbose=True):
         """
         Minimizes the quantity associated with the given index and returns the
         Fitter from that given set of subbasis subsets.
@@ -140,17 +146,36 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder):
                if str, it is taken to be the name of the quantity to retrieve
                        (in this case,
                        self.compiled_quantity.can_index_by_string must be True)
+        which_data: if None, 
         verbose: if True, prints the name of the quantity being minimized
         
         returns: Fitter corresponding to set of subbasis subsets which
                  minimizes the Quantity under concern
         """
-        grid = self[index]
+        grid_slice = ((slice(None),) * self.ndim)
+        if self.data.ndim == 2:
+            if which_data is None:
+                raise ValueError("which_data must be given if data is not 1D.")
+            else:
+                grid_slice = grid_slice + (which_data,)
+        grid = self[index][grid_slice]
         quantity = self.compiled_quantity[index]
         if verbose:
-            print("Minimizing {} over grid.".format(quantity.name))
+            print("Minimizing {!s} over grid.".format(quantity.name))
         indices_of_minimum = np.unravel_index(np.argmin(grid), grid.shape)
-        return self.analyzer_from_indices(indices_of_minimum)
+        return self.fitter_from_indices(indices_of_minimum)
+    
+    def save_all_fitters_to_hdf5_group(self, group):
+        """
+        Saves all fitters to an hdf5 group. This should be used cautiously, as
+        it would take an unreasonably long time for large grids.
+        
+        group: hdf5 file group to fill with Fitter information
+        """
+        for indices in np.ndindex(*self.shape):
+            format_string = (('{}_' * (len(self.shape) - 1)) + '{}')
+            subgroup = group.create_group(format_string.format(*indices))
+            self.fitter_from_indices(indices).fill_hdf5_group(subgroup)
     
     def plot_grid(self, grid, title='', fig=None, ax=None, xticks=None,\
         yticks=None, xlabel='', ylabel='', show=False, norm=None, **kwargs):
@@ -259,11 +284,11 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder):
         pl.ylabel(ylabel)
         naxes = nrows * ncols
         for iplot in range(naxes):
-            irow = iplot / ncols
+            irow = iplot // ncols
             icol = iplot % ncols
             ax = fig.add_subplot(nrows, ncols, iplot + 1)
-            analyzer = self.analyzer_from_indices((icol, irow))
-            analyzer.plot_subbasis_fit(name=name, true_curve=true_curve,\
+            fitter = self.fitter_from_indices((icol, irow))
+            fitter.plot_subbasis_fit(name=name, true_curve=true_curve,\
                 fig=fig, ax=ax, title='', xlabel='', ylabel='',\
                 subtract_truth=subtract_truth, show=False)
             ax.set_xticks([])
