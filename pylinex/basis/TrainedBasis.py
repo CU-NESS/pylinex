@@ -165,6 +165,17 @@ class TrainedBasis(Basis):
         return self._diagonal_importances
     
     @property
+    def training_set_fit_coefficients(self):
+        """
+        Property storing the coefficients of the fit to each training set
+        """
+        if not hasattr(self, '_training_set_fit_coefficients'):
+            self._training_set_fit_coefficients = np.dot(\
+                self.training_set_space_singular_vectors.T,\
+                self.diagonal_importances)
+        return self._training_set_fit_coefficients
+    
+    @property
     def training_set_length(self):
         """
         Property storing the number of curves in the training set used to

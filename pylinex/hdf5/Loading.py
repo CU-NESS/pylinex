@@ -1,11 +1,12 @@
 """
-File: pylinex/util/Loading.py
+File: pylinex/hdf5/Loading.py
 Author: Keith Tauscher
 Date: 3 Sep 2017
 
 Description: File containing functions which load objects from hdf5 files. They
              require the use of h5py, a common Python library.
 """
+from ..quantity import load_quantity_from_hdf5_group
 from ..expander import load_expander_from_hdf5_group
 from ..basis import load_basis_from_hdf5_group, load_basis_set_from_hdf5_group
 try:
@@ -22,8 +23,23 @@ def ensure_h5py_installed():
     """
     if not have_h5py:
         raise NotImplementedError("hdf5 files can't be loaded because h5py " +\
-                                  "isn't installed. Install h5py and retry " +\
-                                  "to continue.")
+            "isn't installed. Install h5py and retry to continue.")
+
+
+def load_quantity_from_hdf5_file(file_name):
+    """
+    Loads a Quantity object from the given hdf5 file.
+    
+    group: hdf5 file from which to load data with which to recreate a Quantity
+           object
+    
+    returns: Quantity object of appropriate type
+    """
+    ensure_h5py_installed()
+    hdf5_file = h5py.File(file_name, 'r')
+    quantity = load_quantity_from_hdf5_group(hdf5_file)
+    hdf5_file.close()
+    return quantity
 
 
 def load_expander_from_hdf5_file(file_name):
