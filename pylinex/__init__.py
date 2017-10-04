@@ -15,12 +15,13 @@ from pylinex.quantity import Quantity, ConstantQuantity, AttributeQuantity,\
     load_quantity_from_hdf5_group
 from pylinex.expander import Expander, NullExpander, PadExpander,\
     RepeatExpander, ModulationExpander, MatrixExpander, CompositeExpander,\
-    ShapedExpander, load_expander_from_hdf5_group
+    ShapedExpander, load_expander_from_hdf5_group, ExpanderSet,\
+    load_expander_set_from_hdf5_group
 from pylinex.basis import Basis, PolynomialBasis, GramSchmidtBasis,\
     FourierBasis, LegendreBasis, TrainedBasis, BasisSet,\
     load_basis_from_hdf5_group, load_basis_set_from_hdf5_group
 from pylinex.fitter import TrainingSetIterator, Fitter, MetaFitter, Extractor
-from pylinex.hdf5 import load_expander_from_hdf5_file,\
-    load_quantity_from_hdf5_file, load_basis_from_hdf5_file,\
-    load_basis_set_from_hdf5_file, ExtractionPlotter
+from pylinex.hdf5 import load_quantity_from_hdf5_file,\
+    load_expander_from_hdf5_file, load_expander_set_from_hdf5_file,\
+    load_basis_from_hdf5_file, load_basis_set_from_hdf5_file, ExtractionPlotter
 

@@ -262,6 +262,20 @@ class PadExpander(Expander):
             self.get_pad_sizes_from_expanded_space_length(error_length)
         return error[pad_size_before:error_length-pad_size_after]
     
+    def invert(self, data, error):
+        """
+        (Pseudo-)Inverts this expander in order to infer an original-space
+        curve from the given expanded-space data and error.
+        
+        data: data vector from which to imply an original space cause
+        error: Gaussian noise level in data
+        
+        returns: most likely original-space curve to cause given data
+        """
+        (pad_size_before, pad_size_after) =\
+            self.get_pad_sizes_from_expanded_space_length(len(data))
+        return data[pad_size_before:-pad_size_after]
+    
     def is_compatible(self, original_space_size, expanded_space_size):
         """
         Checks whether this Expander is compatible with the given sizes of the
@@ -277,6 +291,44 @@ class PadExpander(Expander):
         expected_expanded_space_size =\
             (pad_size_before + original_space_size + pad_size_after)
         return (expected_expanded_space_size == expanded_space_size)
+    
+    def original_space_size(self, expanded_space_size):
+        """
+        Finds the input space size from the output space size.
+        
+        expanded_space_size: positive integer compatible with this Expander
+        
+        returns: input space size
+        """
+        (pad_size_before, pad_size_after) =\
+            self.get_pad_sizes_from_expanded_space_length(expanded_space_size)
+        return (expanded_space_size - (pad_size_before + pad_size_after))
+    
+    def expanded_space_size(self, original_space_size):
+        """
+        Finds the output space size from the input space size.
+        
+        original_space_size: positive integer compatible with this Expander
+        
+        returns: output space size
+        """
+        (pad_size_before, pad_size_after) =\
+            self.get_pad_sizes_from_original_space_length(original_space_size)
+        return (pad_size_before + original_space_size + pad_size_after)
+    
+    def channels_affected(self, original_space_size):
+        """
+        Finds the indices of the data channels affected by data of the given
+        size given to this Expander object.
+        
+        original_space_size: positive integer to assume as input size
+        
+        returns: 1D numpy.ndarray of indices of data channels possibly affected
+                 by data expanded by this Expander object 
+        """
+        (pad_size_before, pad_size_after) =\
+            self.get_pad_sizes_from_original_space_length(original_space_size)
+        return np.arange(original_space_size) + pad_size_before
     
     def fill_hdf5_group(self, group):
         """

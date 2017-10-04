@@ -218,6 +218,9 @@ class ExtractionPlotter(object):
     
     @property
     def channel_error(self):
+        """
+        Property storing the channel error of the full data fit.
+        """
         if not hasattr(self, '_channel_error'):
             self._channel_error = self.file[('{!s}/posterior/' +\
                 'channel_error').format(self.fitter_group_name)].value
@@ -225,6 +228,10 @@ class ExtractionPlotter(object):
     
     @property
     def channel_errors(self):
+        """
+        Property storing the channel errors of the fits to each component of
+        the data.
+        """
         if not hasattr(self, '_channel_errors'):
             self._channel_errors = {}
             for name in self.names:
@@ -236,6 +243,7 @@ class ExtractionPlotter(object):
     @property
     def channel_RMS(self):
         """
+        Property storing the RMS of the full data fit.
         """
         if not hasattr(self, '_channel_RMS'):
             self._channel_RMS =\
@@ -245,6 +253,8 @@ class ExtractionPlotter(object):
     @property
     def channel_RMSs(self):
         """
+        Property storing the RMS of the fits to each component of the data in
+        the fit.
         """
         if not hasattr(self, '_channel_RMSs'):
             self._channel_RMSs = {}
@@ -260,7 +270,16 @@ class ExtractionPlotter(object):
         """
         Plots a grid of subbasis fits.
         
-        name: 
+        nsigma: number of sigmas determining the width of the band
+        name: string name of desired data component
+        true_curve: the true data to either plot or subtract
+        title: string title of plot
+        subtract_truth: if True, true_curve is subtracted (if name is None, no
+                                 true_curve needs to be given, as the true
+                                 curve in that case is the data itself)
+        yscale: 'linear', 'log', or 'symlog'
+        show: if True, matplotlib.pyplot.show() is called before this function
+                       returns
         """
         if subtract_truth and (true_curve is None):
             if name is None:
@@ -355,6 +374,16 @@ class ExtractionPlotter(object):
             pl.title('{!s} grid'.format(name))
         if show:
             pl.show()
+    
+    @property
+    def statistics(self):
+        """
+        Property storing a dictionary of statistics from the "optimal" fit.
+        """
+        if not hasattr(self, '_statistics'):
+            group = self.file['{!s}'.format(self.fitter_group_name)]
+            self._statistics = {key: group.attrs[key] for key in group.attrs}
+        return self._statistics
     
     @property
     def multiple_data_curves(self):

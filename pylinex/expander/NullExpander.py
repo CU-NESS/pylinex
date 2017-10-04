@@ -45,6 +45,38 @@ class NullExpander(Expander):
         """
         return (original_space_size == expanded_space_size)
     
+    def original_space_size(self, expanded_space_size):
+        """
+        Finds the input space size from the output space size.
+        
+        expanded_space_size: positive integer compatible with this Expander
+        
+        returns: input space size
+        """
+        return expanded_space_size
+    
+    def expanded_space_size(self, original_space_size):
+        """
+        Finds the output space size from the input space size.
+        
+        original_space_size: positive integer compatible with this Expander
+        
+        returns: output space size
+        """
+        return original_space_size
+    
+    def channels_affected(self, original_space_size):
+        """
+        Finds the indices of the data channels affected by data of the given
+        size given to this Expander object.
+        
+        original_space_size: positive integer to assume as input size
+        
+        returns: 1D numpy.ndarray of indices of data channels possibly affected
+                 by data expanded by this Expander object 
+        """
+        return np.arange(original_space_size)
+    
     def fill_hdf5_group(self, group):
         """
         Saves data about this in the given hdf5 file group.

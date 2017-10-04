@@ -105,7 +105,39 @@ class ModulationExpander(Expander):
             np.reshape(weighted_modulating_factors, new_shape)
         inverse_squared_errors = np.sum(np.conj(weighted_modulating_factors) *\
             weighted_modulating_factors, axis=0)
-        return np.power(inverse_squared_errors, -0.5)
+        return 1 / np.sqrt(inverse_squared_errors)
+    
+    def invert(self, data, error):
+        """
+        (Pseudo-)Inverts this expander in order to infer an original-space
+        curve from the given expanded-space data and error.
+        
+        data: data vector from which to imply an original space cause
+        error: Gaussian noise level in data
+        
+        returns: most likely original-space curve to cause given data
+        """
+        # TODO this is very important!
+        raise NotImplementedError("(Pseudo-)inversion not yet implemented " +\
+            "for the ModulationExpander class.")
+    
+    @property
+    def input_size(self):
+        """
+        Property storing the length of the expected inputs.
+        """
+        if not hasattr(self, '_input_size'):
+            self._input_size = self.modulating_factors.shape[-1]
+        return self._input_size
+    
+    @property
+    def output_size(self):
+        """
+        Property storing the length of the expected outputs.
+        """
+        if not hasattr(self, '_output_size'):
+            self._output_size = self.modulating_factors.size
+        return self._output_size
     
     def is_compatible(self, original_space_size, expanded_space_size):
         """
@@ -117,8 +149,55 @@ class ModulationExpander(Expander):
         
         returns: True iff the given sizes are compatible with this Expander
         """
-        return ((original_space_size == self.modulating_factors.shape[-1]) and\
-           (expanded_space_size == self.modulating_factors.size))
+        return ((original_space_size == self.input_size) and\
+           (expanded_space_size == self.output_size))
+    
+    def original_space_size(self, expanded_space_size):
+        """
+        Finds the input space size from the output space size.
+        
+        expanded_space_size: positive integer compatible with this Expander
+        
+        returns: input space size
+        """
+        if expanded_space_size == self.output_size:
+            return self.input_size
+        else:
+            raise ValueError(("expanded_space_size ({0}) was not equal to " +\
+                "expected output size ({1}).").format(expanded_space_size,\
+                self.output_size))
+    
+    def expanded_space_size(self, original_space_size):
+        """
+        Finds the output space size from the input space size.
+        
+        original_space_size: positive integer compatible with this Expander
+        
+        returns: output space size
+        """
+        if original_space_size == self.input_size:
+            return self.output_size
+        else:
+            raise ValueError(("original_space_size ({0}) was not equal to " +\
+                "expected input size ({1}).").format(original_space_size,\
+                self.input_size))
+    
+    def channels_affected(self, original_space_size):
+        """
+        Finds the indices of the data channels affected by data of the given
+        size given to this Expander object.
+        
+        original_space_size: positive integer to assume as input size
+        
+        returns: 1D numpy.ndarray of indices of data channels possibly affected
+                 by data expanded by this Expander object 
+        """
+        if original_space_size == self.input_size:
+            return self.modulating_factors.flatten().nonzero()[0]
+        else:
+            raise ValueError(("original_space_size ({0}) was not equal to " +\
+                "expected input size ({1}).").format(original_space_size,\
+                self.input_size))
     
     def fill_hdf5_group(self, group):
         """

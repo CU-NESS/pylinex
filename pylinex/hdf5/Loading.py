@@ -7,7 +7,8 @@ Description: File containing functions which load objects from hdf5 files. They
              require the use of h5py, a common Python library.
 """
 from ..quantity import load_quantity_from_hdf5_group
-from ..expander import load_expander_from_hdf5_group
+from ..expander import load_expander_from_hdf5_group,\
+    load_expander_set_from_hdf5_group
 from ..basis import load_basis_from_hdf5_group, load_basis_set_from_hdf5_group
 try:
     import h5py
@@ -56,6 +57,22 @@ def load_expander_from_hdf5_file(file_name):
     expander = load_expander_from_hdf5_group(hdf5_file)
     hdf5_file.close()
     return expander
+
+
+def load_expander_set_from_hdf5_file(file_name):
+    """
+    Loads an ExpanderSet object from the given hdf5 file.
+    
+    group: hdf5 file from which to load data with which to recreate an Expander
+           object
+    
+    returns: ExpanderSet object of appropriate type
+    """
+    ensure_h5py_installed()
+    hdf5_file = h5py.File(file_name, 'r')
+    expander_set = load_expander_set_from_hdf5_group(hdf5_file)
+    hdf5_file.close()
+    return expander_set
 
 def load_basis_from_hdf5_file(file_name):
     """

@@ -35,6 +35,19 @@ class Expander(Savable):
         raise NotImplementedError("Cannot directly instantiate Expander " +\
                                   "class.")
     
+    def invert(self, data, error):
+        """
+        (Pseudo-)Inverts this expander in order to infer an original-space
+        curve from the given expanded-space data and error.
+        
+        data: data vector from which to imply an original space cause
+        error: Gaussian noise level in data
+        
+        returns: most likely original-space curve to cause given data
+        """
+        raise NotImplementedError("Cannot directly instantiate Expander " +\
+                                  "class.")
+    
     def is_compatible(self, original_space_size, expanded_space_size):
         """
         Checks whether this Expander is compatible with the given sizes of the
@@ -44,6 +57,41 @@ class Expander(Savable):
         expanded_space_size: size of (typically larger) expanded space
         
         returns: True iff the given sizes are compatible with this Expander
+        """
+        raise NotImplementedError("Cannot directly instantiate Expander " +\
+                                  "class.")
+    
+    def original_space_size(self, expanded_space_size):
+        """
+        Finds the input space size from the output space size.
+        
+        expanded_space_size: positive integer compatible with this Expander
+        
+        returns: input space size
+        """
+        raise NotImplementedError("Cannot directly instantiate Expander " +\
+                                  "class.")
+    
+    def expanded_space_size(self, original_space_size):
+        """
+        Finds the output space size from the input space size.
+        
+        original_space_size: positive integer compatible with this Expander
+        
+        returns: output space size
+        """
+        raise NotImplementedError("Cannot directly instantiate Expander " +\
+                                  "class.")
+    
+    def channels_affected(self, original_space_size):
+        """
+        Finds the indices of the data channels affected by data of the given
+        size given to this Expander object.
+        
+        original_space_size: positive integer to assume as input size
+        
+        returns: 1D numpy.ndarray of indices of data channels possibly affected
+                 by data expanded by this Expander object 
         """
         raise NotImplementedError("Cannot directly instantiate Expander " +\
                                   "class.")

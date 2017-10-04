@@ -141,6 +141,22 @@ class ShapedExpander(Expander):
         return np.reshape(self.expander.contract_error(error.flatten()),\
             self.input_shape)
     
+    def invert(self, data, error):
+        """
+        (Pseudo-)Inverts this expander in order to infer an original-space
+        curve from the given expanded-space data and error.
+        
+        data: data vector from which to imply an original space cause
+        error: Gaussian noise level in data
+        
+        returns: most likely original-space curve to cause given data
+        """
+        reshaped_error = error.flatten()
+        reshaped_data =\
+            np.reshape(data, data.shape[:-len(input_shape)] + (-1,))
+        return np.reshape(self.expander.invert(reshaped_data, reshaped_error),\
+            input_shape)
+    
     def is_compatible(self, original_space_size, expanded_space_size):
         """
         Checks whether this Expander is compatible with the given sizes of the
@@ -153,6 +169,48 @@ class ShapedExpander(Expander):
         """
         return ((original_space_size == self.input_size) and\
             (expanded_space_size == self.output_size))
+    
+    def original_space_size(self, expanded_space_size):
+        """
+        Finds the input space size from the output space size.
+        
+        expanded_space_size: positive integer compatible with this Expander
+        
+        returns: input space size
+        """
+        if expanded_space_size == self.output_size:
+            return self.input_size
+        else:
+            raise ValueError(("expanded_space_size ({0}) was not equal to " +\
+                "expected output size ({1}).").format(expanded_space_size,\
+                self.output_size))
+    
+    def expanded_space_size(self, original_space_size):
+        """
+        Finds the output space size from the input space size.
+        
+        original_space_size: positive integer compatible with this Expander
+        
+        returns: output space size
+        """
+        if original_space_size == self.input_size:
+            return self.output_size
+        else:
+            raise ValueError(("original_space_size ({0}) was not equal to " +\
+                "expected input size ({1}).").format(original_space_size,\
+                self.input_size))
+    
+    def channels_affected(self, original_space_size):
+        """
+        Finds the indices of the data channels affected by data of the given
+        size given to this Expander object.
+        
+        original_space_size: positive integer to assume as input size
+        
+        returns: 1D numpy.ndarray of indices of data channels possibly affected
+                 by data expanded by this Expander object 
+        """
+        return self.expander.channels_affected(original_space_size)
     
     def fill_hdf5_group(self, group):
         """

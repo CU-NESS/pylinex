@@ -72,6 +72,24 @@ class RepeatExpander(Expander):
         reshaped_error = np.reshape(error, (self.nrepeats, -1))
         return 1 / np.sqrt(np.sum(np.power(reshaped_error, -2), axis=0))
     
+    def invert(self, data, error):
+        """
+        (Pseudo-)Inverts this expander in order to infer an original-space
+        curve from the given expanded-space data and error.
+        
+        data: data vector from which to imply an original space cause
+        error: Gaussian noise level in data
+        
+        returns: most likely original-space curve to cause given data
+        """
+        new_shape = (nrepeats, -1)
+        reshaped_data = np.reshape(data, new_shape)
+        reshaped_error = np.reshape(error, new_shape)
+        squared_final_error = 1 / np.sum(np.power(reshaped_error, -2), axis=0)
+        square_weighted_final_data =\
+            np.sum(reshaped_data / np.power(reshaped_error, 2), axis=0)
+        return squared_final_error * square_weighted_final_data
+    
     def is_compatible(self, original_space_size, expanded_space_size):
         """
         Checks whether this Expander is compatible with the given sizes of the
@@ -83,6 +101,43 @@ class RepeatExpander(Expander):
         returns: True iff the given sizes are compatible with this Expander
         """
         return ((original_space_size * self.nrepeats) == expanded_space_size)
+    
+    def original_space_size(self, expanded_space_size):
+        """
+        Finds the input space size from the output space size.
+        
+        expanded_space_size: positive integer compatible with this Expander
+        
+        returns: input space size
+        """
+        if (expanded_space_size % self.nrepeats) == 0:
+            return (expanded_space_size // self.nrepeats)
+        else:
+            raise ValueError("Given expanded_space_size was not compatible " +\
+                "as it was not a factor of the number of repeats of this " +\
+                "expander.")
+    
+    def expanded_space_size(self, original_space_size):
+        """
+        Finds the output space size from the input space size.
+        
+        original_space_size: positive integer compatible with this Expander
+        
+        returns: output space size
+        """
+        return original_space_size * self.nrepeats
+    
+    def channels_affected(self, original_space_size):
+        """
+        Finds the indices of the data channels affected by data of the given
+        size given to this Expander object.
+        
+        original_space_size: positive integer to assume as input size
+        
+        returns: 1D numpy.ndarray of indices of data channels possibly affected
+                 by data expanded by this Expander object 
+        """
+        return np.arange(self.expanded_space_size(original_space_size))
     
     def fill_hdf5_group(self, group):
         """

@@ -87,6 +87,23 @@ class CompositeExpander(Expander):
             current = expander.contract_error(current)
         return current
     
+    def invert(self, data, error):
+        """
+        (Pseudo-)Inverts this expander in order to infer an original-space
+        curve from the given expanded-space data and error.
+        
+        data: data vector from which to imply an original space cause
+        error: Gaussian noise level in data
+        
+        returns: most likely original-space curve to cause given data
+        """
+        current_data = data
+        current_error = error
+        for expander in self.expanders[-1::-1]:
+            current_data = expander.invert(current_data, current_error)
+            current_error = expander.contract_error(current_error)
+        return current_data
+    
     def is_compatible(self, original_space_size, expanded_space_size):
         """
         Checks whether this Expander is compatible with the given sizes of the
@@ -97,12 +114,49 @@ class CompositeExpander(Expander):
         
         returns: True iff the given sizes are compatible with this Expander
         """
-        try:
-            test_array = np.zeros(original_space_size)
-            test_array = self.apply(test_array)
-            return len(test_array) == expanded_space_size
-        except:
-            return False
+        return (expanded_space_size ==\
+            self.expanded_space_size(original_space_size))
+    
+    def original_space_size(self, expanded_space_size):
+        """
+        Finds the input space size from the output space size.
+        
+        expanded_space_size: positive integer compatible with this Expander
+        
+        returns: input space size
+        """
+        current_size = expanded_space_size
+        for expander in self.expanders[-1::-1]:
+            current_size = expander.original_space_size(current_size)
+        return current_size
+    
+    def expanded_space_size(self, original_space_size):
+        """
+        Finds the output space size from the input space size.
+        
+        original_space_size: positive integer compatible with this Expander
+        
+        returns: output space size
+        """
+        current_size = original_space_size
+        for expander in self.expanders:
+            current_size = expander.expanded_space_size(current_size)
+        return current_size
+    
+    def channels_affected(self, original_space_size):
+        """
+        Finds the indices of the data channels affected by data of the given
+        size given to this Expander object.
+        
+        original_space_size: positive integer to assume as input size
+        
+        returns: 1D numpy.ndarray of indices of data channels possibly affected
+                 by data expanded by this Expander object 
+        """
+        current_size = original_space_size
+        for expander in self.expanders[:-1]:
+            current_size = expander.expanded_space_size(current_size)
+        return self.expanders[-1].channels_affected(current_size) # TODO reconsider
     
     def fill_hdf5_group(self, group):
         """
