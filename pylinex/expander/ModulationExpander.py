@@ -117,9 +117,19 @@ class ModulationExpander(Expander):
         
         returns: most likely original-space curve to cause given data
         """
-        # TODO this is very important!
-        raise NotImplementedError("(Pseudo-)inversion not yet implemented " +\
-            "for the ModulationExpander class.")
+        if data.ndim != 1:
+            raise ValueError("This function only supports 1D data.")
+        reshaped_data = np.reshape(data, self.modulating_factors.shape)
+        reshaped_error = np.reshape(error, self.modulating_factors.shape)
+        weighted_modulating_factors = self.modulating_factors / reshaped_error
+        weighted_data = reshaped_data / reshaped_error
+        new_shape = (-1, weighted_modulating_factors.shape[-1])
+        weighted_data = np.reshape(weighted_data, new_shape)
+        weighted_modulating_factors =\
+            np.reshape(weighted_modulating_factors, new_shape)
+        return np.sum(weighted_modulating_factors * weighted_data, axis=0) /\
+            np.sum(np.power(weighted_modulating_factors, 2), axis=0)
+            
     
     @property
     def input_size(self):

@@ -7,11 +7,18 @@ Description: File containing class which, given the string name of an hdf5
              file, reads in results from an Extractor object defined in the
              pylinex.fitter module.
 """
-import os, h5py
+import os
 import numpy as np
 import matplotlib.pyplot as pl
 from matplotlib.colors import LogNorm
 from ..fitter import Extractor
+from ..expander import ExpanderSet, load_expander_from_hdf5_group
+try:
+    import h5py
+except:
+    have_h5py = False
+else:
+    have_h5py = True
 try:
     # this runs with no issues in python 2 but raises error in python 3
     basestring
@@ -198,8 +205,17 @@ class ExtractionPlotter(object):
         Property storing the channel mean of the fit to the data.
         """
         if not hasattr(self, '_channel_mean'):
-            self._channel_mean = self.file[('{!s}/posterior/' +\
-                'channel_mean').format(self.fitter_group_name)].value
+            if self.multiple_data_curves:
+                self._channel_mean = []
+                for icurve in range(self.num_data_curves):
+                    this_mean_dataset_name = ('optimal_fitters/' +\
+                        'data_curve_{}/posterior/channel_mean').format(icurve)
+                    this_mean = self.file[this_mean_dataset_name].value[icurve]
+                    self._channel_mean.append(this_mean)
+                self._channel_mean = np.array(self._channel_mean)
+            else:
+                self._channel_mean = self.file[('optimal_fitter/posterior/' +\
+                    'channel_mean')].value
         return self._channel_mean
     
     @property
@@ -209,11 +225,24 @@ class ExtractionPlotter(object):
         component under concern.
         """
         if not hasattr(self, '_channel_means'):
-            self._channel_means = {}
-            for name in self.names:
-                self._channel_means[name] = self.file[('{!s}/posterior/' +\
-                    '{!s}/channel_mean').format(self.fitter_group_name,\
-                    name)].value
+            if self.multiple_data_curves:
+                self._channel_means = {name: [] for name in self.names}
+                for icurve in range(self.num_data_curves):
+                    for name in self.names:
+                        this_mean_name =\
+                            ('optimal_fitters/data_curve_{0}/posterior/' +\
+                            '{1!s}/channel_mean').format(icurve, name)
+                        this_mean = self.file[this_mean_name].value[icurve]
+                        self._channel_means[name].append(this_mean)
+                for name in self.names:
+                    self._channel_means[name] =\
+                        np.array(self._channel_means[name])
+            else:
+                self._channel_means = {}
+                for name in self.names:
+                    this_mean_name = ('optimal_fitter/posterior/{!s}/' +\
+                        'channel_mean').format(name)
+                    self._channel_means[name] = self.file[this_mean_name].value
         return self._channel_means
     
     @property
@@ -222,8 +251,16 @@ class ExtractionPlotter(object):
         Property storing the channel error of the full data fit.
         """
         if not hasattr(self, '_channel_error'):
-            self._channel_error = self.file[('{!s}/posterior/' +\
-                'channel_error').format(self.fitter_group_name)].value
+            if self.multiple_data_curves:
+                self._channel_error = []
+                for icurve in range(self.num_data_curves):
+                    error_name = ('optimal_fitters/data_curve_{}/' +\
+                        'posterior/channel_error').format(icurve)
+                    self._channel_error.append(self.file[error_name].value)
+                self._channel_error = np.array(self._channel_error)
+            else:
+                error_name = 'optimal_fitter/posterior/channel_error'
+                self._channel_error = self.file[error_name].value
         return self._channel_error
     
     @property
@@ -233,11 +270,24 @@ class ExtractionPlotter(object):
         the data.
         """
         if not hasattr(self, '_channel_errors'):
-            self._channel_errors = {}
-            for name in self.names:
-                self._channel_errors[name] = self.file[('{!s}/posterior/' +\
-                    '{!s}/channel_error').format(self.fitter_group_name,\
-                    name)].value
+            if self.multiple_data_curves:
+                self._channel_errors = {name: [] for name in self.names}
+                for icurve in range(self.num_data_curves):
+                    for name in self.names:
+                        error_name = ('optimal_fitters/data_curve_{0}/' +\
+                            'posterior/{1!s}/channel_error').format(icurve,\
+                            name)
+                        this_error = self.file[error_name].value
+                        self._channel_errors[name].append(this_error)
+                for name in self.names:
+                    self._channel_errors[name] =\
+                        np.array(self._channel_errors[name])
+            else:
+                self._channel_errors = {}
+                for name in self.names:
+                    error_name = ('optimal_fitter/posterior/{!s}/' +\
+                        'channel_error').format(name)
+                    self._channel_errors[name] = self.file[error_name].value
         return self._channel_errors
     
     @property
@@ -247,7 +297,7 @@ class ExtractionPlotter(object):
         """
         if not hasattr(self, '_channel_RMS'):
             self._channel_RMS =\
-                np.sqrt(np.mean(np.power(self.channel_error, 2)))
+                np.sqrt(np.mean(np.power(self.channel_error, 2), axis=-1))
         return self._channel_RMS
     
     @property
@@ -259,14 +309,60 @@ class ExtractionPlotter(object):
         if not hasattr(self, '_channel_RMSs'):
             self._channel_RMSs = {}
             for name in self.names:
-                self._channel_RMSs[name] =\
-                    np.sqrt(np.mean(np.power(self.channel_errors[name], 2)))
+                self._channel_RMSs[name] = np.sqrt(np.mean(np.power(\
+                    self.channel_errors[name], 2), axis=-1))
         return self._channel_RMSs
+
+    def plot_subbasis_fit(self, icurve=0, nsigma=1, name=None, true_curves={},\
+        title='Subbasis fit', subtract_truth=False, plot_truth=False,\
+        yscale='linear', show=False):
+        """
+        """
+        if subtract_truth or plot_truth:
+            if name is None:
+                true_curve = self.data
+            elif name in true_curves:
+                true_curve = true_curves[name]
+            else:
+                expander_set = self.expander_set
+                for true_curve_name in true_curves:
+                    expander_set = expander_set.marginalize(true_curve_name,\
+                        true_curves[true_curve_name])
+                try:
+                    (separated_curves, residual) = expander_set.separate()
+                except RuntimeError:
+                    raise ValueError("Not enough true curves were given in " +\
+                        "order to infer the desired one.")
+                true_curve = separated_curves[name]
+        if self.multiple_data_curves:
+            channel_mean = self.channel_means[name][icurve]
+            channel_error = self.channel_errors[name][icurve]
+        else:
+            channel_mean = self.channel_means[name]
+            channel_error = self.channel_errors[name]
+        channels = np.arange(len(channel_error))
+        if subtract_truth:
+            mean_to_plot = channel_mean - true_curve
+        else:
+            mean_to_plot = channel_mean
+        pl.plot(channels, mean_to_plot, color='r', linewidth=2)
+        pl.fill_between(channels, mean_to_plot - (nsigma * channel_error),\
+            mean_to_plot + (nsigma * channel_error), color='r', alpha=0.3)
+        pl.plot(channels, np.zeros_like(channels), color='k', linewidth=1)
+        if subtract_truth:
+            pl.plot(channels, np.zeros_like(channels), color='k',\
+                linewidth=2)
+        elif plot_truth:
+            pl.plot(channels, true_curve, color='k', linewidth=2)
+        pl.gca().set_yscale(yscale)
+        pl.title(title, size='xx-large')
+        if show:
+            pl.show()
+        
     
-    
-    def plot_subbasis_fit_grid(self, nsigma=1, name=None, true_curve=None,\
-        title='Subbasis fit grid', subtract_truth=False, yscale='linear',\
-        show=False):
+    def plot_subbasis_fit_grid(self, nsigma=1, name=None, true_curves={},\
+        title='Subbasis fit grid', subtract_truth=False, plot_truth=False,\
+        low_indices=(0,0), high_indices=(-1,-1), yscale='linear', show=False):
         """
         Plots a grid of subbasis fits.
         
@@ -281,27 +377,39 @@ class ExtractionPlotter(object):
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
         """
-        if subtract_truth and (true_curve is None):
+        if subtract_truth or plot_truth:
             if name is None:
                 true_curve = self.data
+            elif name in true_curves:
+                true_curve = true_curves[name]
             else:
-                raise ValueError("truth cannot be subtracted if it is not " +\
-                    "given.")
+                expander_set = self.expander_set
+                for true_curve_name in true_curves:
+                    expander_set = expander_set.marginalize(true_curve_name,\
+                        true_curves[true_curve_name])
+                (separated_curves, residual) = expander_set.separate()
+                true_curve = separated_curves[name]
+        low_indices = (low_indices[0] % self.dimension_lengths[0],\
+            low_indices[1] % self.dimension_lengths[1])
+        high_indices = (high_indices[0] % self.dimension_lengths[0],\
+            high_indices[1] % self.dimension_lengths[1])
         fig = pl.figure()
-        nrows = self.dimension_lengths[1]
-        ncols = self.dimension_lengths[0]
+        nrows = high_indices[1] - low_indices[1] + 1
+        ncols = high_indices[0] - low_indices[0] + 1
         xtick_locations = [((i + 0.5) / ncols) for i in range(ncols)]
         ytick_locations = [((i + 0.5) / nrows) for i in range(nrows)][-1::-1]
-        pl.xticks(xtick_locations, self.xticks)
-        pl.yticks(ytick_locations, self.yticks)
+        pl.xticks(xtick_locations,\
+            self.xticks[low_indices[0]:high_indices[0]+1])
+        pl.yticks(ytick_locations,\
+            self.yticks[low_indices[1]:high_indices[1]+1])
         pl.tick_params(labelsize='xx-large', pad=40)
         pl.xlabel(self.xlabel, size='xx-large')
         pl.ylabel(self.ylabel, size='xx-large')
         pl.title(title, size='xx-large')
         naxes = nrows * ncols
         for iplot in range(naxes):
-            irow = iplot // ncols
-            icol = iplot % ncols
+            irow = (iplot // ncols) + low_indices[1]
+            icol = (iplot % ncols) + low_indices[0]
             ax = fig.add_subplot(nrows, ncols, iplot + 1)
             group_name = 'fitters/{}_{}/posterior'.format(icol, irow)
             if name is not None:
@@ -318,14 +426,12 @@ class ExtractionPlotter(object):
             ax.plot(channels, mean_to_plot, color='r', linewidth=2)
             ax.fill_between(channels, mean_to_plot - (nsigma * channel_error),\
                 mean_to_plot + (nsigma * channel_error), color='r', alpha=0.3)
+            ax.plot(channels, np.zeros_like(channels), color='k', linewidth=1)
             if subtract_truth:
                 ax.plot(channels, np.zeros_like(channels), color='k',\
                     linewidth=2)
-            elif true_curve is not None:
+            elif plot_truth:
                 ax.plot(channels, true_curve, color='k', linewidth=2)
-            else:
-                ax.plot(channels, np.zeros_like(channels), color='k',\
-                    linewidth=1)
             ax.set_yscale(yscale)
             #ax.set_xticks([])
             #ax.set_xticklabels([])
@@ -381,8 +487,25 @@ class ExtractionPlotter(object):
         Property storing a dictionary of statistics from the "optimal" fit.
         """
         if not hasattr(self, '_statistics'):
-            group = self.file['{!s}'.format(self.fitter_group_name)]
-            self._statistics = {key: group.attrs[key] for key in group.attrs}
+            if self.multiple_data_curves:
+                self._statistics = {}
+                for icurve in range(self.num_data_curves):
+                    group_name = 'optimal_fitters/data_curve_{}'.format(icurve)
+                    group = self.file[group_name]
+                    for key in group.attrs:
+                        this_attribute = group.attrs[key]
+                        if isinstance(this_attribute, np.ndarray):
+                            this_attribute = this_attribute[icurve]
+                        if key in self._statistics:
+                            self._statistics[key].append(this_attribute)
+                        else:
+                            self._statistics[key] = [this_attribute]
+                for key in self._statistics:
+                    self._statistics[key] = np.array(self._statistics[key])
+            else:
+                group = self.file['optimal_fitter']
+                self._statistics =\
+                    {key: group.attrs[key] for key in group.attrs}
         return self._statistics
     
     @property
@@ -396,18 +519,18 @@ class ExtractionPlotter(object):
         return self._multiple_data_curves
     
     @property
-    def fitter_group_name(self):
+    def num_data_curves(self):
         """
-        Property storing the name of the group storing the optimal fitter (if
-        there are multiple curves, the optimal fitter from the first curve is
-        used).
         """
-        if not hasattr(self, '_fitter_group_name'):
+        if not hasattr(self, '_num_data_curves'):
             if self.multiple_data_curves:
-                self._fitter_group_name = 'optimal_fitters/data_curve_0'
+                self._num_data_curves = 0
+                while 'optimal_fitters/data_curve_{}'.format(\
+                    self._num_data_curves) in self.file:
+                    self._num_data_curves += 1
             else:
-                self._fitter_group_name = 'optimal_fitter'
-        return self._fitter_group_name
+                self._num_data_curves = 1
+        return self._num_data_curves
     
     @property
     def data(self):
@@ -416,8 +539,7 @@ class ExtractionPlotter(object):
         at the heart of this ExtractionPlotter.
         """
         if not hasattr(self, '_data'):
-            self._data =\
-                self.file['{!s}/data'.format(self.fitter_group_name)].value
+            self._data = self.file['data'].value
         return self._data
     
     @property
@@ -427,8 +549,7 @@ class ExtractionPlotter(object):
         which saved trhe hdf5 file at the heart of this ExtractionPlotter.
         """
         if not hasattr(self, '_error'):
-            self._error =\
-                self.file['{!s}/error'.format(self.fitter_group_name)].value
+            self._error = self.file['error'].value
         return self._error
     
     @property
@@ -450,9 +571,12 @@ class ExtractionPlotter(object):
         """
         if not hasattr(self, '_names'):
             self._names = []
-            group_name_from_ibasis =\
-                (lambda x: '{0!s}/basis_set/basis_{1:d}'.format(\
-                self.fitter_group_name, x))
+            if self.multiple_data_curves:
+                group_name_from_ibasis = (lambda x: ('optimal_fitters/' +\
+                    'data_curve_0/basis_set/basis_{}').format(x))
+            else:
+                group_name_from_ibasis =\
+                    (lambda x: ('optimal_fitter/basis_set/basis_{}').format(x))
             ibasis = 0
             while group_name_from_ibasis(ibasis) in self.file:
                 self._names.append(\
@@ -468,8 +592,12 @@ class ExtractionPlotter(object):
         """
         if not hasattr(self, '_expanders'):
             self._expanders = []
+            if self.multiple_data_curves:
+                fitter_group_name = 'optimal_fitters/data_curve_0'
+            else:
+                fitter_group_name = 'optimal_fitter'
             basis_set_group_name =\
-                '{!s}/basis_set'.format(self.fitter_group_name)
+                '{!s}/basis_set'.format(fitter_group_name)
             for iname in range(len(self.names)):
                 basis_group_name =\
                     '{0!s}/basis_{1:d}'.format(basis_set_group_name, iname)
@@ -478,6 +606,19 @@ class ExtractionPlotter(object):
                 expander = load_expander_from_hdf5_group(expander_group)
                 self._expanders.append(expander)
         return self._expanders
+    
+    @property
+    def expander_set(self):
+        """
+        Property yielding an ExpanderSet object organizing the expanders here
+        so that "true" curves for (e.g.) systematics can be found by using the
+        data as well as a "true" curve for the signal.
+        """
+        if not hasattr(self, '_expander_set'):
+            self._expander_set = ExpanderSet(self.data, self.error,\
+                **{self.names[iname]: self.expanders[iname]\
+                for iname in range(len(self.names))})
+        return self._expander_set
     
     @property
     def training_sets(self):

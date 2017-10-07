@@ -515,6 +515,14 @@ class Fitter(Savable):
         return self._likelihood_bias_statistic
     
     @property
+    def degrees_of_freedom(self):
+        """
+        """
+        if not hasattr(self, '_degrees_of_freedom'):
+            self._degrees_of_freedom = self.num_channels - self.num_parameters
+        return self._degrees_of_freedom
+    
+    @property
     def normalized_likelihood_bias_statistic(self):
         """
         Property storing the normalized version of the likelihood bias
@@ -523,7 +531,7 @@ class Fitter(Savable):
         """
         if not hasattr(self, '_normalized_likelihood_bias_statistic'):
             self._normalized_likelihood_bias_statistic =\
-                self.likelihood_bias_statistic / self.num_channels
+                self.likelihood_bias_statistic / self.degrees_of_freedom
         return self._normalized_likelihood_bias_statistic
     
     @property
@@ -717,8 +725,8 @@ class Fitter(Savable):
         expectation value of this normed version is 1.
         """
         if not hasattr(self, '_normalized_bias_statistic'):
-            self._normalized_bias_statistic = self.bias_statistic /\
-                (self.num_channels - self.num_parameters - 1)
+            self._normalized_bias_statistic =\
+                self.bias_statistic / self.degrees_of_freedom
         return self._normalized_bias_statistic
     
     @property
@@ -1394,11 +1402,14 @@ class Fitter(Savable):
             subgroup.create_dataset('channel_error',\
                 data=self.subbasis_channel_error(name=name))
         self.basis_set.fill_hdf5_group(root_group.create_group('basis_set'))
+        root_group.attrs['degrees_of_freedom'] = self.degrees_of_freedom
         root_group.attrs['BPIC'] = self.BPIC
         root_group.attrs['DIC'] = self.DIC
         root_group.attrs['AIC'] = self.AIC
         root_group.attrs['BIC'] = self.BIC
         root_group.attrs['normalized_likelihood_bias_statistic'] =\
+            self.normalized_likelihood_bias_statistic
+        root_group.attrs['normalized_bias_statistic'] =\
             self.normalized_likelihood_bias_statistic
         if self.has_priors:
             root_group.attrs['log_evidence_per_data_channel'] =\

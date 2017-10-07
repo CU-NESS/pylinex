@@ -272,9 +272,10 @@ class PadExpander(Expander):
         
         returns: most likely original-space curve to cause given data
         """
+        num_channels = len(data)
         (pad_size_before, pad_size_after) =\
-            self.get_pad_sizes_from_expanded_space_length(len(data))
-        return data[pad_size_before:-pad_size_after]
+            self.get_pad_sizes_from_expanded_space_length(num_channels)
+        return data[pad_size_before:num_channels-pad_size_after]
     
     def is_compatible(self, original_space_size, expanded_space_size):
         """

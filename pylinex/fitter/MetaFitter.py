@@ -21,14 +21,14 @@ except:
     # this try/except allows for python 2/3 compatible string type checking
     basestring = str
 
-class MetaFitter(Fitter, VariableGrid, QuantityFinder):
+class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
     """
     Class which performs fits using the BasisSet it is given as well as subsets
     of the BasisSet given. By doing so for grids of different subsets, it
     chooses the optimal number of parameters.
     """
-    def __init__(self, basis_set, data, error, compiled_quantity, *dimensions,\
-        **priors):
+    def __init__(self, basis_set, data, error, compiled_quantity,\
+        quantity_to_minimize, *dimensions, **priors):
         """
         Initializes a new MetaFitter object using the given inputs.
         
@@ -39,6 +39,9 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder):
                positive numbers
         compiled_quantity: CompiledQuantity object representing quantities to
                            retrieve
+        quantity_to_minimize: the name of the Quantity object in the
+                              CompiledQuantity to minimize to perform model
+                              selection
         *dimensions: list of lists of dictionaries indicating slices to take
                      for each subbasis.
         **priors: keyword arguments where the keys are exactly the names of the
@@ -47,6 +50,31 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder):
         Fitter.__init__(self, basis_set, data, error, **priors)
         self.dimensions = dimensions
         self.compiled_quantity = compiled_quantity
+        self.quantity_to_minimize = quantity_to_minimize
+    
+    @property
+    def quantity_to_minimize(self):
+        """
+        Property storing string name of quantity to minimize.
+        """
+        if not hasattr(self, '_quantity_to_minimize'):
+            raise AttributeError("quantity_to_minimize was referenced " +\
+                                 "before it was set.")
+        return self._quantity_to_minimize
+    
+    @quantity_to_minimize.setter
+    def quantity_to_minimize(self, value):
+        """
+        Allows user to supply string name of the quantity to minimize.
+        """
+        if isinstance(value, basestring):
+            if value in self.compiled_quantity:
+                self._quantity_to_minimize = value
+            else:
+                raise ValueError("quantity_to_minimize was not in " +\
+                                 "compiled_quantity.")
+        else:
+            raise TypeError("quantity_to_minimize was not a string.")
 
     @property
     def grids(self):
@@ -146,36 +174,91 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder):
                if str, it is taken to be the name of the quantity to retrieve
                        (in this case,
                        self.compiled_quantity.can_index_by_string must be True)
-        which_data: if None, 
+        which_data: if None, data must be 1D
+                    if int, data must be 2D, it is used as index
+                    if length-N sequence, data must be (N+1)D
         verbose: if True, prints the name of the quantity being minimized
         
         returns: Fitter corresponding to set of subbasis subsets which
                  minimizes the Quantity under concern
         """
         grid_slice = ((slice(None),) * self.ndim)
-        if self.data.ndim == 2:
+        if self.data.ndim > 1:
             if which_data is None:
                 raise ValueError("which_data must be given if data is not 1D.")
-            else:
+            elif isinstance(which_data, int):
                 grid_slice = grid_slice + (which_data,)
+            else:
+                grid_slice = grid_slice + tuple(which_data)
         grid = self[index][grid_slice]
         quantity = self.compiled_quantity[index]
         if verbose:
             print("Minimizing {!s} over grid.".format(quantity.name))
-        indices_of_minimum = np.unravel_index(np.argmin(grid), grid.shape)
-        return self.fitter_from_indices(indices_of_minimum)
+        return np.unravel_index(np.argmin(grid), grid.shape)
     
-    def save_all_fitters_to_hdf5_group(self, group):
+    def fill_hdf5_group(self, group, save_all_fitters=False):
         """
         Saves all fitters to an hdf5 group. This should be used cautiously, as
         it would take an unreasonably long time for large grids.
         
         group: hdf5 file group to fill with Fitter information
         """
-        for indices in np.ndindex(*self.shape):
-            format_string = (('{}_' * (len(self.shape) - 1)) + '{}')
-            subgroup = group.create_group(format_string.format(*indices))
-            self.fitter_from_indices(indices).fill_hdf5_group(subgroup)
+        group.create_dataset('data', data=self.data)
+        group.create_dataset('error', data=self.error)
+        group.attrs['quantity_to_minimize'] = self.quantity_to_minimize
+        self.compiled_quantity.fill_hdf5_group(group.create_group(\
+            'compiled_quantity'), exclude=['bias_score'])
+        grids_already_defined = hasattr(self, '_grids')
+        if save_all_fitters or (not grids_already_defined):
+            if save_all_fitters:
+                subgroup = group.create_group('fitters')
+            if not grids_already_defined:
+                self._grids = [np.zeros(self.shape + self.data.shape[:-1])\
+                    for index in range(self.num_quantities)]
+            for indices in np.ndindex(*self.shape):
+                fitter = self.fitter_from_indices(indices)
+                if not grids_already_defined:
+                    quantity_values = self.compiled_quantity(fitter)
+                    for (iquantity, quantity) in enumerate(quantity_values):
+                        self._grids[iquantity][indices] = quantity
+                if save_all_fitters:
+                    format_string = (('{}_' * (self.ndim - 1)) + '{}')
+                    subsubgroup =\
+                        subgroup.create_group(format_string.format(*indices))
+                    fitter.fill_hdf5_group(subsubgroup)
+        subgroup = group.create_group('dimensions')
+        for (idimension, dimension) in enumerate(self.dimensions):
+            subsubgroup =\
+                subgroup.create_group('dimension_{}'.format(idimension))
+            for name in dimension:
+                subsubgroup.create_dataset(name, data=dimension[name])
+        subgroup = group.create_group('grids')
+        for name in self.compiled_quantity.names:
+            subgroup.create_dataset(name, data=self[name])
+        if self.data.ndim == 1:
+            if save_all_fitters:
+                indices = self.minimize_quantity(self.quantity_to_minimize)
+                format_string = 'fitters/{}' + ('_{}' * (self.ndim - 1))
+                group['optimal_fitter'] = group[format_string.format(indices)]
+            else:
+                subgroup = group.create_group('optimal_fitter')
+                self.fitter.fill_hdf5_group(subgroup)
+        else:
+            subgroup = group.create_group('optimal_fitters')
+            left_format_string = 'optimal_fitters/data_curve' +\
+                ('_{}' * (self.data.ndim - 1))
+            for data_indices in np.ndindex(*self.data.shape[:-1]):
+                left_group_name = left_format_string.format(*data_indices)
+                if save_all_fitters:
+                    indices = self.minimize_quantity(\
+                        self.quantity_to_minimize, data_indices)
+                    right_format_string =\
+                        'fitters/{}' + ('_{}' * (self.ndim - 1))
+                    group[left_group_name] =\
+                        group[right_format_string.format(*indices)]
+                else:
+                    subsubgroup = group.create_group(left_group_name)
+                    self.fitter[data_indices].fill_hdf5_group(subsubgroup)
     
     def plot_grid(self, grid, title='', fig=None, ax=None, xticks=None,\
         yticks=None, xlabel='', ylabel='', show=False, norm=None, **kwargs):
@@ -204,7 +287,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder):
         if self.shape != grid.shape:
             raise ValueError("Only grids of the same shape as this " +\
                              "MetaFitter can be plotted.")
-        if len(self.shape) != 2:
+        if self.ndim != 2:
             raise ValueError("Only 2D grids can be plotted.")
         if (fig is None) or (ax is None):
             fig = pl.figure()

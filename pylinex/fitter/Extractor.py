@@ -41,7 +41,6 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
     def __init__(self, data, error, names, training_sets, dimensions,\
         compiled_quantity=CompiledQuantity('empty'),\
         quantity_to_minimize='bias_score', expanders=None,\
-        save_training_sets=False, save_all_fitters=False,\
         num_curves_to_score=None, verbose=True):
         """
         Initializes an Extractor object with the given data and error vectors,
@@ -64,12 +63,6 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
                               CompiledQuantity to minimize to perform model
                               selection
         expanders: list of Expander objects which expand each of the basis sets
-        save_training_sets: if True, when Extractor is written to hdf5 group,
-                                     the training sets are saved in it.
-                            otherwise, training sets are excluded
-        save_all_fitters: if True, all Fitter objects for each point on the
-                                   grid are saved.
-                          otherwise, only "optimal" Fitter is saved.
         num_curves_to_score: the approximate number of combined training set
                              curves to use when computing the bias_score
                              quantity
@@ -90,8 +83,6 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             self.compiled_quantity =\
                 compiled_quantity + self.bias_score_quantity
         self.quantity_to_minimize = quantity_to_minimize
-        self.save_training_sets = save_training_sets
-        self.save_all_fitters = save_all_fitters
         self.verbose = verbose
     
     @property
@@ -161,52 +152,6 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             self._verbose = value
         else:
             raise TypeError("verbose was set to a non-bool.")
-    
-    @property
-    def save_training_sets(self):
-        """
-        Property storing the boolean switch determining whether or not training
-        sets are saved when this Extractor is saved.
-        """
-        if not hasattr(self, '_save_training_sets'):
-            raise AttributeError("save_training_sets was referenced before " +\
-                                 "it was set.")
-        return self._save_training_sets
-    
-    @save_training_sets.setter
-    def save_training_sets(self, value):
-        """
-        Sets the save_training_sets boolean switch.
-        
-        value: must be a bool
-        """
-        if type(value) in bool_types:
-            self._save_training_sets = value
-        else:
-            raise TypeError("save_training_sets was set to a non-bool.")
-    
-    @property
-    def save_all_fitters(self):
-        """
-        Property storing the boolean switch determining whether or not training
-        sets are saved when this Extractor is saved.
-        """
-        if not hasattr(self, '_save_all_fitters'):
-            raise AttributeError("save_all_fitters was referenced before " +\
-                                 "it was set.")
-        return self._save_all_fitters
-    
-    @save_all_fitters.setter
-    def save_all_fitters(self, value):
-        """
-        Sets the save_all_fitters boolean switch.
-        
-        value: must be a bool
-        """
-        if type(value) in bool_types:
-            self._save_all_fitters = value
-        else:
-            raise TypeError("save_all_fitters was set to a non-bool.")
     
     @property
     def quantity_to_minimize(self):
@@ -462,8 +407,8 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         """
         if not hasattr(self, '_meta_fitter'):
             self._meta_fitter = MetaFitter(self.basis_set, self.data,\
-                self.error, self.compiled_quantity, *self.dimensions,\
-                **self.priors)
+                self.error, self.compiled_quantity, self.quantity_to_minimize,\
+                *self.dimensions, **self.priors)
         return self._meta_fitter
     
     @property
@@ -474,51 +419,51 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         """
         if not hasattr(self, '_fitter'):
             if self.data.ndim == 1:
-                self._fitter = self.meta_fitter.minimize_quantity(\
+                indices = self.meta_fitter.minimize_quantity(\
                     self.quantity_to_minimize)
+                self._fitter = self.meta_fitter.fitter_from_indices(indices)
                 if self.verbose:
                     print("Chose the following numbers of parameters: " +\
                         "{!s}".format(self._fitter.sizes))
-            elif self.data.ndim == 2:
-                self._fitter = [self.meta_fitter.minimize_quantity(\
-                    self.quantity_to_minimize, index)\
-                    for index in range(self.data.shape[0])]
-                if self.verbose:
-                    print("Chose the following numbers of parameters: " +\
-                        "{!s}".format([fit.sizes for fit in self._fitter]))
+            elif self.data.ndim > 1:
+                self._fitter = np.ndarray(self.data.shape[:-1], dtype=object)
+                for data_indices in np.ndindex(*self.data.shape[:-1]):
+                    indices = self.meta_fitter.minimize_quantity(\
+                        self.quantity_to_minimize, data_indices)
+                    self._fitter[data_indices] =\
+                        self.meta_fitter.fitter_from_indices(indices)
+                    if self.verbose:
+                        print("Chose the following numbers of parameters: " +\
+                            "{!s}".format(self._fitter[data_indices]))
         return self._fitter
     
-    def fill_hdf5_group(self, group):
+    @property
+    def expander_set(self):
+        """
+        Property yielding an ExpanderSet object organizing the expanders here
+        so that "true" curves for (e.g.) systematics can be found by using the
+        data as well as a "true" curve for the signal.
+        """
+        if not hasattr(self, '_expander_set'):
+            self._expander_set = ExpanderSet(self.data, self.error,\
+                **{self.names[iname]: self.expanders[iname]\
+                for iname in range(self.num_bases)})
+        return self._expander_set
+    
+    def fill_hdf5_group(self, group, save_all_fitters=False,\
+        save_training_sets=False):
         """
         Fills the given hdf5 file group with data about this extraction,
         including the optimal fitter and the grids of statistics which were
         calculated.
         
         group: the hdf5 file group into which to save data
+        save_all_fitters: bool determining whether to save all fitters in grid
+        save_training_sets: bool determining whether to save training sets
         """
-        group.attrs['quantity_to_minimize'] = self.quantity_to_minimize
-        self.compiled_quantity.fill_hdf5_group(group.create_group(\
-            'compiled_quantity'), exclude=['bias_score'])
-        if self.data.ndim == 1:
-            self.fitter.fill_hdf5_group(group.create_group('optimal_fitter'))
-        elif self.data.ndim == 2:
-            subgroup = group.create_group('optimal_fitters')
-            for ifitter in range(len(self.fitter)):
-                self.fitter[ifitter].fill_hdf5_group(subgroup.create_group(\
-                    'data_curve_{}'.format(ifitter)))
-        if self.save_all_fitters:
-            self.meta_fitter.save_all_fitters_to_hdf5_group(\
-                group.create_group('fitters'))
-        subgroup = group.create_group('dimensions')
-        for (idimension, dimension) in enumerate(self.dimensions):
-            subsubgroup =\
-                subgroup.create_group('dimension_{}'.format(idimension))
-            for name in dimension:
-                subsubgroup.create_dataset(name, data=dimension[name])
-        subgroup = group.create_group('grids')
-        for name in self.compiled_quantity.names:
-            subgroup.create_dataset(name, data=self.meta_fitter[name])
-        if self.save_training_sets:
+        self.meta_fitter.fill_hdf5_group(group,\
+            save_all_fitters=save_all_fitters)
+        if save_training_sets:
             subgroup = group.create_group('training_sets')
             for ibasis in range(self.num_bases):
                 subgroup.create_dataset(self.names[ibasis],\
