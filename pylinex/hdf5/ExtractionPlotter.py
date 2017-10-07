@@ -312,6 +312,33 @@ class ExtractionPlotter(object):
                 self._channel_RMSs[name] = np.sqrt(np.mean(np.power(\
                     self.channel_errors[name], 2), axis=-1))
         return self._channel_RMSs
+    
+    def get_true_curve(self, icurve, name, true_curves):
+        """
+        """
+        if name is None:
+            if self.multiple_data_curves:
+                return self.data[icurve]
+            else:
+                return self.data
+        elif name in true_curves:
+            return true_curves[name]
+        else:
+            if self.multiple_data_curves:
+                expander_set =\
+                    self.expander_set.reset_data(self.data[icurve])
+            else:
+                expander_set = self.expander_set
+            for true_curve_name in true_curves:
+                expander_set = expander_set.marginalize(true_curve_name,\
+                    true_curves[true_curve_name])
+            try:
+                (separated_curves, residual) = expander_set.separate()
+            except RuntimeError:
+                raise ValueError("Not enough true curves were given in " +\
+                    "order to infer the desired one.")
+            else:
+                return separated_curves[name]
 
     def plot_subbasis_fit(self, icurve=0, nsigma=1, name=None, true_curves={},\
         title='Subbasis fit', subtract_truth=False, plot_truth=False,\
@@ -319,27 +346,16 @@ class ExtractionPlotter(object):
         """
         """
         if subtract_truth or plot_truth:
-            if name is None:
-                true_curve = self.data
-            elif name in true_curves:
-                true_curve = true_curves[name]
-            else:
-                expander_set = self.expander_set
-                for true_curve_name in true_curves:
-                    expander_set = expander_set.marginalize(true_curve_name,\
-                        true_curves[true_curve_name])
-                try:
-                    (separated_curves, residual) = expander_set.separate()
-                except RuntimeError:
-                    raise ValueError("Not enough true curves were given in " +\
-                        "order to infer the desired one.")
-                true_curve = separated_curves[name]
-        if self.multiple_data_curves:
-            channel_mean = self.channel_means[name][icurve]
-            channel_error = self.channel_errors[name][icurve]
+            true_curve = self.get_true_curve(icurve, name, true_curves)
+        if name is None:
+            channel_mean = self.channel_mean
+            channel_error = self.channel_error
         else:
             channel_mean = self.channel_means[name]
             channel_error = self.channel_errors[name]
+        if self.multiple_data_curves:
+            channel_mean = channel_mean[icurve]
+            channel_error = channel_error[icurve]
         channels = np.arange(len(channel_error))
         if subtract_truth:
             mean_to_plot = channel_mean - true_curve
@@ -360,9 +376,10 @@ class ExtractionPlotter(object):
             pl.show()
         
     
-    def plot_subbasis_fit_grid(self, nsigma=1, name=None, true_curves={},\
-        title='Subbasis fit grid', subtract_truth=False, plot_truth=False,\
-        low_indices=(0,0), high_indices=(-1,-1), yscale='linear', show=False):
+    def plot_subbasis_fit_grid(self, icurve=0, nsigma=1, name=None,\
+        true_curves={}, title='Subbasis fit grid', subtract_truth=False,\
+        plot_truth=False, low_indices=(0,0), high_indices=(-1,-1),\
+        yscale='linear', show=False):
         """
         Plots a grid of subbasis fits.
         
@@ -378,17 +395,7 @@ class ExtractionPlotter(object):
                        returns
         """
         if subtract_truth or plot_truth:
-            if name is None:
-                true_curve = self.data
-            elif name in true_curves:
-                true_curve = true_curves[name]
-            else:
-                expander_set = self.expander_set
-                for true_curve_name in true_curves:
-                    expander_set = expander_set.marginalize(true_curve_name,\
-                        true_curves[true_curve_name])
-                (separated_curves, residual) = expander_set.separate()
-                true_curve = separated_curves[name]
+            true_curve = self.get_true_curve(icurve, name, true_curves)
         low_indices = (low_indices[0] % self.dimension_lengths[0],\
             low_indices[1] % self.dimension_lengths[1])
         high_indices = (high_indices[0] % self.dimension_lengths[0],\
@@ -416,6 +423,8 @@ class ExtractionPlotter(object):
                 group_name = group_name + '/{!s}'.format(name)
             channel_mean =\
                 self.file['{!s}/channel_mean'.format(group_name)].value
+            if self.multiple_data_curves:
+                channel_mean = channel_mean[icurve]
             channel_error =\
                 self.file['{!s}/channel_error'.format(group_name)].value
             if subtract_truth:

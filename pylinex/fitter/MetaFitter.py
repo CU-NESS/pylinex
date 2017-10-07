@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as pl
 from matplotlib.colors import LogNorm, SymLogNorm
 from distpy import GaussianDistribution 
-from ..util import VariableGrid, int_types, sequence_types
+from ..util import Savable, VariableGrid, int_types, sequence_types
 from ..quantity import QuantityFinder
 from .Fitter import Fitter
 try:
