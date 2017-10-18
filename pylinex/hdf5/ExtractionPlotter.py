@@ -11,8 +11,10 @@ import os
 import numpy as np
 import matplotlib.pyplot as pl
 from matplotlib.colors import LogNorm
+from ..util import get_hdf5_value
+from ..basis import load_basis_set_from_hdf5_group
 from ..fitter import Extractor
-from ..expander import ExpanderSet, load_expander_from_hdf5_group
+from ..expander import ExpanderSet, load_expander_set_from_hdf5_group
 try:
     import h5py
 except:
@@ -81,7 +83,7 @@ class ExtractionPlotter(object):
         numbers of terms to use.
         """
         if not hasattr(self, '_dimensions'):
-            group = self.file['dimensions']
+            group = self.file['meta_fitter/dimensions']
             idim = 0
             self._dimensions = []
             while 'dimension_{}'.format(idim) in group:
@@ -119,7 +121,7 @@ class ExtractionPlotter(object):
         
         name: name of quantity which desired grid concerns
         """
-        return self.file['grids/{!s}'.format(name)].value
+        return get_hdf5_value(self.file['meta_fitter/grids/{!s}'.format(name)])
     
     def __getitem__(self, key):
         """
@@ -208,14 +210,33 @@ class ExtractionPlotter(object):
             if self.multiple_data_curves:
                 self._channel_mean = []
                 for icurve in range(self.num_data_curves):
-                    this_mean_dataset_name = ('optimal_fitters/' +\
-                        'data_curve_{}/posterior/channel_mean').format(icurve)
-                    this_mean = self.file[this_mean_dataset_name].value[icurve]
+                    fitter_group = self.file[('meta_fitter/optimal_fitters/' +\
+                        'data_curve_{}').format(icurve)]
+                    if 'channel_mean' in fitter_group['posterior']:
+                        this_mean_dataset_name = ('meta_fitter/' +\
+                            'optimal_fitters/data_curve_{}/posterior/' +\
+                            'channel_mean').format(icurve)
+                        this_mean = get_hdf5_value(\
+                            fitter_group['posterior/channel_mean'])[icurve]
+                    else:
+                        basis_set = load_basis_set_from_hdf5_group(\
+                            fitter_group['basis_set'])
+                        parameter_mean = get_hdf5_value(\
+                            fitter_group['posterior/parameter_mean'])
+                        this_mean =\
+                            np.dot(parameter_mean, basis_set.basis)[icurve]
                     self._channel_mean.append(this_mean)
                 self._channel_mean = np.array(self._channel_mean)
+            elif 'channel_mean' in\
+                self.file['meta_fitter/optimal_fitter/posterior']:
+                self._channel_mean = get_hdf5_value(self.file[\
+                    'meta_fitter/optimal_fitter/posterior/channel_mean'])
             else:
-                self._channel_mean = self.file[('optimal_fitter/posterior/' +\
-                    'channel_mean')].value
+                basis_set = load_basis_set_from_hdf5_group(\
+                    self.file['meta_fitter/optimal_fitter/basis_set'])
+                parameter_mean = get_hdf5_value(self.file[\
+                    'meta_fitter/optimal_fitter/posterior/parameter_mean'])
+                self._channel_mean = np.dot(parameter_mean, basis_set.basis)
         return self._channel_mean
     
     @property
@@ -228,21 +249,41 @@ class ExtractionPlotter(object):
             if self.multiple_data_curves:
                 self._channel_means = {name: [] for name in self.names}
                 for icurve in range(self.num_data_curves):
+                    fitter_group = self.file[('meta_fitter/' +\
+                        'optimal_fitters/data_curve_{}').format(icurve)]
+                    basis_set = load_basis_set_from_hdf5_group(\
+                        fitter_group['basis_set'])
                     for name in self.names:
-                        this_mean_name =\
-                            ('optimal_fitters/data_curve_{0}/posterior/' +\
-                            '{1!s}/channel_mean').format(icurve, name)
-                        this_mean = self.file[this_mean_name].value[icurve]
+                        if 'channel_mean' in\
+                            fitter_group['posterior/{!s}'.format(name)]:
+                            this_mean = get_hdf5_value( fitter_group[\
+                                'posterior/{!s}/channel_mean'.format(name)])[\
+                                icurve]
+                        else:
+                            parameter_mean = get_hdf5_value(fitter_group[\
+                                'posterior/{!s}/parameter_mean'.format(name)])
+                            this_mean = np.dot(parameter_mean[icurve],\
+                                basis_set[name].basis)
                         self._channel_means[name].append(this_mean)
                 for name in self.names:
                     self._channel_means[name] =\
                         np.array(self._channel_means[name])
             else:
                 self._channel_means = {}
+                fitter_group = self.file['meta_fitter/optimal_fitter']
+                basis_set = load_basis_set_from_hdf5_group(\
+                    fitter_group['basis_set'])
                 for name in self.names:
-                    this_mean_name = ('optimal_fitter/posterior/{!s}/' +\
-                        'channel_mean').format(name)
-                    self._channel_means[name] = self.file[this_mean_name].value
+                    if 'channel_mean' in\
+                        fitter_group['posterior/{!s}'.format(name)]:
+                        self._channel_means[name] = get_hdf5_value(\
+                            fitter_group['posterior/{!s}/channel_mean'.format(\
+                            name)])
+                    else:
+                        parameter_mean = get_hdf5_value(fitter_group[\
+                            'posterior/{!s}/parameter_mean'.format(name)])
+                        self._channel_means[name] =\
+                            np.dot(parameter_mean, basis_set.basis)
         return self._channel_means
     
     @property
@@ -254,13 +295,15 @@ class ExtractionPlotter(object):
             if self.multiple_data_curves:
                 self._channel_error = []
                 for icurve in range(self.num_data_curves):
-                    error_name = ('optimal_fitters/data_curve_{}/' +\
-                        'posterior/channel_error').format(icurve)
-                    self._channel_error.append(self.file[error_name].value)
+                    error_name = ('meta_fitter/optimal_fitters/' +\
+                        'data_curve_{}/posterior/channel_error').format(icurve)
+                    self._channel_error.append(\
+                        get_hdf5_value(self.file[error_name]))
                 self._channel_error = np.array(self._channel_error)
             else:
-                error_name = 'optimal_fitter/posterior/channel_error'
-                self._channel_error = self.file[error_name].value
+                error_name =\
+                    'meta_fitter/optimal_fitter/posterior/channel_error'
+                self._channel_error = get_hdf5_value(self.file[error_name])
         return self._channel_error
     
     @property
@@ -274,10 +317,10 @@ class ExtractionPlotter(object):
                 self._channel_errors = {name: [] for name in self.names}
                 for icurve in range(self.num_data_curves):
                     for name in self.names:
-                        error_name = ('optimal_fitters/data_curve_{0}/' +\
-                            'posterior/{1!s}/channel_error').format(icurve,\
-                            name)
-                        this_error = self.file[error_name].value
+                        error_name = ('meta_fitter/optimal_fitters/' +\
+                            'data_curve_{0}/posterior/{1!s}/' +\
+                            'channel_error').format(icurve, name)
+                        this_error = get_hdf5_value(self.file[error_name])
                         self._channel_errors[name].append(this_error)
                 for name in self.names:
                     self._channel_errors[name] =\
@@ -285,9 +328,10 @@ class ExtractionPlotter(object):
             else:
                 self._channel_errors = {}
                 for name in self.names:
-                    error_name = ('optimal_fitter/posterior/{!s}/' +\
-                        'channel_error').format(name)
-                    self._channel_errors[name] = self.file[error_name].value
+                    error_name = ('meta_fitter/optimal_fitter/posterior/' +\
+                        '{!s}/channel_error').format(name)
+                    self._channel_errors[name] =\
+                        get_hdf5_value(self.file[error_name])
         return self._channel_errors
     
     @property
@@ -313,8 +357,25 @@ class ExtractionPlotter(object):
                     self.channel_errors[name], 2), axis=-1))
         return self._channel_RMSs
     
-    def get_true_curve(self, icurve, name, true_curves):
+    def get_true_curve(self, name, true_curves, icurve=None):
         """
+        Infers a true curve from the given true curves and the data associated
+        with this object.
+        
+        name: the name of the component of the data under consideration here
+        true_curves: dictionary of "true" curves in the data. If the desired
+                     curve is in this dictionary, it is returned. Otherwise,
+                     this function attempts to infer the true value of a curve
+                     from those given in this dictionary. If the amount of
+                     curves in this dictionary is insufficient, a ValueError
+                     will be raised
+        icurve: if more than one data curve is in this ExtractorPlotter, the
+                icurve argument describes which curve is under consideration.
+                If only one data curve is contained herein, this argument can
+                safely be ignored
+        
+        returns: 1D numpy.ndarray containing "true" value of desired curve
+                 (with noise added if name not in true_curves)
         """
         if name is None:
             if self.multiple_data_curves:
@@ -342,36 +403,91 @@ class ExtractionPlotter(object):
 
     def plot_subbasis_fit(self, icurve=0, nsigma=1, name=None, true_curves={},\
         title='Subbasis fit', subtract_truth=False, plot_truth=False,\
-        yscale='linear', show=False):
+        yscale='linear', error_to_plot='posterior', verbose=True, ax=None,\
+        scale_factor=1, show=False):
         """
+        Plots a subbasis fit from this Extractor.
+        
+        icurve: argument describing the index of the data curve under
+                consideration. If only one data curve is stored in this
+                ExtractionPlotter, this can be safely ignored
+        nsigma: number of sigma levels of to which to plot error
+        name: name of the subbasis of the data under consideration
+        true_curves: dictionary whose keys are names of data components and
+                     whose values are the "true" curves representing those
+                     components
+        title: title of the created plot
+        subtract_truth: if True, the curve to plot has "true" curve subtracted
+                                 from it
+        plot_truth: if True and subtract_truth is False, plot "true" curve in
+                                                         addition to estimate
+        yscale: 'linear', 'log', or 'symlog'
+        error_to_plot: if 'posterior', error plotted comes from posterior
+                                       distribution (i.e. it is the "real"
+                                       estimate)
+                       if 'likelihood', 
+        verbose: if True, useful reminders to the user are printed
+        show: if True, matplotlib.pyplot.show() is called before this function
+                       returns
         """
+        if ax is None:
+            fig = pl.figure()
+            ax = fig.add_subplot(111)
         if subtract_truth or plot_truth:
-            true_curve = self.get_true_curve(icurve, name, true_curves)
+            true_curve = self.get_true_curve(name, true_curves, icurve=icurve)
+        error_to_plot = error_to_plot.lower() # allow capital letters
+        if error_to_plot == 'likelihood':
+            if verbose:
+                print("Plotting likelihood error (i.e. noise level) " +\
+                    "instead of posterior error at user's request. If this " +\
+                    "isn't what you want, change the error_to_plot " +\
+                    "argument of the plot_subbasis_fit* function you called.")
+        elif error_to_plot != 'posterior':
+            raise ValueError("error_to_plot wasn't recognized. It should " +\
+                "be either 'posterior' or 'likelihood'.")
         if name is None:
             channel_mean = self.channel_mean
-            channel_error = self.channel_error
+            if error_to_plot == 'posterior':
+                channel_error = self.channel_error
+            else:
+                channel_error = self.error
         else:
             channel_mean = self.channel_means[name]
-            channel_error = self.channel_errors[name]
+            if error_to_plot == 'posterior':
+                channel_error = self.channel_errors[name]
+            else:
+                channel_error =\
+                    self.expander_set[name].contract_error(self.error)
         if self.multiple_data_curves:
             channel_mean = channel_mean[icurve]
-            channel_error = channel_error[icurve]
+            if error_to_plot == 'posterior':
+                # there is only one error if error_to_plot is 'likelihood',
+                # so this block is unnecessary in that case
+                channel_error = channel_error[icurve]
+        channel_mean = scale_factor * channel_mean
+        channel_error = scale_factor * channel_error
+        if plot_truth or subtract_truth:
+            true_curve = scale_factor * true_curve
         channels = np.arange(len(channel_error))
         if subtract_truth:
             mean_to_plot = channel_mean - true_curve
         else:
             mean_to_plot = channel_mean
-        pl.plot(channels, mean_to_plot, color='r', linewidth=2)
-        pl.fill_between(channels, mean_to_plot - (nsigma * channel_error),\
-            mean_to_plot + (nsigma * channel_error), color='r', alpha=0.3)
-        pl.plot(channels, np.zeros_like(channels), color='k', linewidth=1)
+        ax.plot(channels, mean_to_plot, color='r', linewidth=1)
+        if subtract_truth and (error_to_plot == 'likelihood'):
+            ax.fill_between(channels, -nsigma * channel_error,\
+                nsigma * channel_error, color='r', alpha=0.3)
+        else:
+            ax.fill_between(channels, mean_to_plot - (nsigma * channel_error),\
+                mean_to_plot + (nsigma * channel_error), color='r', alpha=0.3)
+        ax.plot(channels, np.zeros_like(channels), color='k', linewidth=1)
         if subtract_truth:
-            pl.plot(channels, np.zeros_like(channels), color='k',\
-                linewidth=2)
+            ax.plot(channels, np.zeros_like(channels), color='k',\
+                linewidth=1)
         elif plot_truth:
-            pl.plot(channels, true_curve, color='k', linewidth=2)
-        pl.gca().set_yscale(yscale)
-        pl.title(title, size='xx-large')
+            ax.plot(channels, true_curve, color='k', linewidth=1)
+        ax.set_yscale(yscale)
+        ax.set_title(title, size='xx-large')
         if show:
             pl.show()
         
@@ -395,7 +511,7 @@ class ExtractionPlotter(object):
                        returns
         """
         if subtract_truth or plot_truth:
-            true_curve = self.get_true_curve(icurve, name, true_curves)
+            true_curve = self.get_true_curve(name, true_curves, icurve=icurve)
         low_indices = (low_indices[0] % self.dimension_lengths[0],\
             low_indices[1] % self.dimension_lengths[1])
         high_indices = (high_indices[0] % self.dimension_lengths[0],\
@@ -418,15 +534,16 @@ class ExtractionPlotter(object):
             irow = (iplot // ncols) + low_indices[1]
             icol = (iplot % ncols) + low_indices[0]
             ax = fig.add_subplot(nrows, ncols, iplot + 1)
-            group_name = 'fitters/{}_{}/posterior'.format(icol, irow)
+            group_name =\
+                'meta_fitter/fitters/{}_{}/posterior'.format(icol, irow)
             if name is not None:
                 group_name = group_name + '/{!s}'.format(name)
-            channel_mean =\
-                self.file['{!s}/channel_mean'.format(group_name)].value
+            channel_mean = get_hdf5_value(\
+                self.file['{!s}/channel_mean'.format(group_name)])
             if self.multiple_data_curves:
                 channel_mean = channel_mean[icurve]
-            channel_error =\
-                self.file['{!s}/channel_error'.format(group_name)].value
+            channel_error = get_hdf5_value(\
+                self.file['{!s}/channel_error'.format(group_name)])
             if subtract_truth:
                 mean_to_plot = channel_mean - true_curve
             else:
@@ -450,7 +567,8 @@ class ExtractionPlotter(object):
         if show:
             pl.show()
     
-    def plot_grid(self, name, log_from_min=False, show=False, **kwargs):
+    def plot_grid(self, name, icurve=None, log_from_min=False, show=False,\
+        **kwargs):
         """
         Plots the saved grid of the given quantity.
         
@@ -462,6 +580,13 @@ class ExtractionPlotter(object):
         **kwargs: extra keyword arguments to pass to matplotlib.pyplot.imshow()
         """
         grid = self[name]
+        if self.multiple_data_curves:
+            if icurve is None:
+                raise ValueError("Since the hdf5 file given to this " +\
+                    "plotter contains many data curves, a value of icurve " +\
+                    "must be provided.")
+            else:
+                grid = grid[...,icurve]
         if grid.ndim == 1:
             grid = grid[:,np.newaxis]
             oneD = True
@@ -496,26 +621,92 @@ class ExtractionPlotter(object):
         Property storing a dictionary of statistics from the "optimal" fit.
         """
         if not hasattr(self, '_statistics'):
-            if self.multiple_data_curves:
-                self._statistics = {}
-                for icurve in range(self.num_data_curves):
-                    group_name = 'optimal_fitters/data_curve_{}'.format(icurve)
-                    group = self.file[group_name]
-                    for key in group.attrs:
-                        this_attribute = group.attrs[key]
-                        if isinstance(this_attribute, np.ndarray):
-                            this_attribute = this_attribute[icurve]
-                        if key in self._statistics:
-                            self._statistics[key].append(this_attribute)
-                        else:
-                            self._statistics[key] = [this_attribute]
-                for key in self._statistics:
-                    self._statistics[key] = np.array(self._statistics[key])
-            else:
-                group = self.file['optimal_fitter']
-                self._statistics =\
-                    {key: group.attrs[key] for key in group.attrs}
+            self._statistics = self.statistics_by_minimized_quantity()
         return self._statistics
+    
+    def minimum_indices(self, quantity_name=None, icurve=None):
+        if quantity_name is None:
+            quantity_name = self.quantity_to_minimize
+        grid = self.get_grid(quantity_name)
+        if icurve is not None:
+            grid = grid[...,icurve]
+        return np.unravel_index(np.argmin(grid), grid.shape)
+    
+    def statistics_by_minimized_quantity(self, minimized_quantity=None,\
+        grid_quantities=[]):
+        """
+        """
+        if not hasattr(self, '_statistics_by_minimized_quantity'):
+            self._statistics_by_minimized_quantity = {}
+        if minimized_quantity not in self._statistics_by_minimized_quantity:
+            no_saved_statistics_error = ValueError("No saved statistics " +\
+                "for given minimized_quantity to minimize.")
+            if self.multiple_data_curves:
+                new_statistics = {}
+                group_name = 'meta_fitter'
+                if minimized_quantity is None:
+                    group_name = '{!s}/optimal_fitters/data_curve_'.format(\
+                        group_name)
+                else:
+                    group_name = ('{0!s}/{1!s}_optimal_fitters/' +\
+                        'data_curve_').format(group_name, minimized_quantity)
+                for icurve in range(self.num_data_curves):
+                    try:
+                        group =\
+                            self.file['{0!s}{1}'.format(group_name, icurve)]
+                    except KeyError:
+                        raise no_saved_statistics_error
+                    else:
+                        for key in group.attrs:
+                            this_attribute = group.attrs[key]
+                            if isinstance(this_attribute, np.ndarray):
+                                this_attribute = this_attribute[icurve]
+                            if key in new_statistics:
+                                new_statistics[key].append(this_attribute)
+                            else:
+                                new_statistics[key] = [this_attribute]
+                    for quantity_name in grid_quantities:
+                        if quantity_name not in group.attrs:
+                            minimum_indices = self.minimum_indices(\
+                                minimized_quantity, icurve)
+                            this_attribute = get_hdf5_value(\
+                                self.file['meta_fitter/grids/{!s}'.format(\
+                                quantity_name)])
+                            this_attribute =\
+                                this_attribute[minimum_indices][icurve]
+                            if quantity_name in new_statistics:
+                                new_statistics[quantity_name].append(\
+                                    this_attribute)
+                            else:
+                                new_statistics[quantity_name] =\
+                                    [this_attribute]
+                for key in new_statistics:
+                    new_statistics[key] = np.array(new_statistics[key])
+                self._statistics_by_minimized_quantity[minimized_quantity] =\
+                    new_statistics
+            else:
+                 group_name = 'meta_fitter'
+                 if minimized_quantity is None:
+                     group_name = '{!s}/optimal_fitter'.format(group_name)
+                 else:
+                     group_name = '{0!s}/{1!s}_optimal_fitter'.format(\
+                         group_name, minimized_quantity)
+                 try:
+                     group = self.file[group_name]
+                 except KeyError:
+                     raise no_saved_statistics_error
+                 else:
+                     new_statistics =\
+                         {key: group.attrs[key] for key in group.attrs}
+                 for quantity_name in grid_quantities:
+                     if quantity_name not in new_statistics:
+                         indices = self.minimum_indices(minimized_quantity)
+                         new_statistics[quantity_name] = get_hdf5_value(\
+                             self.file['meta_fitter/grids/{!s}'.format(\
+                             quantity_name)])[indices]
+                 self._statistics_by_minimized_quantity[\
+                     minimized_quantity] = new_statistics
+        return self._statistics_by_minimized_quantity[minimized_quantity]
     
     @property
     def multiple_data_curves(self):
@@ -524,7 +715,8 @@ class ExtractionPlotter(object):
         of this ExtractionPlotter contained multiple data curves or just one.
         """
         if not hasattr(self, '_multiple_data_curves'):
-            self._multiple_data_curves = ('optimal_fitters' in self.file)
+            self._multiple_data_curves =\
+                ('meta_fitter/optimal_fitters' in self.file)
         return self._multiple_data_curves
     
     @property
@@ -534,7 +726,7 @@ class ExtractionPlotter(object):
         if not hasattr(self, '_num_data_curves'):
             if self.multiple_data_curves:
                 self._num_data_curves = 0
-                while 'optimal_fitters/data_curve_{}'.format(\
+                while 'meta_fitter/optimal_fitters/data_curve_{}'.format(\
                     self._num_data_curves) in self.file:
                     self._num_data_curves += 1
             else:
@@ -548,7 +740,7 @@ class ExtractionPlotter(object):
         at the heart of this ExtractionPlotter.
         """
         if not hasattr(self, '_data'):
-            self._data = self.file['data'].value
+            self._data = get_hdf5_value(self.file['data'])
         return self._data
     
     @property
@@ -558,7 +750,7 @@ class ExtractionPlotter(object):
         which saved trhe hdf5 file at the heart of this ExtractionPlotter.
         """
         if not hasattr(self, '_error'):
-            self._error = self.file['error'].value
+            self._error = get_hdf5_value(self.file['error'])
         return self._error
     
     @property
@@ -569,7 +761,7 @@ class ExtractionPlotter(object):
         """
         if not hasattr(self, '_quantity_to_minimize'):
             self._quantity_to_minimize =\
-                self.file.attrs['quantity_to_minimize']
+                self.file['meta_fitter'].attrs['quantity_to_minimize']
         return self._quantity_to_minimize
     
     @property
@@ -579,18 +771,7 @@ class ExtractionPlotter(object):
         data.
         """
         if not hasattr(self, '_names'):
-            self._names = []
-            if self.multiple_data_curves:
-                group_name_from_ibasis = (lambda x: ('optimal_fitters/' +\
-                    'data_curve_0/basis_set/basis_{}').format(x))
-            else:
-                group_name_from_ibasis =\
-                    (lambda x: ('optimal_fitter/basis_set/basis_{}').format(x))
-            ibasis = 0
-            while group_name_from_ibasis(ibasis) in self.file:
-                self._names.append(\
-                    self.file[group_name_from_ibasis(ibasis)].attrs['name'])
-                ibasis += 1
+            self._names = [key for key in self.file['names'].attrs]
         return self._names
     
     @property
@@ -600,20 +781,7 @@ class ExtractionPlotter(object):
         different components of the data (in the same order as names).
         """
         if not hasattr(self, '_expanders'):
-            self._expanders = []
-            if self.multiple_data_curves:
-                fitter_group_name = 'optimal_fitters/data_curve_0'
-            else:
-                fitter_group_name = 'optimal_fitter'
-            basis_set_group_name =\
-                '{!s}/basis_set'.format(fitter_group_name)
-            for iname in range(len(self.names)):
-                basis_group_name =\
-                    '{0!s}/basis_{1:d}'.format(basis_set_group_name, iname)
-                expander_group_name = '{!s}/expander'.format(basis_group_name)
-                expander_group = self.file[expander_group_name]
-                expander = load_expander_from_hdf5_group(expander_group)
-                self._expanders.append(expander)
+            self._expanders = [self.expander_set[name] for name in self.names]
         return self._expanders
     
     @property
@@ -624,9 +792,8 @@ class ExtractionPlotter(object):
         data as well as a "true" curve for the signal.
         """
         if not hasattr(self, '_expander_set'):
-            self._expander_set = ExpanderSet(self.data, self.error,\
-                **{self.names[iname]: self.expanders[iname]\
-                for iname in range(len(self.names))})
+            self._expander_set =\
+                load_expander_set_from_hdf5_group(self.file['expanders'])
         return self._expander_set
     
     @property
@@ -640,8 +807,8 @@ class ExtractionPlotter(object):
             if 'training_sets' in self.file:
                 self._training_sets = []
                 for name in self.names:
-                    self._training_sets.append(\
-                        self.file['training_sets/{!s}'.format(name)].value)
+                    self._training_sets.append(get_hdf5_value(\
+                        self.file['training_sets/{!s}'.format(name)]))
             else:
                 raise ValueError("training_sets cannot be retrieved from " +\
                     "hdf5 file because save_training_sets flag was set to " +\
@@ -655,8 +822,9 @@ class ExtractionPlotter(object):
         Extractor which made the file at the heart of this ExtractionPlotter.
         """
         if not hasattr(self, '_compiled_quantity'):
+            group = self.file['meta_fitter/compiled_quantity']
             self._compiled_quantity =\
-                load_quantity_from_hdf5_group(self.file['compiled_quantity'])
+                load_quantity_from_hdf5_group(group)
         return self._compiled_quantity
     
     @property

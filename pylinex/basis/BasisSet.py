@@ -224,15 +224,22 @@ class BasisSet(Basis):
                 {name: self[name].num_basis_vectors for name in self.names}
         return self._sizes
     
-    def fill_hdf5_group(self, group):
+    def fill_hdf5_group(self, group, basis_links=None, expander_links=None):
         """
         Fills the given hdf5 file group with data about this basis set.
         
         group: the hdf5 file group to fill
         """
+        if basis_links is None:
+            basis_links = [None for name in self.names]
+        if expander_links is None:
+            expander_links = [None for name in self.names]
         for (iname, name) in enumerate(self.names):
+            basis_link = basis_links[iname]
+            expander_link = expander_links[iname]
             subgroup = group.create_group('basis_{}'.format(iname))
-            self[name].fill_hdf5_group(subgroup)
+            self[name].fill_hdf5_group(subgroup, basis_link=basis_link,\
+                expander_link=expander_link)
             subgroup.attrs['name'] = name
     
     def __iter__(self):

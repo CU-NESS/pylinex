@@ -16,7 +16,7 @@ import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as pl
 from distpy import GaussianDistribution
-from ..util import Savable
+from ..util import Savable, get_hdf5_value, create_hdf5_dataset
 from ..expander import Expander, NullExpander, load_expander_from_hdf5_group
 
 class Basis(Savable):
@@ -410,7 +410,7 @@ class Basis(Savable):
         """
         return Basis.subbasis(self, basis_indices_to_keep)
     
-    def fill_hdf5_group(self, group):
+    def fill_hdf5_group(self, group, basis_link=None, expander_link=None):
         """
         Fills the given hdf5 file group with data about this basis.
         Particularly, this function records the basis array and the expander.
@@ -418,8 +418,11 @@ class Basis(Savable):
         group: hdf5 file group to fill       
         """
         group.attrs['class'] = 'Basis'
-        group.create_dataset('basis', data=self.basis)
-        self.expander.fill_hdf5_group(group.create_group('expander'))
+        create_hdf5_dataset(group, 'basis', data=self.basis, link=basis_link)
+        try:
+            create_hdf5_dataset(group, 'expander', link=expander_link)
+        except ValueError:
+            self.expander.fill_hdf5_group(group.create_group('expander'))
     
     def plot(self, basis_indices=slice(None), title='Basis', x_values=None,\
         show=True, fig=None, ax=None, **kwargs):
@@ -452,7 +455,7 @@ def load_basis_from_hdf5_group(group):
     
     returns: Basis object stored in the hdf5 group
     """
-    basis = group['basis'].value
+    basis = get_hdf5_value(group['basis'])
     expander = load_expander_from_hdf5_group(group['expander'])
     return Basis(basis, expander=expander)
 

@@ -8,6 +8,7 @@ Description: File containing class representing an Expander which expands its
 """
 import numpy as np
 import numpy.linalg as la
+from ..util import create_hdf5_dataset
 from .Expander import Expander
 
 class ModulationExpander(Expander):
@@ -209,15 +210,19 @@ class ModulationExpander(Expander):
                 "expected input size ({1}).").format(original_space_size,\
                 self.input_size))
     
-    def fill_hdf5_group(self, group):
+    def fill_hdf5_group(self, group, modulating_factors_link=None):
         """
         Saves data about this in the given hdf5 file group.
         
         group: hdf5 file group to which to write
+        modulating_factors_link: if None, modulating_factors are saved directly
+                                 otherwise, this should be an extant
+                                 h5py.Group, h5py.Dataset, or HDF5Link (from
+                                 pylinex.util) object
         """
         group.attrs['class'] = 'ModulationExpander'
-        group.create_dataset('modulating_factors',\
-            data=self.modulating_factors)
+        create_hdf5_dataset(group, 'modulating_factors',\
+            data=self.modulating_factors, link=modulating_factors_link)
     
     def __eq__(self, other):
         """

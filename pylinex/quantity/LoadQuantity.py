@@ -33,12 +33,14 @@ def load_quantity_from_hdf5_group(self, group):
         args = []
         iarg = 0
         subgroup = group['args']
-        while 'arg_{}'.format(iarg) in subgroup.attrs:
-            args.append(subgroup.attrs['arg_{}'.format(iarg)])
+        while 'arg_{}'.format(iarg) in subgroup:
+            args.append(get_hdf5_value(subgroup['arg_{}'.format(iarg)]))
             iarg += 1
         subgroup = group['kwargs']
-        for key in subgroup.attrs:
-            kwargs[key] = subgroup.attrs[key]
+        for key in subgroup:
+            if 'arg_' in key:
+                continue
+            kwargs[key] = get_hdf5_value(subgroup[key])
         return FunctionQuantity(name, *args, **kwargs)
     elif class_name == 'CompiledQuantity':
         iquantity = 0

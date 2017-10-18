@@ -9,7 +9,8 @@ Description: Imports the most important elements from all submodules. The
              desired class (e.g. Extractor). There is no need for (and indeed
              confusion can arise if) imports of specific submodules are done.
 """
-from pylinex.util import Savable, VariableGrid
+from pylinex.util import Savable, VariableGrid, HDF5Link, get_hdf5_value,\
+    create_hdf5_dataset
 from pylinex.quantity import Quantity, ConstantQuantity, AttributeQuantity,\
     FunctionQuantity, CompiledQuantity, CalculatedQuantity, QuantityFinder,\
     load_quantity_from_hdf5_group

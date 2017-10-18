@@ -9,7 +9,7 @@ Description: File containing a class representing a quantity that is calculated
              when called. When called, it must be given an object on which to
              call the function.
 """
-from ..util import sequence_types, Savable
+from ..util import sequence_types, Savable, create_hdf5_dataset
 from .Quantity import Quantity
 
 class FunctionQuantity(Quantity, Savable):
@@ -100,17 +100,9 @@ class FunctionQuantity(Quantity, Savable):
         group.attrs['name'] = self.name
         subgroup = group.create_group('args')
         for iarg in range(len(self.function_args)):
-            try:
-                subgroup.attrs['arg_{}'.format(iarg)] =\
-                    self.function_args[iarg]
-            except:
-                raise ValueError(("arg_{} of FunctionQuantity couldn't be " +\
-                    "saved to an hdf5 file group attribute.").format(iarg))
+            create_hdf5_dataset(subgroup, 'arg_{}'.format(iarg),\
+                data=self.function_args[iarg])
         subgroup = group.create_group('kwargs')
         for key in self.function_kwargs:
-            try:
-                subgroup.attrs[key] = self.function_kwargs[key]
-            except:
-                raise ValueError(("Keyword argument with key {!s} couldn't " +\
-                    "be saved to an hdf5 file group attribute.").format(key))
+            create_hdf5_dataset(subgroup, key, data=self.function_kwargs[key])
 

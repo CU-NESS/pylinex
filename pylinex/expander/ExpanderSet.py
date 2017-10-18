@@ -1,14 +1,26 @@
 """
+File: pylinex/expander/ExpanderSet.py
+Author: Keith Tauscher
+Date: 8 Oct 2017
+
+Description: File containing a container for many Expander objects associated
+             with different names.
 """
 import numpy as np
-from ..util import Savable
+from ..util import Savable, create_hdf5_dataset
 from .Expander import Expander
 
 class ExpanderSet(Savable):
     """
+    Container class for many Expander objects associated with string names.
     """
     def __init__(self, data, error, **expanders):
         """
+        Initializes a new ExpanderSet with the given contents.
+        
+        data: the data with which to infer "true" curves
+        error: the error with which to define inner product
+        expanders: dictionary of expanders to store in this object
         """
         self.error = error
         self.data = data
@@ -208,11 +220,13 @@ class ExpanderSet(Savable):
         """
         return iter(self.expanders.values())
     
-    def fill_hdf5_group(self, group):
+    def fill_hdf5_group(self, group, data_link=None, error_link=None):
         """
         """
-        group.create_dataset('__data__', data=self.data)
-        group.create_dataset('__error__', data=self.error)
+        data_link = create_hdf5_dataset(group, '__data__', data=self.data,\
+            link=data_link)
+        error_link = create_hdf5_dataset(group, '__error__', data=self.error,\
+            link=error_link)
         for name in self.expanders:
             self.expanders[name].fill_hdf5_group(group.create_group(name))
 

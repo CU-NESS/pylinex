@@ -11,7 +11,8 @@ import numpy as np
 import matplotlib.pyplot as pl
 from matplotlib.colors import LogNorm, SymLogNorm
 from distpy import GaussianDistribution 
-from ..util import Savable, VariableGrid, int_types, sequence_types
+from ..util import Savable, VariableGrid, create_hdf5_dataset, HDF5Link,\
+    int_types, sequence_types
 from ..quantity import QuantityFinder
 from .Fitter import Fitter
 try:
@@ -129,15 +130,12 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
         if self.has_priors:
             for name in self.basis_set.names:
                 key = name + '_prior'
-                old_prior = self.priors[key]
-                if name in subsets:
-                    mi = subsets[name]
-                    new_mean = old_prior.mean.A[0,:mi]
-                    new_covariance = old_prior.covariance.A[:mi][:,:mi]
-                    result[key] =\
-                        GaussianDistribution(new_mean, new_covariance)
-                else:
-                    result[key] = old_prior
+                if key in self.priors:
+                    old_prior = self.priors[key]
+                    if name in subsets:
+                        result[key] = old_prior[:subsets[name]]
+                    else:
+                        result[key] = old_prior
         return result
     
     def __getitem__(self, index):
@@ -191,23 +189,76 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
             else:
                 grid_slice = grid_slice + tuple(which_data)
         grid = self[index][grid_slice]
-        quantity = self.compiled_quantity[index]
         if verbose:
-            print("Minimizing {!s} over grid.".format(quantity.name))
+            print("Minimizing {!s} over grid.".format(\
+                self.compiled_quantity[index].name))
         return np.unravel_index(np.argmin(grid), grid.shape)
     
-    def fill_hdf5_group(self, group, save_all_fitters=False):
+    def fill_hdf5_group(self, group, save_all_fitters=False,\
+        data_link=None, error_link=None, expander_links=None,\
+        save_channel_estimates=False):
         """
         Saves all fitters to an hdf5 group. This should be used cautiously, as
         it would take an unreasonably long time for large grids.
         
         group: hdf5 file group to fill with Fitter information
         """
-        group.create_dataset('data', data=self.data)
-        group.create_dataset('error', data=self.error)
+        data_link =\
+            create_hdf5_dataset(group, 'data', data=self.data, link=data_link)
+        error_link = create_hdf5_dataset(group, 'error', data=self.error,\
+            link=error_link)
         group.attrs['quantity_to_minimize'] = self.quantity_to_minimize
         self.compiled_quantity.fill_hdf5_group(group.create_group(\
             'compiled_quantity'), exclude=['bias_score'])
+        self.basis_set.fill_hdf5_group(group.create_group('basis_set'),\
+            expander_links=expander_links)
+        if self.has_priors:
+            subgroup = group.create_group('prior')
+            for name in self.names:
+                key = '{!s}_prior'.format(name)
+                if key in self.priors:
+                    self.priors[key].fill_hdf5_group(\
+                        subgroup.create_group(name))
+        if expander_links is None:
+            expander_links = []
+            for ibasis in range(len(self.names)):
+                expander_links.append(\
+                    group['basis_set/basis_{}/expander'.format(ibasis)])
+        def prior_links_from_indices(subset_indices):
+            """
+            Finds the prior mean links and prior covariance links from the
+            given indices.
+            """
+            if self.has_priors:
+                (prior_mean_links, prior_covariance_links) = ({}, {})
+                subsets = self.point_from_indices(subset_indices)
+                for name in self.names:
+                    prior_path = 'prior/{!s}'.format(name)
+                    if '{!s}_prior'.format(name) in self.priors:
+                        prior_mean_links[name] =\
+                            group['{!s}/mean'.format(prior_path)]
+                        prior_covariance_links[name] =\
+                            group['{!s}/covariance'.format(prior_path)]
+                    else:
+                        prior_mean_links[name] = None
+                        prior_covariance_links[name] = None
+                return (prior_mean_links, prior_covariance_links)
+            else:
+                return (None, None)
+        def basis_links_from_indices(subset_indices):
+            """
+            Finds the basis links from the given indices.
+            """
+            answer = []
+            subsets = self.point_from_indices(subset_indices)
+            for (iname, name) in enumerate(self.names):
+                relative_path = 'basis_set/basis_{}/basis'.format(iname)
+                if name in subsets:
+                    answer.append(HDF5Link(group[relative_path],\
+                        slice(subsets[name])))
+                else:
+                    answer.append(HDF5Link(group[relative_path]))
+            return answer
         grids_already_defined = hasattr(self, '_grids')
         if save_all_fitters or (not grids_already_defined):
             if save_all_fitters:
@@ -225,24 +276,46 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
                     format_string = (('{}_' * (self.ndim - 1)) + '{}')
                     subsubgroup =\
                         subgroup.create_group(format_string.format(*indices))
-                    fitter.fill_hdf5_group(subsubgroup)
+                    basis_links = basis_links_from_indices(indices)
+                    (prior_mean_links, prior_covariance_links) =\
+                        prior_links_from_indices(indices)
+                    fitter.fill_hdf5_group(subsubgroup, data_link=data_link,\
+                        error_link=error_link, basis_links=basis_links,\
+                        expander_links=expander_links,\
+                        prior_mean_links=prior_mean_links,\
+                        prior_covariance_links=prior_covariance_links,\
+                        save_channel_estimates=save_channel_estimates)
         subgroup = group.create_group('dimensions')
         for (idimension, dimension) in enumerate(self.dimensions):
             subsubgroup =\
                 subgroup.create_group('dimension_{}'.format(idimension))
             for name in dimension:
-                subsubgroup.create_dataset(name, data=dimension[name])
+                create_hdf5_dataset(subsubgroup, name, data=dimension[name])
         subgroup = group.create_group('grids')
         for name in self.compiled_quantity.names:
-            subgroup.create_dataset(name, data=self[name])
+            create_hdf5_dataset(subgroup, name, data=self[name])
         if self.data.ndim == 1:
             if save_all_fitters:
-                indices = self.minimize_quantity(self.quantity_to_minimize)
-                format_string = 'fitters/{}' + ('_{}' * (self.ndim - 1))
-                group['optimal_fitter'] = group[format_string.format(indices)]
+                for quantity in self.compiled_quantity:
+                    indices = self.minimize_quantity(quantity.name)
+                    format_string = 'fitters/{}' + ('_{}' * (self.ndim - 1))
+                    group_name = format_string.format(*indices)
+                    group['{!s}_optimal_fitter'.format(quantity.name)] =\
+                        group[group_name]
+                    if quantity.name == self.quantity_to_minimize:
+                        group['optimal_fitter'] = group[group_name]
             else:
+                indices = self.minimize_quantity(self.quantity_to_minimize)
                 subgroup = group.create_group('optimal_fitter')
-                self.fitter.fill_hdf5_group(subgroup)
+                basis_links = basis_links_from_indices(indices)
+                (prior_mean_links, prior_covariance_links) =\
+                    prior_links_from_indices(indices)
+                self.fitter.fill_hdf5_group(subgroup, data_link=data_link,\
+                    error_link=error_link, basis_links=basis_links,\
+                    expander_links=expander_links,\
+                    prior_mean_links=prior_mean_links,\
+                    prior_covariance_links=prior_covariance_links,\
+                    save_channel_estimates=save_channel_estimates)
         else:
             subgroup = group.create_group('optimal_fitters')
             left_format_string = 'optimal_fitters/data_curve' +\
@@ -250,15 +323,28 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
             for data_indices in np.ndindex(*self.data.shape[:-1]):
                 left_group_name = left_format_string.format(*data_indices)
                 if save_all_fitters:
-                    indices = self.minimize_quantity(\
-                        self.quantity_to_minimize, data_indices)
-                    right_format_string =\
-                        'fitters/{}' + ('_{}' * (self.ndim - 1))
-                    group[left_group_name] =\
-                        group[right_format_string.format(*indices)]
+                    for quantity in self.compiled_quantity:
+                        indices = self.minimize_quantity(quantity.name,\
+                            data_indices)
+                        right_format_string =\
+                            'fitters/{}' + ('_{}' * (self.ndim - 1))
+                        right_group_name = right_format_string.format(*indices)
+                        group['{0!s}_{1!s}'.format(quantity.name,\
+                            left_group_name)] = group[right_group_name]
+                        if quantity.name == self.quantity_to_minimize:
+                            group[left_group_name] = group[right_group_name]
                 else:
                     subsubgroup = group.create_group(left_group_name)
-                    self.fitter[data_indices].fill_hdf5_group(subsubgroup)
+                    basis_links = basis_links_from_indices(indices)
+                    (prior_mean_links, prior_covariance_links) =\
+                        prior_links_from_indices(indices)
+                    self.fitter[data_indices].fill_hdf5_group(subsubgroup,\
+                        data_link=data_link, error_link=error_link,\
+                        basis_links=basis_links,\
+                        expander_links=expander_links,\
+                        prior_mean_links=prior_mean_links,\
+                        prior_covariance_links=prior_covariance_links,\
+                        save_channel_estimates=save_channel_estimates)
     
     def plot_grid(self, grid, title='', fig=None, ax=None, xticks=None,\
         yticks=None, xlabel='', ylabel='', show=False, norm=None, **kwargs):

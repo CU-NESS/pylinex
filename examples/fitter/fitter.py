@@ -22,6 +22,8 @@ name = 'polynomial'
 basis = PolynomialBasis(xs, 15)
 basis_set = BasisSet([name], [basis])
 fitter = Fitter(basis_set, data)
+
+
 fitter.plot_subbasis_fit(nsigma=1, name=name, true_curve=noiseless_data,\
     x_values=xs, colors='r', show=True)
 

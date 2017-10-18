@@ -11,4 +11,6 @@ from pylinex.util.TypeCategories import int_types, float_types,\
     real_numerical_types
 from pylinex.util.Savable import Savable
 from pylinex.util.VariableGrid import VariableGrid
+from pylinex.util.h5py_extensions import HDF5Link, get_hdf5_value,\
+    create_hdf5_dataset
 

@@ -19,7 +19,7 @@ class Savable(object):
     Class representing any object which can be saved to an hdf5 file. This
     class cannot be directly instantiated.
     """
-    def fill_hdf5_group(self, group, **kwargs):
+    def fill_hdf5_group(self, group, *args, **kwargs):
         """
         Fills hdf5 file group with data about this object. This function must
         be implemented by any subclasses of this function.
@@ -30,7 +30,7 @@ class Savable(object):
                                   "instantiated. fill_hdf5_group function " +\
                                   "must be re-implemented.")
     
-    def save(self, file_name, **kwargs):
+    def save(self, file_name, *args, **kwargs):
         """
         Saves data about this object in an hdf5 file at the given file name.
         
@@ -39,7 +39,7 @@ class Savable(object):
         """
         if have_h5py:
             hdf5_file = h5py.File(file_name, 'w')
-            self.fill_hdf5_group(hdf5_file, **kwargs)
+            self.fill_hdf5_group(hdf5_file, *args, **kwargs)
             hdf5_file.close()
         else:
             raise NotImplementedError("Saving cannot be performed if h5py " +\

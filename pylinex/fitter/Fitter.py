@@ -11,7 +11,7 @@ import numpy as np
 import numpy.linalg as npla
 import scipy.linalg as scila
 import matplotlib.pyplot as pl
-from ..util import Savable
+from ..util import Savable, create_hdf5_dataset
 from ..basis import Basis, BasisSet
 from .TrainingSetIterator import TrainingSetIterator
 try:
@@ -75,6 +75,10 @@ class Fitter(Savable):
     
     @property
     def sizes(self):
+        """
+        Property storing a dictionary with basis names as keys and the number
+        of basis vectors in that basis as values.
+        """
         if not hasattr(self, '_sizes'):
             self._sizes = self.basis_set.sizes
         return self._sizes
@@ -118,15 +122,42 @@ class Fitter(Savable):
                GaussianPrior objects.
         """
         self._priors = value
+        self._has_all_priors = False
         if self.has_priors:
-            self._prior_mean = np.concatenate(\
-                [self._priors[key + '_prior'].mean.A[0] for key in self.names])
-            self._prior_covariance = scila.block_diag(*\
-                [self._priors[key + '_prior'].covariance.A\
-                for key in self.names])
-            self._prior_inverse_covariance = scila.block_diag(*\
-                [self._priors[key + '_prior'].invcov.A\
-                for key in self.names])
+            self._has_all_priors = True
+            self._prior_mean = []
+            self._prior_covariance = []
+            self._prior_inverse_covariance = []
+            for name in self.names:
+                key = '{!s}_prior'.format(name)
+                if key in self._priors:
+                    self._prior_mean.append(self._priors[key].mean.A[0])
+                    self._prior_covariance.append(\
+                        self._priors[key].covariance.A)
+                    self._prior_inverse_covariance.append(\
+                        self._priors[key].invcov.A)
+                else:
+                    nparams = self.basis_set[name].num_basis_vectors
+                    self._prior_mean.append(np.zeros(nparams))
+                    self._prior_covariance.append(np.zeros((nparams, nparams)))
+                    self._prior_inverse_covariance.append(\
+                        np.zeros((nparams, nparams)))
+                    self._has_all_priors = False
+            self._prior_mean = np.concatenate(self._prior_mean)
+            self._prior_covariance = scila.block_diag(*self._prior_covariance)
+            self._prior_inverse_covariance =\
+                scila.block_diag(*self._prior_inverse_covariance)
+    
+    @property
+    def has_all_priors(self):
+        """
+        Property storing boolean describing whether all basis sets have priors.
+        """
+        if not hasattr(self, '_has_all_priors'):
+            raise AttributeError("has_all_priors was referenced before it " +\
+                "was set. It can't be referenced until the priors dict " +\
+                "exists.")
+        return self._has_all_priors
     
     @property
     def prior_mean(self):
@@ -186,18 +217,22 @@ class Fitter(Savable):
         """
         if not hasattr(self, '_prior_significance'):
             self._prior_significance = np.dot(self.prior_mean,\
-                np.dot(self.prior_covariance, self.prior_mean))
+                np.dot(self.prior_inverse_covariance, self.prior_mean))
         return self._prior_significance
     
     @property
     def log_prior_covariance_determinant(self):
         """
         Property storing the logarithm (base e) of the determinant of the prior
-        parameter covariance matrix.
+        parameter covariance matrix. Note that if a given prior is not given,
+        it is simply not used here (to avoid getting 0 as the determinant).
         """
         if not hasattr(self, '_log_prior_covariance_determinant'):
-            self._log_prior_covariance_determinant =\
-                npla.slogdet(self.prior_covariance)[1]
+            self._log_prior_covariance_determinant = 0
+            for key in self.priors:
+                this_prior_covariance = self.priors[key].covariance.A
+                self._log_prior_covariance_determinant +=\
+                    npla.slogdet(this_prior_covariance)[1]
         return self._log_prior_covariance_determinant
         
     
@@ -730,6 +765,64 @@ class Fitter(Savable):
         return self._normalized_bias_statistic
     
     @property
+    def likelihood_significance_difference(self):
+        """
+        Property storing the likelihood covariance part of the significance
+        difference. This is equal to (gamma^T C^-1 gamma - y^T C^-1 y) where
+        gamma is the posterior channel mean, C is the likelihood channel
+        covariance (i.e. data error), y is the data.
+        """
+        if not hasattr(self, '_likelihood_significance_difference'):
+            if self.multiple_data_curves:
+                error_to_divide = self.error[np.newaxis,:]
+            else:
+                error_to_divide = self.error
+            mean_sum = (self.channel_mean + self.data) / error_to_divide
+            mean_difference = (self.channel_mean - self.data) / error_to_divide
+            if self.multiple_data_curves:
+                self._likelihood_significance_difference =\
+                    np.einsum('ij,ij->i', mean_sum, mean_difference)
+            else:
+                self._likelihood_significance_difference =\
+                    np.dot(mean_sum, mean_difference)
+        return self._likelihood_significance_difference
+    
+    @property
+    def prior_significance_difference(self):
+        """
+        Property storing the prior covariance part of the significance
+        difference. This is equal to (nu^T Lambda^-1 nu - mu^T Lambda^-1 mu)
+        where mu is the prior mean, nu is the posterior mean, and Lambda is the
+        prior covariance matrix.
+        """
+        if not hasattr(self, '_prior_significance_difference'):
+            if self.multiple_data_curves:
+                self._prior_significance_difference =\
+                    np.zeros(self.data.shape[:-1])
+            else:
+                self._prior_significance_difference = 0
+            for name in self.names:
+                key = '{!s}_prior'.format(name)
+                if key in self.priors:
+                    prior = self.priors[key]
+                    prior_mean = prior.mean.A[0]
+                    prior_inverse_covariance = prior.invcov.A
+                    posterior_mean = self.subbasis_parameter_mean(name=name)
+                    mean_sum = posterior_mean + prior_mean
+                    mean_difference = posterior_mean - prior_mean
+                    if self.multiple_data_curves:
+                        self._prior_significance_difference =\
+                            self._prior_significance_difference +\
+                            np.einsum('ij,ik,jk->i', mean_sum,\
+                            mean_difference, prior_inverse_covariance)
+                    else:
+                        self._prior_significance_difference =\
+                            self._prior_significance_difference +\
+                            np.einsum('j,k,jk', mean_sum, mean_difference,\
+                            prior_inverse_covariance)
+        return self._prior_significance_difference
+    
+    @property
     def significance_difference(self):
         """
         Property storing the difference between the posterior significance and
@@ -737,31 +830,9 @@ class Fitter(Savable):
         in the log evidence.
         """
         if not hasattr(self, '_significance_difference'):
-            if self.multiple_data_curves:
-                parameter_mean_sum =\
-                    self.parameter_mean + self.prior_mean[np.newaxis,:]
-                parameter_mean_difference =\
-                    self.parameter_mean - self.prior_mean[np.newaxis,:]
-                prior_covariance_part = np.einsum('ij,ik,jk->i',\
-                    parameter_mean_sum, parameter_mean_difference,\
-                    self.prior_inverse_covariance)
-                weighted_channel_mean_sum = self.weighted_data +\
-                    (self.channel_mean / self.error[np.newaxis,:])
-                likelihood_covariance_part = np.einsum('ij,ij->i',\
-                    weighted_channel_mean_sum, self.weighted_bias)
-            else:
-                parameter_mean_sum = self.parameter_mean + self.prior_mean
-                parameter_mean_difference =\
-                    self.parameter_mean - self.prior_mean
-                prior_covariance_part = np.dot(parameter_mean_sum,\
-                    np.dot(self.prior_inverse_covariance,\
-                    parameter_mean_difference))
-                weighted_channel_mean_sum =\
-                    (self.data + self.channel_mean) / self.error
-                likelihood_covariance_part =\
-                    np.dot(weighted_channel_mean_sum, self.weighted_bias)
             self._significance_difference =\
-                prior_covariance_part + likelihood_covariance_part
+                self.likelihood_significance_difference +\
+                self.prior_significance_difference
         return self._significance_difference
     
     @property
@@ -775,10 +846,11 @@ class Fitter(Savable):
             self._log_evidence =\
                 (self.log_parameter_covariance_determinant_ratio +\
                 self.significance_difference) / 2.
-            # only constants added below, ignore if facing numerical problems
-            self._log_evidence = self._log_evidence -\
-                ((self.num_channels * np.log(2 * np.pi)) / 2.) -\
-                np.sum(np.log(self.error))
+            if self.has_all_priors:
+                # only constants added below, ignore if numerical problems
+                self._log_evidence = self._log_evidence -\
+                    (((self.num_channels * np.log(2 * np.pi)) / 2.) -\
+                    np.sum(np.log(self.error)))
         return self._log_evidence
     
     @property
@@ -953,11 +1025,13 @@ class Fitter(Savable):
         Alias for the bayesian_predictive_information_criterion property.
         """
         return self.bayesian_predictive_information_criterion
-    def subbasis_log_separation_evidence(self, name=None, per_channel=True):
+    
+    def subbasis_log_separation_evidence(self, name=None):
         """
-        Calculates the subbasis_log_separation evidence. This is the same as
-        the evidence with the log covariance determinant ratio replaced by the
-        log covariance determinant ratio for the given subbasis.
+        Calculates the subbasis_log_separation evidence per degree of freedom.
+        This is the same as the evidence with the log covariance determinant
+        ratio replaced by the log covariance determinant ratio for the given
+        subbasis (normalized by the degrees of freedom).
         
         name: string identifying subbasis under concern
         per_channel: if True, normalizes the log_separation_evidence by
@@ -965,25 +1039,32 @@ class Fitter(Savable):
         
         returns: single float number
         """
-        answer = self.log_evidence -\
-            (self.log_parameter_covariance_determinant_ratio / 2.) +\
-            (self.subbasis_log_parameter_covariance_determinant_ratio(\
-            name=name) / 2.)
-        if per_channel:
-            return answer / self.num_channels
-        else:
-            return answer
+        if not hasattr(self, '_subbasis_log_separation_evidences'):
+            self._subbasis_log_separation_evidences = {}
+        if name not in self._subbasis_log_separation_evidences:
+            self._subbasis_log_separation_evidences[name] =\
+                (self.log_evidence -\
+                (self.log_parameter_covariance_determinant_ratio / 2.) +\
+                (self.subbasis_log_parameter_covariance_determinant_ratio(\
+                name=name) / 2.)) / self.degrees_of_freedom
+        return self._subbasis_log_separation_evidences[name]
     
-    def subbasis_separation_evidence_per_channel(self, name=None):
+    def subbasis_separation_evidence_per_degree_of_freedom(self, name=None):
         """
-        Finds the subbasis separation evidence per data channel.
+        Finds the subbasis separation evidence per degree of freedom.
         
         name: string identifying subbasis under concern
         
         returns: single non-negative float number
         """
-        return np.exp(self.subbasis_log_separation_evidence(name=name,\
-            per_channel=True))
+        if not hasattr(self,\
+            '_subbasis_separation_evidences_per_degree_of_freedom'):
+            self._subbasis_separation_evidences_per_degree_of_freedom = {}
+        if name not in\
+            self._subbasis_separation_evidences_per_degree_of_freedom:
+            self._subbasis_separation_evidences_per_degree_of_freedom[name] =\
+                np.exp(self.subbasis_log_separation_evidence(name=name))
+        return self._subbasis_separation_evidences_per_degree_of_freedom[name]
     
     @property
     def log_separation_evidence(self):
@@ -1059,10 +1140,15 @@ class Fitter(Savable):
         
         returns: single float number
         """
-        prior = self.priors[name + '_prior']
-        mean = prior.mean.A[0]
-        invcov = prior.invcov.A
-        return np.dot(mean, np.dot(invcov, mean))
+        if not hasattr(self, '_subbasis_prior_significances'):
+            self._subbasis_prior_significances = {}
+        if name not in self._subbasis_prior_significances:
+            prior = self.priors[name + '_prior']
+            mean = prior.mean.A[0]
+            inverse_covariance = prior.invcov.A
+            self._subbasis_prior_significances[name] =\
+                np.dot(mean, np.dot(inverse_covariance, mean))
+        return self._subbasis_prior_significances[name]
         
     
     def subbasis_parameter_inverse_covariance(self, name=None):
@@ -1072,7 +1158,12 @@ class Fitter(Savable):
         
         name: string identifying subbasis under concern
         """
-        return npla.inv(self.subbasis_parameter_covariance(name=name))
+        if not hasattr(self, '_subbasis_parameter_inverse_covariances'):
+            self._subbasis_parameter_inverse_covariances = {}
+        if name not in self._subbasis_parameter_inverse_covariances:
+            self._subbasis_parameter_inverse_covariances[name] =\
+                npla.inv(self.subbasis_parameter_covariance(name=name))
+        return self._subbasis_parameter_inverse_covariances[name]
 
     def subbases_overlap_matrix(self, row_name=None, column_name=None):
         """
@@ -1102,8 +1193,13 @@ class Fitter(Savable):
         returns 2D numpy.ndarray of shape (k, k) where k is the number of basis
                 vectors in the subbasis
         """
-        subbasis_slice = self.basis_set.slices_by_name[name]
-        return self.parameter_covariance[:,subbasis_slice][subbasis_slice]
+        if not hasattr(self, '_subbasis_parameter_covariances'):
+            self._subbasis_parameter_covariances = {}
+        if name not in self._subbasis_parameter_covariances:
+            subbasis_slice = self.basis_set.slices_by_name[name]
+            self._subbasis_parameter_covariances[name] =\
+                self.parameter_covariance[:,subbasis_slice][subbasis_slice]
+        return self._subbasis_parameter_covariances[name]
     
     def subbasis_log_parameter_covariance_determinant(self, name=None):
         """
@@ -1114,7 +1210,13 @@ class Fitter(Savable):
         
         returns: single float number
         """
-        return npla.slogdet(self.subbasis_parameter_covariance(name=name))[1]
+        if not hasattr(self,\
+            '_subbasis_log_parameter_covariance_determinants'):
+            self._subbasis_log_parameter_covariance_determinants = {}
+        if name not in self._subbasis_log_parameter_covariance_determinants:
+            self._subbasis_log_parameter_covariance_determinants[name] =\
+                npla.slogdet(self.subbasis_parameter_covariance(name=name))[1]
+        return self._subbasis_log_parameter_covariance_determinants[name]
     
     def subbasis_log_prior_covariance_determinant(self, name=None):
         """
@@ -1127,8 +1229,12 @@ class Fitter(Savable):
         """
         if name is None:
             return self.log_prior_covariance_determinant
-        else:
-            return npla.slogdet(self.priors[name + '_prior'].covariance.A)[1]
+        if not hasattr(self, '_subbasis_log_prior_covariance_determinants'):
+            self._subbasis_log_prior_covariance_determinants = {}
+        if name not in self._subbasis_log_prior_covariance_determinants:
+            self._subbasis_log_prior_covariance_determinants[name] =\
+                npla.slogdet(self.priors[name + '_prior'].covariance.A)[1]
+        return self._subbasis_log_prior_covariance_determinants[name]
     
     def subbasis_log_parameter_covariance_determinant_ratio(self, name=None):
         """
@@ -1140,8 +1246,15 @@ class Fitter(Savable):
         
         returns: single float number
         """
-        return self.subbasis_log_parameter_covariance_determinant(name=name) -\
-            self.subbasis_log_prior_covariance_determinant(name=name)
+        if not hasattr(self,\
+            '_subbasis_log_parameter_covariance_determinant_ratios'):
+            self._subbasis_log_parameter_covariance_determinant_ratios = {}
+        if name not in\
+            self._subbasis_log_parameter_covariance_determinant_ratios:
+            self._subbasis_log_parameter_covariance_determinant_ratios[name] =\
+                self.subbasis_log_parameter_covariance_determinant(name=name)-\
+                self.subbasis_log_prior_covariance_determinant(name=name)
+        return self._subbasis_log_parameter_covariance_determinant_ratios[name]
     
     def subbasis_parameter_covariance_determinant_ratio(self, name=None):
         """
@@ -1153,12 +1266,19 @@ class Fitter(Savable):
         
         returns: single non-negative float number
         """
+        if not hasattr(self,\
+            '_subbasis_parameter_covariance_determinant_ratios'):
+            self._subbasis_parameter_covariance_determinant_ratios = {}
         if name is None:
-            return\
-                self.subbasis_log_parameter_covariance_determinant_ratios_sum
-        else:
-            return self.subbasis_log_parameter_covariance_determinant_ratio(\
-                name=name)
+            self._subbasis_parameter_covariance_determinant_ratios[name] =\
+                np.exp(\
+                self.subbasis_log_parameter_covariance_determinant_ratios_sum)
+        elif name not in self._subbasis_parameter_covariance_determinant_ratios:
+             self._subbasis_parameter_covariance_determinant_ratios[name] =\
+                 np.exp(\
+                 self.subbasis_log_parameter_covariance_determinant_ratio(\
+                 name=name))
+        return self._subbasis_parameter_covariance_determinant_ratios[name]
     
     def subbasis_channel_error(self, name=None):
         """
@@ -1173,13 +1293,14 @@ class Fitter(Savable):
         """
         if name is None:
             return self.channel_error
-        else:
-            return np.sqrt(np.diag(\
-                np.dot(self.basis_set[name].basis.T,\
-                np.dot(self.subbasis_parameter_covariance(name=name), self.basis_set[name].basis))))
-            #return np.einsum('ji,ki,jk->i', self.basis_set[name].basis,\
-            #    self.basis_set[name].basis,\
-            #    self.subbasis_parameter_covariance(name=name))
+        if not hasattr(self, '_subbasis_channel_errors'):
+            self._subbasis_channel_errors = {}
+        if name not in self._subbasis_channel_errors:
+            basis = self.basis_set[name].basis
+            self._subbasis_channel_errors[name] =\
+                np.sqrt(np.einsum('ji,ki,jk->i', basis, basis,\
+                self.subbasis_parameter_covariance(name=name)))
+        return self._subbasis_channel_errors[name]
     
     def subbasis_parameter_mean(self, name=None):
         """
@@ -1192,9 +1313,14 @@ class Fitter(Savable):
         returns: 1D numpy.ndarray containing the parameters for the given
                  subbasis
         """
-        return self.parameter_mean[...,self.basis_set.slices_by_name[name]]
+        if not hasattr(self, '_subbasis_parameter_means'):
+            self._subbasis_parameter_means = {}
+        if name not in self._subbasis_parameter_means:
+            self._subbasis_parameter_means[name] =\
+                self.parameter_mean[...,self.basis_set.slices_by_name[name]]
+        return self._subbasis_parameter_means[name]
     
-    def subbasis_channel_mean(self, name=None, expanded=False):
+    def subbasis_channel_mean(self, name=None):
         """
         The estimate of the contribution to the data from the given subbasis.
         
@@ -1204,12 +1330,48 @@ class Fitter(Savable):
         returns: 1D numpy.ndarray containing the channel-space estimate from
                  the given subbasis
         """
-        if expanded:
-            return np.dot(self.subbasis_parameter_mean(name=name),\
-                self.basis_set[name].expanded_basis)
-        else:
-            return np.dot(self.subbasis_parameter_mean(name=name),\
+        if not hasattr(self, '_subbasis_channel_means'):
+            self._subbasis_channel_means = {}
+        if name not in self._subbasis_channel_means:
+            self._subbasis_channel_means[name] =\
+                np.dot(self.subbasis_parameter_mean(name=name),\
                 self.basis_set[name].basis)
+        return self._subbasis_channel_means[name]
+    
+    def subbasis_channel_RMS(self, name=None):
+        """
+        Calculates and returns the RMS channel error on the estimate of the
+        contribution to the data from the given subbasis.
+        
+        name: (string) name of the subbasis under consideration. if None is
+              given, the full basis is used.
+        
+        returns: single float number RMS
+        """
+        if not hasattr(self, '_subbasis_channel_RMSs'):
+            self._subbasis_channel_RMSs = {}
+        if name not in self._subbasis_channel_RMSs:
+            self._subbasis_channel_RMSs[name] = np.sqrt(\
+                np.mean(np.power(self.subbasis_channel_error(name=name), 2)))
+        return self._subbasis_channel_RMSs[name]
+    
+    def subbasis_separation_statistic(self, name=None):
+        """
+        Finds the separation statistic associated with the given subbasis. The
+        separation statistic is essentially an RMS'd error expansion factor.
+        
+        name: name of the subbasis for which to find the separation statistic
+        """
+        if not hasattr(self, '_subbasis_separation_statistics'):
+            self._subbasis_separation_statistics = {}
+        if name not in self._subbasis_separation_statistics:
+            weighted_basis =\
+                self.basis_set[name].expanded_basis / self.error[np.newaxis,:]
+            self._subbasis_separation_statistics[name] = np.sqrt(\
+                np.einsum('ac,bc,ab', weighted_basis, weighted_basis,\
+                    self.subbasis_parameter_covariance(name=name)) /\
+                    self.degrees_of_freedom)
+        return self._subbasis_separation_statistics[name]
     
     def subbasis_channel_bias(self, name=None, true_curve=None):
         """
@@ -1219,20 +1381,12 @@ class Fitter(Savable):
         name: (string) name of the subbasis under consideration. if None is
               given, the full basis is used.
         true_curve: 1D numpy.ndarray of the same length as the basis vectors in
-                    the subbasis
+                    the subbasis channel space
         
         returns: 1D numpy.ndarray in channel space containing the difference
                  between the estimate of the data's contribution from the given
                  subbasis and the given true curve
         """
-        if true_curve is None:
-            expanded = False
-        elif true_curve.shape[-1] ==\
-            self.basis_set[name].num_smaller_channel_set_indices:
-            expanded = False
-        elif true_curve.shape[-1] ==\
-            self.basis_set[name].num_larger_channel_set_indices:
-            expanded = True
         if name is None:
             if true_curve is None:
                 return self.channel_bias
@@ -1245,51 +1399,11 @@ class Fitter(Savable):
                 raise ValueError("true_curve must be given to " +\
                                  "subbasis_channel_bias if the name of a " +\
                                  "subbasis is specified.")
-            elif self.multiple_data_curves:
-                if true_curve.ndim == 1:
-                    return self.subbasis_channel_mean(name=name,\
-                        expanded=expanded) - true_curve[np.newaxis,:]
-                else:
-                    return self.subbasis_channel_mean(name=name,\
-                        expanded=expanded) - true_curve
+            if self.multiple_data_curves and (true_curve.ndim == 1):
+                return self.subbasis_channel_mean(name=name) -\
+                    true_curve[np.newaxis,:]
             else:
-                return self.subbasis_channel_mean(name=name,\
-                    expanded=expanded) - true_curve
-    
-    def subbasis_channel_RMS(self, name=None):
-        """
-        Calculates and returns the RMS channel error on the estimate of the
-        contribution to the data from the given subbasis.
-        
-        name: (string) name of the subbasis under consideration. if None is
-              given, the full basis is used.
-        
-        returns: single float number RMS
-        """
-        return np.sqrt(\
-            np.mean(np.power(self.subbasis_channel_error(name=name), 2)))
-    
-    def subbasis_separation_statistic(self, name=None):
-        """
-        Finds the separation statistic associated with the given subbasis. The
-        separation statistic is essentially an RMS'd error expansion factor.
-        
-        name: name of the subbasis for which to find the separation statistic
-        """
-        weighted_expanded_basis =\
-            self.basis_set[name].expanded_basis / self.error
-        return np.sqrt(np.trace(np.dot(\
-            self.subbasis_parameter_covariance(name=name),\
-            np.dot(weighted_expanded_basis, weighted_expanded_basis.T))) /\
-            self.num_channels)
-    
-    def subbasis_weighted_basis(self, name=None):
-        """
-        Returns the weighted form of one of the sets of basis vectors.
-        
-        name: name of subbasis under concern
-        """
-        return self.basis_set[name].basis / self.error[np.newaxis,:]
+                return self.subbasis_channel_mean(name=name) - true_curve
     
     def subbasis_weighted_bias(self, name=None, true_curve=None):
         """
@@ -1318,25 +1432,26 @@ class Fitter(Savable):
     def subbasis_bias_statistic(self, name=None, true_curve=None):
         """
         The bias statistic of the fit to the contribution of the given
-        subbasis. The bias statistic is the difference between the given true
-        curve and the maximum likelihood estimate
+        subbasis. The bias statistic is delta^T C^-1 delta where delta is the
+        difference between the true curve(s) and the channel mean(s) normalized
+        by the degrees of freedom.
         
         name: (string) name of the subbasis under consideration. if None is
               given, the full basis is used.
         true_curve: 1D numpy.ndarray of the same length as the basis vectors in
                     the subbasis
-        compare_likelihood: if True, 
-                            if False, compares estimated expanded curve to
-                                      given true curve using extracted error
         
         returns: single float number representing roughly 
         """
         weighted_bias = self.subbasis_weighted_bias(name=name,\
             true_curve=true_curve)
+        normalization_factor =\
+            weighted_bias.shape[-1] - self.basis_set[name].num_basis_vectors
         if self.multiple_data_curves:
-            return np.einsum('ij,ij->i', weighted_bias, weighted_bias)
+            unnormalized = np.einsum('ij,ij->i', weighted_bias, weighted_bias)
         else:
-            return np.dot(weighted_bias, weighted_bias)
+            unnormalized = np.dot(weighted_bias, weighted_bias)
+        return unnormalized / normalization_factor
     
     def bias_score(self, training_sets, max_block_size=2**20,\
         num_curves_to_score=None, bases_to_score=None):
@@ -1372,36 +1487,62 @@ class Fitter(Savable):
             num_curves_to_score =\
                 np.prod([ts.shape[0] for ts in training_sets])
         score = score / (num_curves_to_score * num_channels)
-        print("basis_set.sizes={!s}, score={!s}".format(self.basis_set.sizes,\
-            score))
+        print("sizes={!s}, score={!s}".format(self.sizes, score))
         return score
     
-    def fill_hdf5_group(self, root_group):
+    def fill_hdf5_group(self, root_group, data_link=None, error_link=None,\
+        basis_links=None, expander_links=None, prior_mean_links=None,\
+        prior_covariance_links=None, save_channel_estimates=False):
         """
         Fills the given hdf5 file group with data about the inputs and results
         of this Fitter.
         
-        root_group: the hdf5 file group to fill
+        root_group: the hdf5 file group to fill (only required argument)
+        data_link: link to existing data dataset, if it exists (see
+                   create_hdf5_dataset docs for info about accepted formats)
+        error_link: link to existing error dataset, if it exists (see
+                    create_hdf5_dataset docs for info about accepted formats)
+        basis_links: list of links to basis functions saved elsewhere (see
+                     create_hdf5_dataset docs for info about accepted formats)
+        expander_links: list of links to existing saved Expander (see
+                        create_hdf5_dataset docs for info about accepted
+                        formats)
+        prior_mean_links: dict of links to existing saved prior means (see
+                          create_hdf5_dataset docs for info about accepted
+                          formats)
+        prior_covariance_links: dict of links to existing saved prior
+                                covariances (see create_hdf5_dataset docs for
+                                info about accepted formats)
         """
-        root_group.create_dataset('data', data=self.data)
-        root_group.create_dataset('error', data=self.error)
+        create_hdf5_dataset(root_group, 'data', data=self.data, link=data_link)
+        create_hdf5_dataset(root_group, 'error', data=self.error,\
+            link=error_link)
+        group = root_group.create_group('sizes')
+        for name in self.names:
+            group.attrs[name] = self.sizes[name]
         group = root_group.create_group('posterior')
-        group.create_dataset('parameter_mean', data=self.parameter_mean)
-        group.create_dataset('parameter_covariance',\
+        create_hdf5_dataset(group, 'parameter_mean', data=self.parameter_mean)
+        create_hdf5_dataset(group, 'parameter_covariance',\
             data=self.parameter_covariance)
-        group.create_dataset('channel_mean', data=self.channel_mean)
-        group.create_dataset('channel_error', data=self.channel_error)
+        if save_channel_estimates:
+            create_hdf5_dataset(group, 'channel_mean', data=self.channel_mean)
+        create_hdf5_dataset(group, 'channel_error', data=self.channel_error)
         for name in self.names:
             subgroup = group.create_group(name)
-            subgroup.create_dataset('parameter_covariance',\
-                data=self.subbasis_parameter_covariance(name=name))
-            subgroup.create_dataset('parameter_mean',\
-                data=self.subbasis_parameter_mean(name=name))
-            subgroup.create_dataset('channel_mean',\
-                data=self.subbasis_channel_mean(name=name))
-            subgroup.create_dataset('channel_error',\
+            subbasis_slice = self.basis_set.slices_by_name[name]
+            create_hdf5_dataset(subgroup, 'parameter_covariance',\
+                link=(group['parameter_covariance'],[subbasis_slice]*2))
+            mean_slices =\
+                (((slice(None),) * (self.data.ndim - 1)) + (subbasis_slice,))
+            create_hdf5_dataset(subgroup, 'parameter_mean',\
+                link=(group['parameter_mean'],mean_slices))
+            if save_channel_estimates:
+                create_hdf5_dataset(subgroup, 'channel_mean',\
+                    data=self.subbasis_channel_mean(name=name))
+            create_hdf5_dataset(subgroup, 'channel_error',\
                 data=self.subbasis_channel_error(name=name))
-        self.basis_set.fill_hdf5_group(root_group.create_group('basis_set'))
+        self.basis_set.fill_hdf5_group(root_group.create_group('basis_set'),\
+            basis_links=basis_links, expander_links=expander_links)
         root_group.attrs['degrees_of_freedom'] = self.degrees_of_freedom
         root_group.attrs['BPIC'] = self.BPIC
         root_group.attrs['DIC'] = self.DIC
@@ -1415,19 +1556,17 @@ class Fitter(Savable):
             root_group.attrs['log_evidence_per_data_channel'] =\
                 self.log_evidence_per_data_channel
             group = root_group.create_group('prior')
+            if prior_mean_links is None:
+                prior_mean_links = {name: None for name in self.names}
+            if prior_covariance_links is None:
+                prior_covariance_links = {name: None for name in self.names}
             for name in self.names:
-                subgroup = group.create_group(name)
-                self.priors[name + '_prior'].fill_hdf5_group(subgroup)
-    
-    @property
-    def sizes(self):
-        """
-        Property storing a dictionary with basis names as keys and the number
-        of basis vectors in that basis as values.
-        """
-        if not hasattr(self, '_sizes'):
-            self._sizes = self.basis_set.sizes
-        return self._sizes
+                key = '{!s}_prior'.format(name)
+                if key in self.priors:
+                    subgroup = group.create_group(name)
+                    self.priors[key].fill_hdf5_group(subgroup,\
+                        mean_link=prior_mean_links[name],\
+                        covariance_link=prior_covariance_links[name])
     
     def plot_overlap_matrix(self, title='Overlap matrix', fig=None, ax=None,\
         show=True, **kwargs):

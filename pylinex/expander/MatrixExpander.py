@@ -11,6 +11,7 @@ Description: File containing a class representing an Expander which expands
 """
 import numpy as np
 import numpy.linalg as la
+from ..util import create_hdf5_dataset
 from .Expander import Expander
 
 class MatrixExpander(Expander):
@@ -182,14 +183,18 @@ class MatrixExpander(Expander):
                 "expected input size ({1}).").format(original_space_size,\
                 self.input_size))
     
-    def fill_hdf5_group(self, group):
+    def fill_hdf5_group(self, group, matrix_link=None):
         """
         Saves data about this in the given hdf5 file group.
         
         group: hdf5 file group to which to write
+        matrix_link: if None, matrix is saved directly
+                     otherwise, this must be an extant h5py.Dataset,
+                     h5py.Group, or HDF5Link (from pylinex.util) object
         """
         group.attrs['class'] = 'MatrixExpander'
-        group.create_dataset('matrix', data=self.matrix)
+        create_hdf5_dataset(group, 'matrix', data=self.matrix,\
+            link=matrix_link)
     
     def __eq__(self, other):
         """

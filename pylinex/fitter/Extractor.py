@@ -8,9 +8,10 @@ Description: Class which uses the rest of the module to perform an end-to-end
              training set matrices and expanders.
 """
 import numpy as np
-from ..util import Savable, VariableGrid, sequence_types, int_types, bool_types
+from ..util import Savable, VariableGrid, create_hdf5_dataset, sequence_types,\
+    int_types, bool_types
 from ..quantity import QuantityFinder, FunctionQuantity, CompiledQuantity
-from ..expander import Expander, NullExpander
+from ..expander import Expander, NullExpander, ExpanderSet
 from ..basis import TrainedBasis, BasisSet
 from .MetaFitter import MetaFitter
 try:
@@ -41,7 +42,7 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
     def __init__(self, data, error, names, training_sets, dimensions,\
         compiled_quantity=CompiledQuantity('empty'),\
         quantity_to_minimize='bias_score', expanders=None,\
-        num_curves_to_score=None, verbose=True):
+        num_curves_to_score=None, use_priors_in_fit=False, verbose=True):
         """
         Initializes an Extractor object with the given data and error vectors,
         names, training sets, dimensions, compiled quantity, quantity to
@@ -66,6 +67,9 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         num_curves_to_score: the approximate number of combined training set
                              curves to use when computing the bias_score
                              quantity
+        use_priors_in_fit: if True, priors derived from training set will be
+                                    used in fits
+                           if False, no priors are used in fits
         verbose: if True, messages should be printed to the screen
         """
         self.data = data
@@ -83,7 +87,50 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             self.compiled_quantity =\
                 compiled_quantity + self.bias_score_quantity
         self.quantity_to_minimize = quantity_to_minimize
+        self.use_priors_in_fit = use_priors_in_fit
         self.verbose = verbose
+    
+    @property
+    def use_priors_in_fit(self):
+        """
+        Property storing bool desribing whether priors will be used in fits.
+        """
+        if not hasattr(self, '_use_priors_in_fit'):
+            raise AttributeError("use_priors_in_fit referenced before it " +\
+                "was set.")
+        return self._use_priors_in_fit
+    
+    @use_priors_in_fit.setter
+    def use_priors_in_fit(self, value):
+        """
+        Setter for whether priors will be used in fits.
+        
+        value: if True, priors derived from training set will be used in fits
+               if False, no priors are used in fits
+        """
+        if type(value) in bool_types:
+            self._use_priors_in_fit = {name: value for name in self.names}
+        elif isinstance(value, dict):
+            if set([key for key in value.keys()]) <= set(self.names):
+                if all([(type(value[key]) in bool_types) for key in value]):
+                    self._use_priors_in_fit = value
+                    for name in\
+                        (set(self.names) - set([key for key in value.keys()])):
+                        self._use_priors_in_fit[name] = False
+                        print(("{!s} wasn't included in use_priors_in_fit " +\
+                            "dict, so no priors will be used for it.").format(\
+                            name))
+                else:
+                    raise TypeError("Not all values of the given " +\
+                        "dictionary are bools.")
+            else:
+                raise ValueError("Not all names in the given dictionary " +\
+                    "are names of this Extractor.")
+        else:
+            raise TypeError("If use_priors_in_fit is set to a non-bool, " +\
+                "it should be set to a dictionary whose keys are the " +\
+                "names of this Extractor and whose values are bools.")
+        
     
     @property
     def num_curves_to_score(self):
@@ -395,8 +442,9 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         if not hasattr(self, '_priors'):
             self._priors = {}
             for name in self.names:
-                self._priors[name + '_prior'] =\
-                    self.basis_set[name].gaussian_prior
+                if self.use_priors_in_fit[name]:
+                    self._priors['{!s}_prior'.format(name)] =\
+                        self.basis_set[name].gaussian_prior
         return self._priors
 
     @property
@@ -451,7 +499,7 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         return self._expander_set
     
     def fill_hdf5_group(self, group, save_all_fitters=False,\
-        save_training_sets=False):
+        save_training_sets=False, save_channel_estimates=False):
         """
         Fills the given hdf5 file group with data about this extraction,
         including the optimal fitter and the grids of statistics which were
@@ -461,12 +509,22 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         save_all_fitters: bool determining whether to save all fitters in grid
         save_training_sets: bool determining whether to save training sets
         """
-        self.meta_fitter.fill_hdf5_group(group,\
-            save_all_fitters=save_all_fitters)
+        data_link = create_hdf5_dataset(group, 'data', data=self.data)
+        error_link = create_hdf5_dataset(group, 'error', data=self.error)
+        subgroup = group.create_group('names')
+        for name in self.names:
+            subgroup.attrs[name] = name
+        subgroup = group.create_group('expanders')
+        self.expander_set.fill_hdf5_group(subgroup)
+        expander_links = [subgroup[name] for name in self.names]
+        self.meta_fitter.fill_hdf5_group(group.create_group('meta_fitter'),\
+            save_all_fitters=save_all_fitters, data_link=data_link,\
+            error_link=error_link, expander_links=expander_links,\
+            save_channel_estimates=save_channel_estimates)
         if save_training_sets:
             subgroup = group.create_group('training_sets')
             for ibasis in range(self.num_bases):
-                subgroup.create_dataset(self.names[ibasis],\
+                create_hdf5_dataset(subgroup, self.names[ibasis],\
                     data=self.training_sets[ibasis])
     
 

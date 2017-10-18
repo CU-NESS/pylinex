@@ -6,6 +6,7 @@ Date: 3 Sep 2017
 Description: File containing function which load Expander objects from hdf5
              file group.
 """
+from ..util import get_hdf5_value
 from .NullExpander import NullExpander
 from .PadExpander import PadExpander
 from .RepeatExpander import RepeatExpander
@@ -39,10 +40,10 @@ def load_expander_from_hdf5_group(group):
         nrepeats = group.attrs['nrepeats']
         return RepeatExpander(nrepeats)
     elif class_name == 'ModulationExpander':
-        modulating_factors = group['modulating_factors'].value
+        modulating_factors = get_hdf5_value(group['modulating_factors'])
         return ModulationExpander(modulating_factors)
     elif class_name == 'MatrixExpander':
-        matrix = group['matrix'].value
+        matrix = get_hdf5_value(group['matrix'])
         return MatrixExpander(matrix)
     elif class_name == 'CompositeExpander':
         expanders = []
