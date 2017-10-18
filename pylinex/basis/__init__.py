@@ -14,3 +14,5 @@ from pylinex.basis.FourierBasis import FourierBasis
 from pylinex.basis.LegendreBasis import LegendreBasis
 from pylinex.basis.TrainedBasis import TrainedBasis
 from pylinex.basis.BasisSet import BasisSet, load_basis_set_from_hdf5_group
+from pylinex.basis.EffectiveRank import effective_training_set_rank
+
