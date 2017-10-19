@@ -316,11 +316,11 @@ class Fitter(Savable):
     def data_significance(self):
         if not hasattr(self, '_data_significance'):
             if self.multiple_data_curves:
-                self._data_significance = np.einsum('ij,ij->i',\
-                    self.weighted_data, self.weighted_data)
+                self._data_significance =\
+                    np.sum(self.weighted_data ** 2, axis=1)
             else:
                 self._data_significance =\
-                    np.dot(self.weighted_data, self.weighted_data.T)
+                    np.dot(self.weighted_data, self.weighted_data)
         return self._data_significance
     
     @property
@@ -365,8 +365,11 @@ class Fitter(Savable):
             self._model_complexity_logL_variance = self.num_parameters
             bias_term = np.dot(self.weighted_basis, self.weighted_bias.T).T
             if self.multiple_data_curves:
-                bias_term = np.einsum('ij,ik,jk->i', bias_term, bias_term,\
-                    self.parameter_covariance)
+                covariance_times_bias_term =\
+                    np.dot(bias_term, self.parameter_covariance)
+                bias_term =\
+                    np.sum(bias_term * covariance_times_bias_term, axis=1)
+                del covariance_times_bias_term
             else:
                 bias_term = np.dot(bias_term,\
                     np.dot(self.parameter_covariance, bias_term))
@@ -538,9 +541,8 @@ class Fitter(Savable):
         if not hasattr(self, '_likelihood_bias_statistic'):
             if self.has_priors:
                 if self.multiple_data_curves:
-                    self._likelihood_bias_statistic = np.einsum('ij,ij->i',\
-                        self.likelihood_weighted_bias,\
-                        self.likelihood_weighted_bias)
+                    self._likelihood_bias_statistic =\
+                        np.sum(self.likelihood_weighted_bias ** 2, axis=1)
                 else:
                     self._likelihood_bias_statistic = np.dot(\
                         self.likelihood_weighted_bias,\
@@ -666,9 +668,12 @@ class Fitter(Savable):
         """
         if not hasattr(self, '_posterior_significance'):
             if self.multiple_data_curves:
-                self._posterior_significance = np.einsum('ij,ik,jk->i',\
-                    self.parameter_mean, self.parameter_inverse_covariance,\
-                    self.parameter_mean)
+                inverse_covariance_times_mean = np.dot(self.parameter_mean,\
+                    self.parameter_inverse_covariance)
+                self._posterior_significance = np.sum(\
+                    self.parameter_mean * inverse_covariance_times_mean,\
+                    axis=1)
+                del inverse_covariance_times_mean
             else:
                 self._posterior_significance =\
                     np.dot(self.parameter_mean,\
@@ -703,8 +708,8 @@ class Fitter(Savable):
         """
         if not hasattr(self, '_channel_bias_RMS'):
             if self.multiple_data_curves:
-                self._channel_bias_RMS = np.sqrt(np.einsum('ij,ij->i',\
-                    self.channel_bias, self.channel_bias) / self.num_channels)
+                self._channel_bias_RMS = np.sqrt(\
+                    np.sum(self.channel_bias ** 2, axis=1) / self.num_channels)
             else:
                 self._channel_bias_RMS =\
                     np.sqrt(np.dot(self.channel_bias, self.channel_bias) /\
@@ -734,8 +739,7 @@ class Fitter(Savable):
         """
         if not hasattr(self, '_bias_statistic'):
             if self.multiple_data_curves:
-                self._bias_statistic = np.einsum('ij,ij->i',\
-                    self.weighted_bias, self.weighted_bias)
+                self._bias_statistic = np.sum(self.weighted_bias ** 2, axis=1)
             else:
                 self._bias_statistic =\
                     np.dot(self.weighted_bias, self.weighted_bias)
@@ -781,7 +785,7 @@ class Fitter(Savable):
             mean_difference = (self.channel_mean - self.data) / error_to_divide
             if self.multiple_data_curves:
                 self._likelihood_significance_difference =\
-                    np.einsum('ij,ij->i', mean_sum, mean_difference)
+                    np.sum(mean_sum * mean_difference, axis=1)
             else:
                 self._likelihood_significance_difference =\
                     np.dot(mean_sum, mean_difference)
@@ -811,15 +815,15 @@ class Fitter(Savable):
                     mean_sum = posterior_mean + prior_mean
                     mean_difference = posterior_mean - prior_mean
                     if self.multiple_data_curves:
-                        self._prior_significance_difference =\
-                            self._prior_significance_difference +\
-                            np.einsum('ij,ik,jk->i', mean_sum,\
-                            mean_difference, prior_inverse_covariance)
+                        this_term =\
+                            np.dot(mean_difference, prior_inverse_covariance)
+                        this_term = np.sum(this_term * mean_sum, axis=1)
                     else:
-                        self._prior_significance_difference =\
-                            self._prior_significance_difference +\
-                            np.einsum('j,k,jk', mean_sum, mean_difference,\
-                            prior_inverse_covariance)
+                        this_term = np.dot(mean_sum,\
+                            np.dot(prior_inverse_covariance, mean_difference))
+                    self._prior_significance_difference =\
+                        self._prior_significance_difference + this_term
+                            
         return self._prior_significance_difference
     
     @property
@@ -999,24 +1003,18 @@ class Fitter(Savable):
                 term_v2 = np.dot(self.prior_inverse_covariance,\
                     self.posterior_prior_mean_difference.T).T +\
                     (2 * np.dot(self.weighted_basis, self.weighted_bias.T).T)
-            squared_weighted_bias = ()
-            if self.multiple_data_curves:
-                if self.has_priors:
+                if self.multiple_data_curves:
                     self._bayesian_predictive_information_criterion +=\
-                        (np.einsum('ij,ij->i', term_v1, term_v2) /\
-                        self.num_channels)
-                self._bayesian_predictive_information_criterion += np.einsum(\
-                    'ij,kj,mj,km->i', self.weighted_bias ** 2,\
-                    self.weighted_basis, self.weighted_basis,\
-                    self.parameter_covariance)
-            else:
-                if self.has_priors:
+                        (np.sum(term_v1 * term_v2, axis=1) / self.num_channels)
+                else:
                     self._bayesian_predictive_information_criterion +=\
                         (np.dot(term_v1, term_v2) / self.num_channels)
-                self._bayesian_predictive_information_criterion += np.einsum(\
-                    'j,kj,mj,km', self.weighted_bias ** 2,\
-                    self.weighted_basis, self.weighted_basis,\
-                    self.parameter_covariance)
+            intermediate =\
+                np.dot(self.parameter_covariance, self.weighted_basis)
+            intermediate = np.sum(self.weighted_basis * intermediate, axis=0)
+            self._bayesian_predictive_information_criterion +=\
+                np.dot(self.weighted_bias ** 2, intermediate)
+            del intermediate
         return self._bayesian_predictive_information_criterion
     
     @property
@@ -1273,7 +1271,8 @@ class Fitter(Savable):
             self._subbasis_parameter_covariance_determinant_ratios[name] =\
                 np.exp(\
                 self.subbasis_log_parameter_covariance_determinant_ratios_sum)
-        elif name not in self._subbasis_parameter_covariance_determinant_ratios:
+        elif name not in\
+             self._subbasis_parameter_covariance_determinant_ratios:
              self._subbasis_parameter_covariance_determinant_ratios[name] =\
                  np.exp(\
                  self.subbasis_log_parameter_covariance_determinant_ratio(\
@@ -1297,9 +1296,10 @@ class Fitter(Savable):
             self._subbasis_channel_errors = {}
         if name not in self._subbasis_channel_errors:
             basis = self.basis_set[name].basis
+            covariance_times_basis =\
+                np.dot(self.subbasis_parameter_covariance(name=name), basis)
             self._subbasis_channel_errors[name] =\
-                np.sqrt(np.einsum('ji,ki,jk->i', basis, basis,\
-                self.subbasis_parameter_covariance(name=name)))
+                np.sqrt(np.sum(covariance_times_basis * basis, axis=0))
         return self._subbasis_channel_errors[name]
     
     def subbasis_parameter_mean(self, name=None):
@@ -1367,10 +1367,10 @@ class Fitter(Savable):
         if name not in self._subbasis_separation_statistics:
             weighted_basis =\
                 self.basis_set[name].expanded_basis / self.error[np.newaxis,:]
-            self._subbasis_separation_statistics[name] = np.sqrt(\
-                np.einsum('ac,bc,ab', weighted_basis, weighted_basis,\
-                    self.subbasis_parameter_covariance(name=name)) /\
-                    self.degrees_of_freedom)
+            stat = np.dot(weighted_basis, weighted_basis.T)
+            stat = np.sum(stat * self.subbasis_parameter_covariance(name=name))
+            stat = np.sqrt(stat / self.degrees_of_freedom)
+            self._subbasis_separation_statistics[name] = stat
         return self._subbasis_separation_statistics[name]
     
     def subbasis_channel_bias(self, name=None, true_curve=None):
@@ -1448,7 +1448,7 @@ class Fitter(Savable):
         normalization_factor =\
             weighted_bias.shape[-1] - self.basis_set[name].num_basis_vectors
         if self.multiple_data_curves:
-            unnormalized = np.einsum('ij,ij->i', weighted_bias, weighted_bias)
+            unnormalized = np.sum(weighted_bias ** 2, axis=1)
         else:
             unnormalized = np.dot(weighted_bias, weighted_bias)
         return unnormalized / normalization_factor
