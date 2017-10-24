@@ -401,10 +401,10 @@ class ExtractionPlotter(object):
             else:
                 return separated_curves[name]
 
-    def plot_subbasis_fit(self, icurve=0, nsigma=1, name=None, true_curves={},\
-        title='Subbasis fit', subtract_truth=False, plot_truth=False,\
-        yscale='linear', error_to_plot='posterior', verbose=True, ax=None,\
-        scale_factor=1, show=False):
+    def plot_subbasis_fit(self, icurve=0, quantity_to_minimize=None, nsigma=1,\
+        name=None, true_curves={}, title='Subbasis fit', subtract_truth=False,\
+        plot_truth=False, yscale='linear', error_to_plot='posterior',\
+        verbose=True, ax=None, scale_factor=1, show=False):
         """
         Plots a subbasis fit from this Extractor.
         
@@ -445,25 +445,35 @@ class ExtractionPlotter(object):
         elif error_to_plot != 'posterior':
             raise ValueError("error_to_plot wasn't recognized. It should " +\
                 "be either 'posterior' or 'likelihood'.")
-        if name is None:
-            channel_mean = self.channel_mean
-            if error_to_plot == 'posterior':
-                channel_error = self.channel_error
-            else:
-                channel_error = self.error
-        else:
-            channel_mean = self.channel_means[name]
-            if error_to_plot == 'posterior':
-                channel_error = self.channel_errors[name]
-            else:
-                channel_error =\
-                    self.expander_set[name].contract_error(self.error)
+        fitter_group_name = 'meta_fitter/'
+        if quantity_to_minimize is not None:
+            fitter_group_name =\
+                fitter_group_name + '{!s}_'.format(quantity_to_minimize)
+        fitter_group_name = fitter_group_name + 'optimal_fitter'
         if self.multiple_data_curves:
-            channel_mean = channel_mean[icurve]
-            if error_to_plot == 'posterior':
-                # there is only one error if error_to_plot is 'likelihood',
-                # so this block is unnecessary in that case
-                channel_error = channel_error[icurve]
+            fitter_group_name =\
+                fitter_group_name + 's/data_curve_{}'.format(icurve)
+        basis_set_group_name = '{!s}/basis_set'.format(fitter_group_name)
+        basis_set =\
+            load_basis_set_from_hdf5_group(self.file[basis_set_group_name])
+        posterior_group_name = '{!s}/posterior'.format(fitter_group_name)
+        if name is None:
+            basis = basis_set.basis
+        else:
+            basis = basis_set[name].basis
+            posterior_group_name = ('{0!s}/{1!s}').format(\
+                posterior_group_name, name)
+        if error_to_plot == 'likelihood':
+            expander = self.expanders[self.names.index(name)]
+            channel_error = expander.contract_error(self.error)
+        else:
+            channel_error = get_hdf5_value(self.file[('{!s}/' +\
+                'channel_error').format(posterior_group_name)])
+        parameter_mean = get_hdf5_value(self.file[('{!s}/' +\
+            'parameter_mean').format(posterior_group_name)])
+        if self.multiple_data_curves:
+            parameter_mean = parameter_mean[icurve]
+        channel_mean = np.dot(parameter_mean, basis)
         channel_mean = scale_factor * channel_mean
         channel_error = scale_factor * channel_error
         if plot_truth or subtract_truth:

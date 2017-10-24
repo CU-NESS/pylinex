@@ -1414,9 +1414,6 @@ class Fitter(Savable):
               given, the full basis is used.
         true_curve: 1D numpy.ndarray of the same length as the basis vectors in
                     the subbasis
-        compare_likelihood: if True, 
-                            if False, compares estimated expanded curve to
-                                      given true curve using extracted error
         
         returns: 1D numpy.ndarray of weighted bias values
         """
@@ -1427,9 +1424,9 @@ class Fitter(Savable):
             return subbasis_channel_bias / subbasis_channel_error[np.newaxis,:]
         else:
             return subbasis_channel_bias / subbasis_channel_error
-        
     
-    def subbasis_bias_statistic(self, name=None, true_curve=None):
+    def subbasis_bias_statistic(self, name=None, true_curve=None,\
+        norm_by_dof=False):
         """
         The bias statistic of the fit to the contribution of the given
         subbasis. The bias statistic is delta^T C^-1 delta where delta is the
@@ -1440,13 +1437,21 @@ class Fitter(Savable):
               given, the full basis is used.
         true_curve: 1D numpy.ndarray of the same length as the basis vectors in
                     the subbasis
+        norm_by_dof: if True, summed squared subbasis error weighted subbasis
+                              bias is normalized by the subbasis degrees of
+                              freedom
+                     if False (default), summed squared subbasis error weighted
+                                         subbasis bias is returned is
+                                         normalized by the number of channels
+                                         in the subbasis
         
         returns: single float number representing roughly 
         """
         weighted_bias = self.subbasis_weighted_bias(name=name,\
             true_curve=true_curve)
-        normalization_factor =\
-            weighted_bias.shape[-1] - self.basis_set[name].num_basis_vectors
+        normalization_factor = weighted_bias.shape[-1]
+        if norm_by_dof:
+            normalization_factor -= self.basis_set[name].num_basis_vectors
         if self.multiple_data_curves:
             unnormalized = np.sum(weighted_bias ** 2, axis=1)
         else:
@@ -1461,6 +1466,11 @@ class Fitter(Savable):
         training_sets: dictionary of training_sets indexed by basis name
         max_block_size: number of floats in the largest possible training set
                         block
+        num_curves_to_score: total number of training set curves to consider
+        bases_to_score: the names of the subbases to include in the scoring
+                        (all bases are always used, the names not in
+                        bases_to_score simply do not have their
+                        subbasis_bias_statistic calculated/included)
         
         returns: scalar value of Delta
         """
