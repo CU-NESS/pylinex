@@ -936,8 +936,9 @@ class Fitter(Savable):
         the maximum likelihood.
         """
         if not hasattr(self, '_deviance_information_criterion'):
-            self._deviance_information_criterion = self.bias_statistic +\
-                self.model_complexity_mean_to_peak_logL
+            self._deviance_information_criterion =\
+                self.likelihood_bias_statistic +\
+                (2 * self.model_complexity_mean_to_peak_logL)
         return self._deviance_information_criterion
     
     @property
@@ -956,7 +957,8 @@ class Fitter(Savable):
         """
         if not hasattr(self, '_deviance_information_criterion_logL_variance'):
             self._deviance_information_criterion_logL_variance =\
-                self.bias_statistic + self.model_complexity_logL_variance
+                self.likelihood_bias_statistic +\
+                self.model_complexity_logL_variance
         return self._deviance_information_criterion_logL_variance
     
     @property
@@ -990,11 +992,8 @@ class Fitter(Savable):
         if not hasattr(self, '_bayesian_predictive_information_criterion'):
             self._bayesian_predictive_information_criterion =\
                 self.num_parameters + self.bias_statistic
-            self._bayesian_predictive_information_criterion +=\
-                (self.num_channels * np.log(2 * np.pi))
-            self._bayesian_predictive_information_criterion +=\
-                (2. * np.sum(np.log(self.error)))
             if self.has_priors:
+                # TODO recheck!
                 self._bayesian_predictive_information_criterion -= np.trace(\
                     self.posterior_covariance_times_prior_inverse_covariance)
                 term_v1 = np.dot(\
@@ -1009,12 +1008,13 @@ class Fitter(Savable):
                 else:
                     self._bayesian_predictive_information_criterion +=\
                         (np.dot(term_v1, term_v2) / self.num_channels)
-            intermediate =\
-                np.dot(self.parameter_covariance, self.weighted_basis)
-            intermediate = np.sum(self.weighted_basis * intermediate, axis=0)
+            weighted_error = self.channel_error / self.error
+            if self.multiple_data_curves:
+                weighted_error = weighted_error[np.newaxis,:]
+            to_sum = ((weighted_error * self.weighted_bias) ** 2)
             self._bayesian_predictive_information_criterion +=\
-                np.dot(self.weighted_bias ** 2, intermediate)
-            del intermediate
+                (2 * np.sum(to_sum, axis=-1))
+            del to_sum
         return self._bayesian_predictive_information_criterion
     
     @property
