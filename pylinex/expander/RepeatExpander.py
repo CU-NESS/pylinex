@@ -42,10 +42,7 @@ class RepeatExpander(Expander):
                input
         """
         if type(value) in int_types:
-            if value > 0:
-                self._nrepeats = value
-            else:
-                raise ValueError("nrepeats must be positive.")
+            self._nrepeats = value
         else:
             raise TypeError("nrepeats was set to a non-integer.")
     
@@ -53,11 +50,11 @@ class RepeatExpander(Expander):
         """
         Expands vector from smaller original space to larger expanded space.
         
-        vector: 1D vector from original space
+        vector: 1D vector from original space, must be numpy.ndarray so as not
+                                               to waste time casting it here
         
         returns: 1D vector from expanded space
         """
-        vector = np.array(vector)
         return np.tile(vector, ((1,) * (vector.ndim - 1)) + (self.nrepeats,))
     
     def contract_error(self, error):

@@ -46,11 +46,7 @@ class ModulationExpander(Expander):
                Any additional axes represent multiple parts of the output which
                should be modulated differently from the input.
         """
-        value = np.array(value)
-        if value.ndim >= 1:
-            self._modulating_factors = value
-        else:
-            raise ValueError("modulating_factors must have nonzero shape.")
+        self._modulating_factors = value
     
     @property
     def ndim(self):
@@ -80,7 +76,6 @@ class ModulationExpander(Expander):
         
         returns: 1D vector from expanded space
         """
-        vector = np.array(vector)
         extra_dims = vector.ndim - 1
         extra_dim_slices = ((slice(None),) * extra_dims)
         extra_dim_newaxes = ((np.newaxis,) * extra_dims)

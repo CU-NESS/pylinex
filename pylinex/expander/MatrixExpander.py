@@ -54,7 +54,6 @@ class MatrixExpander(Expander):
                will be effectively flattened into one. They are left for
                organizational purposes.
         """
-        value = np.array(value)
         if value.ndim > 1:
             self._matrix = np.reshape(value, (-1, value.shape[-1]))
         else:
