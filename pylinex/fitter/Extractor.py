@@ -12,7 +12,7 @@ from ..util import Savable, VariableGrid, create_hdf5_dataset, sequence_types,\
     int_types, bool_types
 from ..quantity import QuantityFinder, FunctionQuantity, CompiledQuantity
 from ..expander import Expander, NullExpander, ExpanderSet
-from ..basis import TrainedBasis, BasisSet
+from ..basis import TrainedBasis, BasisSum
 from .MetaFitter import MetaFitter
 try:
     # this runs with no issues in python 2 but raises error in python 3
@@ -417,11 +417,11 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             raise TypeError("expanders was set to a non-sequence.")
     
     @property
-    def basis_set(self):
+    def basis_sum(self):
         """
         Property storing the Basis objects associated with all training sets.
         """
-        if not hasattr(self, '_basis_set'):
+        if not hasattr(self, '_basis_sum'):
             bases = []
             for ibasis in range(self.num_bases):
                 training_set = self.training_sets[ibasis]
@@ -430,8 +430,8 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
                 basis = TrainedBasis(training_set, num_basis_vectors,\
                     error=self.error, expander=expander)
                 bases.append(basis)
-            self._basis_set = BasisSet(self.names, bases)
-        return self._basis_set
+            self._basis_sum = BasisSum(self.names, bases)
+        return self._basis_sum
     
     @property
     def priors(self):
@@ -444,7 +444,7 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             for name in self.names:
                 if self.use_priors_in_fit[name]:
                     self._priors['{!s}_prior'.format(name)] =\
-                        self.basis_set[name].gaussian_prior
+                        self.basis_sum[name].gaussian_prior
         return self._priors
 
     @property
@@ -454,7 +454,7 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         right number of parameters.
         """
         if not hasattr(self, '_meta_fitter'):
-            self._meta_fitter = MetaFitter(self.basis_set, self.data,\
+            self._meta_fitter = MetaFitter(self.basis_sum, self.data,\
                 self.error, self.compiled_quantity, self.quantity_to_minimize,\
                 *self.dimensions, **self.priors)
         return self._meta_fitter

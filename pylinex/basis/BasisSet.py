@@ -1,15 +1,12 @@
 """
 File: pylinex/basis/BasisSet.py
 Author: Keith Tauscher
-Date: 3 Sep 2017
+Date: 30 Oct 2017
 
-Description: File containing a set of Basis objects representing different
-             things but combined into a single Basis. This allows for
-             conceptual differences between different basis vectors to be
-             retained.
+Description: File containing a class which is a constainer for Basis objects.
+             It doesn't necessarily put any restrictions on the Basis objects
+             which can be held.
 """
-import numpy as np
-import matplotlib.pyplot as pl
 from ..util import sequence_types
 from .Basis import Basis, load_basis_from_hdf5_group
 try:
@@ -19,10 +16,9 @@ except:
     # this try/except allows for python 2/3 compatible string type checking
     basestring = str
 
-class BasisSet(Basis):
+class BasisSet(object):
     """
-    Subclass of Basis class which is also a container of Basis classes. Allows
-    for different basis vectors to be given distinct meanings.
+    Container for Basis objects.
     """
     def __init__(self, names, bases):
         """
@@ -33,22 +29,13 @@ class BasisSet(Basis):
         """
         if isinstance(names, list) and isinstance(bases, list):
             if len(names) == len(bases):
-                full_basis = []
-                for index in range(len(names)):
-                    name = names[index]
-                    basis = bases[index]
-                    full_basis.append(basis.expanded_basis)
                 self.names = names
-                self.basis = np.concatenate(full_basis, axis=0)
                 self.component_bases = bases
-                self.expander = None
             else:
                 raise ValueError("Lengths of names and bases are not equal.")
         elif isinstance(names, basestring) and isinstance(bases, Basis):
             self.names = [names]
-            self.basis = bases.basis
             self.component_bases = [bases]
-            self.expander = None
         else:
             raise TypeError("names and bases given to BasisSet were not " +\
                             "lists.")
@@ -130,46 +117,6 @@ class BasisSet(Basis):
                 rindex = rindex + self[name].num_basis_vectors
         return self._slices_by_name
     
-    def basis_dot_products(self, error=None):
-        """
-        Finds the dot products between the Basis objects underlying this
-        BasisSet.
-        
-        error: error to use in assessing overlap
-        
-        returns: 2D square numpy.ndarray of dot products
-        """
-        dot_products = np.ndarray((len(self.names),) * 2)
-        for ibasis1 in range(len(self.component_bases)):
-            basis1 = self.component_bases[ibasis1]
-            for ibasis2 in range(ibasis1, len(self.component_bases)):
-                basis2 = self.component_bases[ibasis2]
-                dot_product = basis1.dot(basis2, error=error)
-                dot_products[ibasis1,ibasis2] = dot_product
-                dot_products[ibasis2,ibasis1] = dot_product
-        return dot_products
-    
-    def basis_subsets(self, **subsets):
-        """
-        Creates another BasisSet object where each basis is a subset of the
-        corresponding basis in this BasisSet.
-        
-        **subsets: subsets to take for each name for which basis vectors should
-                   be truncated
-        
-        returns: another BasisSet object with certain basis vectors truncated
-        """
-        if not all([key in self.names for key in subsets]):
-            raise ValueError("Cannot subset a basis which is not in the" +\
-                             " BasisSet.")
-        new_component_bases = []
-        for name in self.names:
-            if name in subsets:
-                new_component_bases.append(self[name][:subsets[name]])
-            else:
-                new_component_bases.append(self[name])
-        return BasisSet(self.names, new_component_bases)
-    
     def __getitem__(self, key):
         """
         Allows for the usage of square-bracket indexing notation for getting 
@@ -181,7 +128,6 @@ class BasisSet(Basis):
                                the component Basis objects underlying this
                                BasisSet and the values are slices with which to
                                take subsets of the Basis objects.
-             else, 
         
         returns: if key is None or a dict, returns a BasisSet object
                  otherwise, returns Basis object
@@ -195,23 +141,7 @@ class BasisSet(Basis):
         elif isinstance(key, int):
             return self.component_bases[key]
         else:
-            return Basis.__getitem__(self, np.array(key))
-    
-    def __add__(self, other):
-        """
-        Allows for the addition of two BasisSets. It basically concatenates the
-        component bases of the two BasisSets into one.
-        
-        other: BasisSet object with which to combine this one
-        
-        returns: BasisSet object containing the basis vectors from both
-                 BasisSet objects being added
-        """
-        if isinstance(other, BasisSet):
-            return BasisSet(self.names + other.names,\
-                self.component_bases + other.component_bases)
-        else:
-            raise TypeError("Can only add together two BasisSet objects.")
+            raise KeyError("key not recognized.")
     
     @property
     def sizes(self):
@@ -224,23 +154,36 @@ class BasisSet(Basis):
                 {name: self[name].num_basis_vectors for name in self.names}
         return self._sizes
     
-    def fill_hdf5_group(self, group, basis_links=None, expander_links=None):
+    def component_basis_subsets(self, **subsets):
         """
-        Fills the given hdf5 file group with data about this basis set.
+        Finds a subset of each basis in this BasisSet.
         
-        group: the hdf5 file group to fill
+        **subsets: subsets to take for each name for which basis vectors should
+                   be truncated
+        
+        returns: list of new component bases after subsetting
         """
-        if basis_links is None:
-            basis_links = [None for name in self.names]
-        if expander_links is None:
-            expander_links = [None for name in self.names]
-        for (iname, name) in enumerate(self.names):
-            basis_link = basis_links[iname]
-            expander_link = expander_links[iname]
-            subgroup = group.create_group('basis_{}'.format(iname))
-            self[name].fill_hdf5_group(subgroup, basis_link=basis_link,\
-                expander_link=expander_link)
-            subgroup.attrs['name'] = name
+        if not all([key in self.names for key in subsets]):
+            raise ValueError("Cannot subset a basis which is not in the " +\
+                             "BasisSet.")
+        new_component_bases = []
+        for name in self.names:
+            if name in subsets:
+                new_component_bases.append(self[name][:subsets[name]])
+            else:
+                new_component_bases.append(self[name])
+        return new_component_bases
+    
+    def basis_subsets(self, **subsets):
+        """
+        Creates a new BasisSet object with the given subsetted component bases.
+        
+        **subsets: subsets to take for each name for which basis vectors should
+                   be truncated
+        
+        returns: BasisSet object with subsetted component bases
+        """
+        return BasisSet(self.names, self.component_basis_subsets(**subsets))
     
     def __iter__(self):
         """
@@ -262,14 +205,49 @@ class BasisSet(Basis):
             raise StopIteration
         self._index_of_basis_to_return += 1
         return self[self.names[self._index_of_basis_to_return - 1]]
+    
+    def fill_hdf5_group(self, group, basis_links=None, expander_links=None):
+        """
+        Fills the given hdf5 file group with data about this basis set.
+        
+        group: the hdf5 file group to fill
+        """
+        if basis_links is None:
+            basis_links = [None for name in self.names]
+        if expander_links is None:
+            expander_links = [None for name in self.names]
+        for (iname, name) in enumerate(self.names):
+            basis_link = basis_links[iname]
+            expander_link = expander_links[iname]
+            subgroup = group.create_group('basis_{}'.format(iname))
+            self[name].fill_hdf5_group(subgroup, basis_link=basis_link,\
+                expander_link=expander_link)
+            subgroup.attrs['name'] = name
+    
+    def __add__(self, other):
+        """
+        Allows for the addition of two BasisSets. It basically concatenates the
+        component bases of the two BasisSets into one.
+        
+        other: BasisSet object with which to combine this one
+        
+        returns: BasisSet object containing the basis vectors from both
+                 BasisSet objects being added
+        """
+        if isinstance(other, BasisSet):
+            return BasisSet(self.names + other.names,\
+                self.component_bases + other.component_bases)
+        else:
+            raise TypeError("Can only add together two BasisSet objects.")
 
-def load_basis_set_from_hdf5_group(group):
+def load_names_and_bases_from_hdf5_group(group):
     """
     Loads a BasisSet object from an hdf5 file group.
     
     group: the hdf5 file group from which to load data about the BasisSet
     
-    returns: BasisSet object loaded from the given hdf5 file group
+    returns: (names, bases) where names is a list of strings and bases is a
+             list of Basis objects
     """
     names = []
     component_bases = []
@@ -279,5 +257,16 @@ def load_basis_set_from_hdf5_group(group):
         names.append(subgroup.attrs['name'])
         component_bases.append(load_basis_from_hdf5_group(subgroup))
         iname += 1
-    return BasisSet(names, component_bases)
+    return (names, component_bases)
+
+def load_basis_set_from_hdf5_group(group):
+    """
+    Loads a basis set from the given hdf5 group.
+    
+    group: the hdf5 group from which to load BasisSet
+    
+    returns: BasisSet object stored in the given hdf5 group
+    """
+    return BasisSet(*load_names_and_bases_from_hdf5_group(group))
+    
 

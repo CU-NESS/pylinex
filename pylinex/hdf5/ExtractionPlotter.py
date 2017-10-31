@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as pl
 from matplotlib.colors import LogNorm
 from ..util import get_hdf5_value
-from ..basis import load_basis_set_from_hdf5_group
+from ..basis import load_basis_sum_from_hdf5_group
 from ..fitter import Extractor
 from ..expander import ExpanderSet, load_expander_set_from_hdf5_group
 try:
@@ -219,12 +219,12 @@ class ExtractionPlotter(object):
                         this_mean = get_hdf5_value(\
                             fitter_group['posterior/channel_mean'])[icurve]
                     else:
-                        basis_set = load_basis_set_from_hdf5_group(\
-                            fitter_group['basis_set'])
+                        basis_sum = load_basis_sum_from_hdf5_group(\
+                            fitter_group['basis_sum'])
                         parameter_mean = get_hdf5_value(\
                             fitter_group['posterior/parameter_mean'])
                         this_mean =\
-                            np.dot(parameter_mean, basis_set.basis)[icurve]
+                            np.dot(parameter_mean, basis_sum.basis)[icurve]
                     self._channel_mean.append(this_mean)
                 self._channel_mean = np.array(self._channel_mean)
             elif 'channel_mean' in\
@@ -232,11 +232,11 @@ class ExtractionPlotter(object):
                 self._channel_mean = get_hdf5_value(self.file[\
                     'meta_fitter/optimal_fitter/posterior/channel_mean'])
             else:
-                basis_set = load_basis_set_from_hdf5_group(\
-                    self.file['meta_fitter/optimal_fitter/basis_set'])
+                basis_sum = load_basis_sum_from_hdf5_group(\
+                    self.file['meta_fitter/optimal_fitter/basis_sum'])
                 parameter_mean = get_hdf5_value(self.file[\
                     'meta_fitter/optimal_fitter/posterior/parameter_mean'])
-                self._channel_mean = np.dot(parameter_mean, basis_set.basis)
+                self._channel_mean = np.dot(parameter_mean, basis_sum.basis)
         return self._channel_mean
     
     @property
@@ -251,8 +251,8 @@ class ExtractionPlotter(object):
                 for icurve in range(self.num_data_curves):
                     fitter_group = self.file[('meta_fitter/' +\
                         'optimal_fitters/data_curve_{}').format(icurve)]
-                    basis_set = load_basis_set_from_hdf5_group(\
-                        fitter_group['basis_set'])
+                    basis_sum = load_basis_sum_from_hdf5_group(\
+                        fitter_group['basis_sum'])
                     for name in self.names:
                         if 'channel_mean' in\
                             fitter_group['posterior/{!s}'.format(name)]:
@@ -263,7 +263,7 @@ class ExtractionPlotter(object):
                             parameter_mean = get_hdf5_value(fitter_group[\
                                 'posterior/{!s}/parameter_mean'.format(name)])
                             this_mean = np.dot(parameter_mean[icurve],\
-                                basis_set[name].basis)
+                                basis_sum[name].basis)
                         self._channel_means[name].append(this_mean)
                 for name in self.names:
                     self._channel_means[name] =\
@@ -271,8 +271,8 @@ class ExtractionPlotter(object):
             else:
                 self._channel_means = {}
                 fitter_group = self.file['meta_fitter/optimal_fitter']
-                basis_set = load_basis_set_from_hdf5_group(\
-                    fitter_group['basis_set'])
+                basis_sum = load_basis_sum_from_hdf5_group(\
+                    fitter_group['basis_sum'])
                 for name in self.names:
                     if 'channel_mean' in\
                         fitter_group['posterior/{!s}'.format(name)]:
@@ -283,7 +283,7 @@ class ExtractionPlotter(object):
                         parameter_mean = get_hdf5_value(fitter_group[\
                             'posterior/{!s}/parameter_mean'.format(name)])
                         self._channel_means[name] =\
-                            np.dot(parameter_mean, basis_set.basis)
+                            np.dot(parameter_mean, basis_sum.basis)
         return self._channel_means
     
     @property
@@ -453,14 +453,14 @@ class ExtractionPlotter(object):
         if self.multiple_data_curves:
             fitter_group_name =\
                 fitter_group_name + 's/data_curve_{}'.format(icurve)
-        basis_set_group_name = '{!s}/basis_set'.format(fitter_group_name)
-        basis_set =\
-            load_basis_set_from_hdf5_group(self.file[basis_set_group_name])
+        basis_sum_group_name = '{!s}/basis_sum'.format(fitter_group_name)
+        basis_sum =\
+            load_basis_sum_from_hdf5_group(self.file[basis_sum_group_name])
         posterior_group_name = '{!s}/posterior'.format(fitter_group_name)
         if name is None:
-            basis = basis_set.basis
+            basis = basis_sum.basis
         else:
-            basis = basis_set[name].basis
+            basis = basis_sum[name].basis
             posterior_group_name = ('{0!s}/{1!s}').format(\
                 posterior_group_name, name)
         if error_to_plot == 'likelihood':

@@ -12,7 +12,7 @@ Description: Example of how to use Extractor class to go from training set,
 import numpy as np
 import numpy.random as rand
 from distpy import GaussianDistribution
-from pylinex import AttributeQuantity, Extractor
+from pylinex import AttributeQuantity, CompiledQuantity, Extractor
 
 ntrain = 1000
 nvar = 20
@@ -24,7 +24,7 @@ coefficient_distribution = GaussianDistribution(mean_vector, covariance_matrix)
 training_set_coefficients = coefficient_distribution.draw(ntrain)
 training_set = np.array([np.polyval(coeff[-1::-1], xs)\
                                        for coeff in training_set_coefficients])
-quantity = AttributeQuantity('BPIC')
+quantity = CompiledQuantity('BPIC', AttributeQuantity('BPIC'))
 
 error = np.ones_like(xs) * 1e-3
 data = rand.normal(0, 1, error.shape) * error

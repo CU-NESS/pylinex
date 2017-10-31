@@ -397,6 +397,7 @@ class Basis(Savable):
         
         returns: a Basis object with only the given basis vectors
         """
+        print('basis_indices={}'.format(basis_indices))
         return Basis(self.basis[basis_indices], expander=self.expander)
     
     def __getitem__(self, basis_indices_to_keep):

@@ -15,10 +15,10 @@ Description: Imports classes from the pylinex.fitter module:
                                   (it's up to the user)
              
              Fitter: Performs weighted least square fit with priors with a
-                     single BasisSet object and one or many data vectors.
+                     single BasisSum object and one or many data vectors.
              
              MetaFitter: Performs many weighted least square fits with priors
-                         by taking subbases of a single BasisSet.
+                         by taking subbases of a single BasisSum.
              
              Extractor: Finds a model for and separates each component of a
                         data vector using training sets.

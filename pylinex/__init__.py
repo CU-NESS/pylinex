@@ -21,9 +21,10 @@ from pylinex.expander import Expander, NullExpander, PadExpander,\
 from pylinex.basis import Basis, PolynomialBasis, GramSchmidtBasis,\
     FourierBasis, LegendreBasis, TrainedBasis, BasisSet,\
     load_basis_from_hdf5_group, load_basis_set_from_hdf5_group,\
-    effective_training_set_rank
+    load_basis_sum_from_hdf5_group, effective_training_set_rank
 from pylinex.fitter import TrainingSetIterator, Fitter, MetaFitter, Extractor
 from pylinex.hdf5 import load_quantity_from_hdf5_file,\
     load_expander_from_hdf5_file, load_expander_set_from_hdf5_file,\
-    load_basis_from_hdf5_file, load_basis_set_from_hdf5_file, ExtractionPlotter
+    load_basis_from_hdf5_file, load_basis_set_from_hdf5_file,\
+    load_basis_sum_from_hdf5_file, ExtractionPlotter
 

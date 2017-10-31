@@ -9,7 +9,8 @@ Description: File containing functions which load objects from hdf5 files. They
 from ..quantity import load_quantity_from_hdf5_group
 from ..expander import load_expander_from_hdf5_group,\
     load_expander_set_from_hdf5_group
-from ..basis import load_basis_from_hdf5_group, load_basis_set_from_hdf5_group
+from ..basis import load_basis_from_hdf5_group,\
+    load_basis_set_from_hdf5_group, load_basis_sum_from_hdf5_group
 try:
     import h5py
 except:
@@ -101,4 +102,18 @@ def load_basis_set_from_hdf5_file(file_name):
     basis_set = load_basis_set_from_hdf5_group(hdf5_file)
     hdf5_file.close()
     return basis_set
+
+def load_basis_sum_from_hdf5_file(file_name):
+    """
+    Loads a BasisSum object from an hdf5 file.
+    
+    file_name: name of the hdf5 file from which to load data about the BasisSum
+    
+    returns: BasisSum object loaded from the given hdf5 file
+    """
+    ensure_h5py_installed()
+    hdf5_file = h5py.File(file_name, 'r')
+    basis_sum = load_basis_sum_from_hdf5_group(hdf5_file)
+    hdf5_file.close()
+    return basis_sum
 

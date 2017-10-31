@@ -10,7 +10,7 @@ Description: Example of how to use Fitter class to perform least square fit
 """
 import numpy as np
 import numpy.random as rand
-from pylinex import PolynomialBasis, BasisSet, Fitter
+from pylinex import PolynomialBasis, BasisSum, Fitter
 
 xs = np.linspace(-1, 1, 100)
 
@@ -20,8 +20,8 @@ data = noiseless_data + (rand.normal(0, 1, xs.shape) * noise_level)
 
 name = 'polynomial'
 basis = PolynomialBasis(xs, 15)
-basis_set = BasisSet([name], [basis])
-fitter = Fitter(basis_set, data)
+basis_sum = BasisSum([name], [basis])
+fitter = Fitter(basis_sum, data)
 
 
 fitter.plot_subbasis_fit(nsigma=1, name=name, true_curve=noiseless_data,\

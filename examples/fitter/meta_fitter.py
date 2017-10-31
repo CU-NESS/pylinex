@@ -11,7 +11,7 @@ Description: Example showing how to use MetaFitter class to perform many least
 """
 import numpy as np
 import numpy.random as rand
-from pylinex import AttributeQuantity, PolynomialBasis, BasisSet, MetaFitter
+from pylinex import AttributeQuantity, PolynomialBasis, BasisSum, MetaFitter
 
 xs = np.linspace(-1, 1, 100)
 
@@ -22,13 +22,13 @@ data = noiseless_data + (rand.normal(0, 1, xs.shape) * error)
 
 name = 'polynomial'
 basis = PolynomialBasis(xs, 15)
-basis_set = BasisSet([name], [basis])
+basis_sum = BasisSum([name], [basis])
 
 quantity = AttributeQuantity('BPIC')
 
 dimension = {'polynomial': np.arange(1, 16)}
 
-meta_fitter = MetaFitter(basis_set, data, error, quantity, dimension)
+meta_fitter = MetaFitter(basis_sum, data, error, quantity, dimension)
 fitter = meta_fitter.minimize_quantity('BPIC')
 fitter.plot_subbasis_fit(nsigma=1, name=name, true_curve=noiseless_data,\
     x_values=xs, colors='r', show=True)

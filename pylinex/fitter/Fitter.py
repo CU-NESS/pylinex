@@ -12,7 +12,7 @@ import numpy.linalg as npla
 import scipy.linalg as scila
 import matplotlib.pyplot as pl
 from ..util import Savable, create_hdf5_dataset
-from ..basis import Basis, BasisSet
+from ..basis import Basis, BasisSum
 from .TrainingSetIterator import TrainingSetIterator
 try:
     # this runs with no issues in python 2 but raises error in python 3
@@ -23,54 +23,54 @@ except:
 
 class Fitter(Savable):
     """
-    An object which takes as inputs a BasisSet object and data and error
+    An object which takes as inputs a BasisSum object and data and error
     vectors and outputs statistics about the fit of the data assuming the error
-    and using the BasisSet.
+    and using the BasisSum.
     """
-    def __init__(self, basis_set, data, error=None, **priors):
+    def __init__(self, basis_sum, data, error=None, **priors):
         """
         Initializes a new Analyzer object using the given inputs.
         
-        basis_set: a BasisSet object (or a Basis object, which is converted
-                   internally to a BasisSet of one Basis with the name 'sole')
-        data: 1D vector of same length as vectors in basis_set or 2D
+        basis_sum: a BasisSum object (or a Basis object, which is converted
+                   internally to a BasisSum of one Basis with the name 'sole')
+        data: 1D vector of same length as vectors in basis_sum or 2D
               numpy.ndarray of shape (ncurves, )
-        error: 1D vector of same length as vectors in basis_set containing only
+        error: 1D vector of same length as vectors in basis_sum containing only
                positive numbers
         **priors: keyword arguments where the keys are exactly the names of the
                   basis sets with '_prior' appended to them
         """
-        self.basis_set = basis_set
+        self.basis_sum = basis_sum
         self.priors = priors
         self.data = data
         self.error = error
     
     @property
-    def basis_set(self):
+    def basis_sum(self):
         """
-        Property storing the BasisSet object whose basis vectors will be
+        Property storing the BasisSum object whose basis vectors will be
         used by this object in the fit.
         """
-        if not hasattr(self, '_basis_set'):
-            raise AttributeError("basis_set was referenced before it was " +\
+        if not hasattr(self, '_basis_sum'):
+            raise AttributeError("basis_sum was referenced before it was " +\
                                  "set. This shouldn't happen. Something is " +\
                                  "wrong.")
-        return self._basis_set
+        return self._basis_sum
     
-    @basis_set.setter
-    def basis_set(self, value):
+    @basis_sum.setter
+    def basis_sum(self, value):
         """
-        Allows user to set basis_set property.
+        Allows user to set basis_sum property.
         
-        value: BasisSet object or, more generally, a Basis object containing
+        value: BasisSum object or, more generally, a Basis object containing
                the basis vectors with which to perform the fit
         """
-        if isinstance(value, BasisSet):
-            self._basis_set = value
+        if isinstance(value, BasisSum):
+            self._basis_sum = value
         elif isinstance(value, Basis):
-            self._basis_set = BasisSet('sole', value)
+            self._basis_sum = BasisSum('sole', value)
         else:
-            raise TypeError("basis_set was neither a BasisSet or a " +\
+            raise TypeError("basis_sum was neither a BasisSum or a " +\
                             "different Basis object.")
     
     @property
@@ -80,16 +80,16 @@ class Fitter(Savable):
         of basis vectors in that basis as values.
         """
         if not hasattr(self, '_sizes'):
-            self._sizes = self.basis_set.sizes
+            self._sizes = self.basis_sum.sizes
         return self._sizes
     
     @property
     def names(self):
         """
-        Property storing the names of the component Bases of the BasisSet.
+        Property storing the names of the component Bases of the BasisSum.
         """
         if not hasattr(self, '_names'):
-            self._names = self.basis_set.names
+            self._names = self.basis_sum.names
         return self._names
     
     @property
@@ -137,7 +137,7 @@ class Fitter(Savable):
                     self._prior_inverse_covariance.append(\
                         self._priors[key].invcov.A)
                 else:
-                    nparams = self.basis_set[name].num_basis_vectors
+                    nparams = self.basis_sum[name].num_basis_vectors
                     self._prior_mean.append(np.zeros(nparams))
                     self._prior_covariance.append(np.zeros((nparams, nparams)))
                     self._prior_inverse_covariance.append(\
@@ -310,7 +310,7 @@ class Fitter(Savable):
         Property storing the number of data channels in this fit. This should
         be the length of the data and error vectors.
         """
-        return self.basis_set.num_larger_channel_set_indices
+        return self.basis_sum.num_larger_channel_set_indices
     
     @property
     def data_significance(self):
@@ -327,9 +327,9 @@ class Fitter(Savable):
     def num_parameters(self):
         """
         Property storing the number of parameters of the fit. This is the same
-        as the number of basis vectors in the basis_set.
+        as the number of basis vectors in the basis_sum.
         """
-        return self.basis_set.num_basis_vectors
+        return self.basis_sum.num_basis_vectors
     
     @property
     def posterior_covariance_times_prior_inverse_covariance(self):
@@ -390,7 +390,7 @@ class Fitter(Savable):
         """
         if not hasattr(self, '_weighted_basis'):
             self._weighted_basis =\
-                self.basis_set.basis / self.error[np.newaxis,:]
+                self.basis_sum.basis / self.error[np.newaxis,:]
         return self._weighted_basis
     
     @property
@@ -423,11 +423,11 @@ class Fitter(Savable):
     def basis_dot_products(self):
         """
         Property storing the dot products between the Basis objects underlying
-        the BasisSet this object stores.
+        the BasisSum this object stores.
         """
         if not hasattr(self, '_basis_dot_products'):
             self._basis_dot_products =\
-                self.basis_set.basis_dot_products(error=self.error)
+                self.basis_sum.basis_dot_products(error=self.error)
         return self._basis_dot_products
     
     @property
@@ -494,7 +494,7 @@ class Fitter(Savable):
         """
         if not hasattr(self, '_likelihood_channel_mean'):
             if self.has_priors:
-                self._likelihood_channel_mean = np.dot(self.basis_set.basis.T,\
+                self._likelihood_channel_mean = np.dot(self.basis_sum.basis.T,\
                     self.likelihood_parameter_mean.T).T
             else:
                 self._likelihood_channel_mean = self.channel_mean
@@ -625,8 +625,8 @@ class Fitter(Savable):
         """
         if not hasattr(self, '_channel_error'):
             self._channel_error = np.sqrt(np.diag(\
-                np.dot(self.basis_set.basis.T,\
-                np.dot(self.parameter_covariance, self.basis_set.basis))))
+                np.dot(self.basis_sum.basis.T,\
+                np.dot(self.parameter_covariance, self.basis_sum.basis))))
         return self._channel_error
     
     @property
@@ -689,7 +689,7 @@ class Fitter(Savable):
         """
         if not hasattr(self, '_channel_mean'):
             self._channel_mean =\
-                np.dot(self.basis_set.basis.T, self.parameter_mean.T).T
+                np.dot(self.basis_sum.basis.T, self.parameter_mean.T).T
         return self._channel_mean
     
     @property
@@ -1176,8 +1176,8 @@ class Fitter(Savable):
                  subbasis and m is the number of basis vectors in the column
                  subbasis in the form of a 2D numpy.ndarray
         """
-        row_slice = self.basis_set.slices_by_name[row_name]
-        column_slice = self.basis_set.slices_by_name[column_name]
+        row_slice = self.basis_sum.slices_by_name[row_name]
+        column_slice = self.basis_sum.slices_by_name[column_name]
         return self.overlap_matrix[:,column_slice][row_slice]
     
     def subbasis_parameter_covariance(self, name=None):
@@ -1194,7 +1194,7 @@ class Fitter(Savable):
         if not hasattr(self, '_subbasis_parameter_covariances'):
             self._subbasis_parameter_covariances = {}
         if name not in self._subbasis_parameter_covariances:
-            subbasis_slice = self.basis_set.slices_by_name[name]
+            subbasis_slice = self.basis_sum.slices_by_name[name]
             self._subbasis_parameter_covariances[name] =\
                 self.parameter_covariance[:,subbasis_slice][subbasis_slice]
         return self._subbasis_parameter_covariances[name]
@@ -1295,7 +1295,7 @@ class Fitter(Savable):
         if not hasattr(self, '_subbasis_channel_errors'):
             self._subbasis_channel_errors = {}
         if name not in self._subbasis_channel_errors:
-            basis = self.basis_set[name].basis
+            basis = self.basis_sum[name].basis
             covariance_times_basis =\
                 np.dot(self.subbasis_parameter_covariance(name=name), basis)
             self._subbasis_channel_errors[name] =\
@@ -1317,7 +1317,7 @@ class Fitter(Savable):
             self._subbasis_parameter_means = {}
         if name not in self._subbasis_parameter_means:
             self._subbasis_parameter_means[name] =\
-                self.parameter_mean[...,self.basis_set.slices_by_name[name]]
+                self.parameter_mean[...,self.basis_sum.slices_by_name[name]]
         return self._subbasis_parameter_means[name]
     
     def subbasis_channel_mean(self, name=None):
@@ -1335,7 +1335,7 @@ class Fitter(Savable):
         if name not in self._subbasis_channel_means:
             self._subbasis_channel_means[name] =\
                 np.dot(self.subbasis_parameter_mean(name=name),\
-                self.basis_set[name].basis)
+                self.basis_sum[name].basis)
         return self._subbasis_channel_means[name]
     
     def subbasis_channel_RMS(self, name=None):
@@ -1366,7 +1366,7 @@ class Fitter(Savable):
             self._subbasis_separation_statistics = {}
         if name not in self._subbasis_separation_statistics:
             weighted_basis =\
-                self.basis_set[name].expanded_basis / self.error[np.newaxis,:]
+                self.basis_sum[name].expanded_basis / self.error[np.newaxis,:]
             stat = np.dot(weighted_basis, weighted_basis.T)
             stat = np.sum(stat * self.subbasis_parameter_covariance(name=name))
             stat = np.sqrt(stat / self.degrees_of_freedom)
@@ -1451,7 +1451,7 @@ class Fitter(Savable):
             true_curve=true_curve)
         normalization_factor = weighted_bias.shape[-1]
         if norm_by_dof:
-            normalization_factor -= self.basis_set[name].num_basis_vectors
+            normalization_factor -= self.basis_sum[name].num_basis_vectors
         if self.multiple_data_curves:
             unnormalized = np.sum(weighted_bias ** 2, axis=1)
         else:
@@ -1461,7 +1461,7 @@ class Fitter(Savable):
     def bias_score(self, training_sets, max_block_size=2**20,\
         num_curves_to_score=None, bases_to_score=None):
         """
-        Evaluates the candidate basis_set given the available training sets.
+        Evaluates the candidate basis_sum given the available training sets.
         
         training_sets: dictionary of training_sets indexed by basis name
         max_block_size: number of floats in the largest possible training set
@@ -1474,22 +1474,22 @@ class Fitter(Savable):
         
         returns: scalar value of Delta
         """
-        if len(self.basis_set.names) != len(training_sets):
+        if len(self.basis_sum.names) != len(training_sets):
             raise ValueError("There must be the same number of basis sets " +\
                 "as training sets.")
         if (bases_to_score is None) or (not bases_to_score):
-            bases_to_score = self.basis_set.names
+            bases_to_score = self.basis_sum.names
         score = 0.
-        expanders = [basis.expander for basis in self.basis_set]
+        expanders = [basis.expander for basis in self.basis_sum]
         iterator = TrainingSetIterator(training_sets, expanders=expanders,\
             max_block_size=max_block_size, mode='add',\
             curves_to_return=num_curves_to_score, return_constituents=True)
         for (block, constituents) in iterator:
             num_channels = block.shape[1]
-            fitter = Fitter(self.basis_set, block, self.error, **self.priors)
+            fitter = Fitter(self.basis_sum, block, self.error, **self.priors)
             for basis_to_score in bases_to_score:
                 true_curve =\
-                    constituents[self.basis_set.names.index(basis_to_score)]
+                    constituents[self.basis_sum.names.index(basis_to_score)]
                 result = fitter.subbasis_bias_statistic(\
                     name=basis_to_score, true_curve=true_curve)
                 score += np.sum(result)
@@ -1539,7 +1539,7 @@ class Fitter(Savable):
         create_hdf5_dataset(group, 'channel_error', data=self.channel_error)
         for name in self.names:
             subgroup = group.create_group(name)
-            subbasis_slice = self.basis_set.slices_by_name[name]
+            subbasis_slice = self.basis_sum.slices_by_name[name]
             create_hdf5_dataset(subgroup, 'parameter_covariance',\
                 link=(group['parameter_covariance'],[subbasis_slice]*2))
             mean_slices =\
@@ -1551,7 +1551,7 @@ class Fitter(Savable):
                     data=self.subbasis_channel_mean(name=name))
             create_hdf5_dataset(subgroup, 'channel_error',\
                 data=self.subbasis_channel_error(name=name))
-        self.basis_set.fill_hdf5_group(root_group.create_group('basis_set'),\
+        self.basis_sum.fill_hdf5_group(root_group.create_group('basis_sum'),\
             basis_links=basis_links, expander_links=expander_links)
         root_group.attrs['degrees_of_freedom'] = self.degrees_of_freedom
         root_group.attrs['BPIC'] = self.BPIC

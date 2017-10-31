@@ -24,19 +24,19 @@ except:
 
 class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
     """
-    Class which performs fits using the BasisSet it is given as well as subsets
-    of the BasisSet given. By doing so for grids of different subsets, it
+    Class which performs fits using the BasisSum it is given as well as subsets
+    of the BasisSum given. By doing so for grids of different subsets, it
     chooses the optimal number of parameters.
     """
-    def __init__(self, basis_set, data, error, compiled_quantity,\
+    def __init__(self, basis_sum, data, error, compiled_quantity,\
         quantity_to_minimize, *dimensions, **priors):
         """
         Initializes a new MetaFitter object using the given inputs.
         
-        basis_set: a BasisSet object (or a Basis object, which is converted
-                   internally to a BasisSet of one Basis with the name 'Sole')
-        data: 1D vector of same length as vectors in basis_set
-        error: 1D vector of same length as vectors in basis_set containing only
+        basis_sum: a BasisSum object (or a Basis object, which is converted
+                   internally to a BasisSum of one Basis with the name 'Sole')
+        data: 1D vector of same length as vectors in basis_sum
+        error: 1D vector of same length as vectors in basis_sum containing only
                positive numbers
         compiled_quantity: CompiledQuantity object representing quantities to
                            retrieve
@@ -48,7 +48,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
         **priors: keyword arguments where the keys are exactly the names of the
                   basis sets with '_prior' appended to them
         """
-        Fitter.__init__(self, basis_set, data, error, **priors)
+        Fitter.__init__(self, basis_sum, data, error, **priors)
         self.dimensions = dimensions
         self.compiled_quantity = compiled_quantity
         self.quantity_to_minimize = quantity_to_minimize
@@ -103,9 +103,9 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
         
         returns: Fitter corresponding to the given subbasis subsets
         """
-        sub_basis_set = self.basis_set.basis_subsets(**subsets)
+        sub_basis_sum = self.basis_sum.basis_subsets(**subsets)
         sub_prior_sets = self.prior_subsets(**subsets)
-        return Fitter(sub_basis_set, self.data, self.error, **sub_prior_sets)
+        return Fitter(sub_basis_sum, self.data, self.error, **sub_prior_sets)
     
     def fitter_from_indices(self, indices):
         """
@@ -128,7 +128,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
         """
         result = {}
         if self.has_priors:
-            for name in self.basis_set.names:
+            for name in self.basis_sum.names:
                 key = name + '_prior'
                 if key in self.priors:
                     old_prior = self.priors[key]
@@ -210,7 +210,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
         group.attrs['quantity_to_minimize'] = self.quantity_to_minimize
         self.compiled_quantity.fill_hdf5_group(group.create_group(\
             'compiled_quantity'), exclude=['bias_score'])
-        self.basis_set.fill_hdf5_group(group.create_group('basis_set'),\
+        self.basis_sum.fill_hdf5_group(group.create_group('basis_sum'),\
             expander_links=expander_links)
         if self.has_priors:
             subgroup = group.create_group('prior')
@@ -223,7 +223,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
             expander_links = []
             for ibasis in range(len(self.names)):
                 expander_links.append(\
-                    group['basis_set/basis_{}/expander'.format(ibasis)])
+                    group['basis_sum/basis_{}/expander'.format(ibasis)])
         def prior_links_from_indices(subset_indices):
             """
             Finds the prior mean links and prior covariance links from the
@@ -252,7 +252,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
             answer = []
             subsets = self.point_from_indices(subset_indices)
             for (iname, name) in enumerate(self.names):
-                relative_path = 'basis_set/basis_{}/basis'.format(iname)
+                relative_path = 'basis_sum/basis_{}/basis'.format(iname)
                 if name in subsets:
                     answer.append(HDF5Link(group[relative_path],\
                         slice(subsets[name])))
