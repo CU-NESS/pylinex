@@ -354,7 +354,7 @@ class Basis(Savable):
             raise ValueError("error with which to compute projection " +\
                              "matrix was neither of the expected lengths.")
     
-    def get_value(self, parameter_values, expanded=True):
+    def get_value(self, parameter_values, expanded=False):
         """
         Gets the value of this basis given a specific set of coefficients.
         
@@ -370,11 +370,11 @@ class Basis(Savable):
                  basis vectors
         """
         if expanded:
-            return np.dot(parameter_values.T, self.expanded_basis)
+            return np.dot(parameter_values, self.expanded_basis)
         else:
-            return np.dot(parameter_values.T, self.basis)
+            return np.dot(parameter_values, self.basis)
     
-    def __call__(self, parameter_values, expanded=True):
+    def __call__(self, parameter_values, expanded=False):
         """
         Gets the value of this basis given a specific set of coefficients.
         

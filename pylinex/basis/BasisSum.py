@@ -98,6 +98,17 @@ class BasisSum(BasisSet, Basis):
         kwargs: keyword arguments to pass on to BasisSet.fill_hdf5_group
         """
         BasisSet.fill_hdf5_group(self, group, *args, **kwargs)
+    
+    def __call__(self, parameters):
+        """
+        Finds the sum of all component bases when the parameters are as given
+        
+        parameters: 1D array of parameters concatenated across different basis
+                    sets.
+        
+        return: sum of the results of all the expanded bases in this BasisSum
+        """
+        return Basis.__call__(self, parameters)
 
 def load_basis_sum_from_hdf5_group(group):
     """

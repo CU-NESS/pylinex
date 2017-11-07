@@ -117,6 +117,16 @@ class BasisSet(object):
                 rindex = rindex + self[name].num_basis_vectors
         return self._slices_by_name
     
+    @property
+    def num_basis_vectors(self):
+        """
+        Property storing the number of basis functions stored in this BasisSet
+        """
+        if not hasattr(self, '_num_basis_vectors'):
+            self._num_basis_vectors =\
+                sum([self[name].num_basis_vectors for name in self.names])
+        return self._num_basis_vectors
+    
     def __getitem__(self, key):
         """
         Allows for the usage of square-bracket indexing notation for getting 
@@ -239,6 +249,19 @@ class BasisSet(object):
                 self.component_bases + other.component_bases)
         else:
             raise TypeError("Can only add together two BasisSet objects.")
+    
+    def __call__(self, parameters):
+        """
+        Finds the values of the bases in this BasisSet associated with the
+        given parameters.
+        
+        parameters: 1D array of parameters corresponding to the combination of
+                    all component bases.
+        
+        returns: list of outcomes of all bases
+        """
+        return [self[name](parameters[slices_by_name[name]])\
+            for name in self.names]
 
 def load_names_and_bases_from_hdf5_group(group):
     """
