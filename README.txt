@@ -10,20 +10,13 @@ Getting started
 ---------------------
 To clone a copy and install: ::
 
-    hg clone https://bitbucket.org/ktausch/perses-dev perses
+    hg clone https://bitbucket.org/ktausch/distpy
+    cd distpy
+    python setup.py develop
+    cd ..
+    hg clone https://bitbucket.org/ktausch/pylinex
     cd perses
     python setup.py develop
-
-To download a few common sky maps: ::
-
-    python remote.py
-
-It would be in your best interest to set an environment variable which points
-to the *perses* install directory, e.g. (in bash) ::
-
-    export PERSES=/users/<yourusername>/perses
-
-*perses* will look in ``$PERSES/input`` for lookup tables of various kinds, e.g., instrumental response, beam pattern, foreground models, etc.
 
 Dependencies
 --------------------
