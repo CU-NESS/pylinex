@@ -705,6 +705,7 @@ class Fitter(Savable):
     @property
     def channel_bias_RMS(self):
         """
+        Property storing the RMS of the channel bias.
         """
         if not hasattr(self, '_channel_bias_RMS'):
             if self.multiple_data_curves:
@@ -993,7 +994,6 @@ class Fitter(Savable):
             self._bayesian_predictive_information_criterion =\
                 self.num_parameters + self.bias_statistic
             if self.has_priors:
-                # TODO recheck!
                 self._bayesian_predictive_information_criterion -= np.trace(\
                     self.posterior_covariance_times_prior_inverse_covariance)
                 term_v1 = np.dot(\

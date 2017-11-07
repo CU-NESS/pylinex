@@ -156,7 +156,7 @@ class CompositeExpander(Expander):
         current_size = original_space_size
         for expander in self.expanders[:-1]:
             current_size = expander.expanded_space_size(current_size)
-        return self.expanders[-1].channels_affected(current_size) # TODO reconsider
+        return self.expanders[-1].channels_affected(current_size)
     
     def fill_hdf5_group(self, group):
         """

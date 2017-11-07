@@ -635,6 +635,18 @@ class ExtractionPlotter(object):
         return self._statistics
     
     def minimum_indices(self, quantity_name=None, icurve=None):
+        """
+        Finds the grid indices which minimize the given quantity for the given
+        input data curve.
+        
+        quantity_name: name of the quantity to minimize
+        icurve: index of the data curve for which to minimize the given
+                quantity (if only one data curve is in the data, then icurve is
+                not necessary)
+        
+        returns: tuple of indices describing the grid pixel which minimizes the
+                 quantity for the given input data curve
+        """
         if quantity_name is None:
             quantity_name = self.quantity_to_minimize
         grid = self.get_grid(quantity_name)
@@ -645,6 +657,16 @@ class ExtractionPlotter(object):
     def statistics_by_minimized_quantity(self, minimized_quantity=None,\
         grid_quantities=[]):
         """
+        Finds the statistics (i.e. attributes of Fitter h5py groups) associated
+        with the minimization of the given quantity.
+        
+        minimized_quantity: the quantity to minimize when finding the stats
+        grid_quantities: quantities in the CompiledQuantity of the Extractor
+                         which created the hdf5 file at the heart of this
+                         object which are desired to be in the returned
+                         dictionary
+        
+        returns: dictionary of statistics
         """
         if not hasattr(self, '_statistics_by_minimized_quantity'):
             self._statistics_by_minimized_quantity = {}
@@ -732,6 +754,8 @@ class ExtractionPlotter(object):
     @property
     def num_data_curves(self):
         """
+        Property storing the number of data curves in the hdf5 file at the
+        heart of this object.
         """
         if not hasattr(self, '_num_data_curves'):
             if self.multiple_data_curves:

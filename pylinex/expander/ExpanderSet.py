@@ -29,6 +29,7 @@ class ExpanderSet(Savable):
     @property
     def error(self):
         """
+        Property storing the error with which to define the inner product.
         """
         if not hasattr(self, '_error'):
             raise AttributeError("error referenced before it was set.")
@@ -37,6 +38,9 @@ class ExpanderSet(Savable):
     @error.setter
     def error(self, value):
         """
+        Setter for the error property
+        
+        value: must be a 1D numpy.ndarray
         """
         value = np.array(value)
         if (value.ndim == 1) and (len(value) > 1):
@@ -47,6 +51,8 @@ class ExpanderSet(Savable):
     @property
     def expanders(self):
         """
+        Property storing the dictionary of Expanders at the heart of this
+        ExpanderSet.
         """
         if not hasattr(self, '_expanders'):
             raise AttributeError("expanders referenced before it was set.")
@@ -55,6 +61,11 @@ class ExpanderSet(Savable):
     @expanders.setter
     def expanders(self, value):
         """
+        Setter for the expanders dictionary property.
+        
+        value: a dictionary filled with compatible Expander objects (meaning
+               they can all be summed together given appropriately sized input
+               bases)
         """
         if isinstance(value, dict):
             new_expanders = {}
@@ -85,6 +96,9 @@ class ExpanderSet(Savable):
     @property
     def expected_channels(self):
         """
+        Property storing a dictionary whose keys are the names of this
+        ExpanderSet and whose values are the input number of channels expected
+        for those names.
         """
         if not hasattr(self, '_expected_channels'):
             raise AttributeError("expected_channels was referenced before " +\
@@ -95,6 +109,8 @@ class ExpanderSet(Savable):
     @property
     def data(self):
         """
+        Property storing a numpy.ndarray of data corresponding to the size of
+        the error.
         """
         if not hasattr(self, '_data'):
             raise AttributeError("data was referenced before it was set.")
@@ -103,6 +119,9 @@ class ExpanderSet(Savable):
     @data.setter
     def data(self, value):
         """
+        Setter for the data of this ExpanderSet
+        
+        value: numpy.ndarray of same shape as error
         """
         value = np.array(value)
         if (value.ndim in [1, 2]) and (value.shape[-1] == self.num_channels):
@@ -114,11 +133,22 @@ class ExpanderSet(Savable):
     @property
     def num_channels(self):
         """
+        Property storing the number of channels in the data/error.
         """
         return self.error.shape[-1]
     
     def marginalize(self, name, true_curve):
         """
+        "Marginalizes" this ExpanderSet over the given name by subtracting the
+        expanded version of the given true curve.
+        
+        name: string name of component over which to marginalize
+        true_curve: the true value (i.e. the one associated with the data) of
+                    the data component associated with name
+        
+        returns: ExpanderSet object with the same expanders except the one
+                 associated with name is removed and the data has true_curve
+                 subtracted
         """
         if name in self.expanders:
             true_curve = np.array(true_curve)
@@ -136,6 +166,12 @@ class ExpanderSet(Savable):
     
     def channels_affected(self, name):
         """
+        Finds the channels affected by the given component.
+        
+        name: string name of the desired component
+        
+        returns: numpy.ndarray of channels affected by the Expander associated
+                 with the given name
         """
         if name in self.expanders:
             expander = self.expanders[name]
@@ -148,6 +184,12 @@ class ExpanderSet(Savable):
     
     def channels_unaffected(self, name):
         """
+        Finds the channels unaffected by the given component.
+        
+        name: string name of the desired component
+        
+        returns: numpy.ndarray of channels affected by the Expander associated
+                 with the given name
         """
         channels = np.arange(self.num_channels)
         is_affected = np.isin(channels, self.channels_affected(name))
@@ -158,6 +200,9 @@ class ExpanderSet(Savable):
     @property
     def separable(self):
         """
+        Property storing a boolean describing whether or not it is possible in
+        principle to completely separate the different components (i.e. the
+        channels they affect do not overlap).
         """
         if not hasattr(self, '_separable'):
             affected = np.zeros(self.num_channels, dtype=bool)
@@ -175,6 +220,12 @@ class ExpanderSet(Savable):
     
     def separate(self):
         """
+        Separates the different components of the data.
+        
+        returns: if this ExpanderSet is separable, returns tuple whose first
+                 element is a dictionary whose keys are names of components and
+                 whose values are the corresponding separated curves and whose
+                 second element is the residual after separation.
         """
         if not self.separable:
             raise RuntimeError("Separation can't be performed on this " +\
@@ -193,16 +244,31 @@ class ExpanderSet(Savable):
     
     def reset_data(self, new_data):
         """
+        Sets the data of thie ExpanderSet to a different array.
+        
+        new_data: numpy.ndarray to set self.data to
         """
         return ExpanderSet(new_data, self.error, **self.expanders)
 
     def __contains__(self, key):
         """
+        Checks whether there is an Expander in this ExpanderSet with
+        identifying string given by key.
+        
+        key: name to check
+        
+        returns: True if there is an Expander object associated with key
+                 False otherwise
         """
         return (key in self.expanders)
     
     def __getitem__(self, key):
         """
+        Gets the Expander associated with the given key.
+        
+        key: name associated with desired Expander object
+        
+        returns: Expander object associated with key
         """
         try:
             return self.expanders[key]
@@ -212,16 +278,26 @@ class ExpanderSet(Savable):
     
     def __iter__(self):
         """
+        Returns an iterator over the names associated with this ExpandeSet.
         """
         return iter(self.expanders.keys())
     
     def values(self):
         """
+        Returns an iterator over the Expanders corresponding to the names
+        associated with this ExpanderSet.
         """
         return iter(self.expanders.values())
     
     def fill_hdf5_group(self, group, data_link=None, error_link=None):
         """
+        Fills an hdf5 group with information about this ExpanderSet.
+        
+        group: the hdf5 group to fill with information
+        data_link: link to existing data dataset, if it exists (see
+                   create_hdf5_dataset docs for info about accepted formats)
+        error_link: link to existing error dataset, if it exists (see
+                   create_hdf5_dataset docs for info about accepted formats)
         """
         data_link = create_hdf5_dataset(group, '__data__', data=self.data,\
             link=data_link)

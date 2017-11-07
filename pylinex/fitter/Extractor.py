@@ -362,6 +362,8 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
     @property
     def total_number_of_combined_training_set_curves(self):
         """
+        The number of combined training set curves which are given by the
+        training sets of this Extractor.
         """
         if not hasattr(self, '_total_number_of_combined_training_set_curves'):
             self._total_number_of_combined_training_set_curves =\
