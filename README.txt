@@ -3,6 +3,8 @@ pylinex
 ======
 pylinex is a Python package, compatible with both Python 2.7+ and Python 3.5+, for linear extraction of signals from data. It is flexible enough to perform most any linear fit to data but was created with the purpose of using Singular Value Decomposition (SVD) to create models of components of data with which to separate those components. This package was introduced along with a paper submitted to the Astrophysical Journal (***UPDATE WITH CITATION***).
 
+There are two different ways to keep up to data with changes to pylinex: 1) watch this repository on bitbucket and 2) subscribe to the mailing list `here <https://docs.google.com/forms/d/1nQA1nPP-d3BHwzPQwAwLw8w8Ydx_EhNQWNkRcLW-PCA>`_
+
 Be warned: this code is still under active development -- use at your own
 risk! Correctness of results is not guaranteed.
 
