@@ -18,6 +18,8 @@ To clone a copy and install: ::
     cd perses
     python setup.py develop
 
+The first four lines above are necessary only if you do not already have distpy installed.
+
 Dependencies
 --------------------
 You will need:
