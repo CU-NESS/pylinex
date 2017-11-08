@@ -283,7 +283,7 @@ class ExtractionPlotter(object):
                         parameter_mean = get_hdf5_value(fitter_group[\
                             'posterior/{!s}/parameter_mean'.format(name)])
                         self._channel_means[name] =\
-                            np.dot(parameter_mean, basis_sum.basis)
+                            np.dot(parameter_mean, basis_sum[name].basis)
         return self._channel_means
     
     @property
@@ -484,12 +484,24 @@ class ExtractionPlotter(object):
         else:
             mean_to_plot = channel_mean
         ax.plot(channels, mean_to_plot, color='r', linewidth=1)
+        if type(nsigma) not in [list, tuple]:
+            nsigma = [nsigma, None]
         if subtract_truth and (error_to_plot == 'likelihood'):
-            ax.fill_between(channels, -nsigma * channel_error,\
-                nsigma * channel_error, color='r', alpha=0.3)
+            ax.fill_between(channels, -nsigma[0] * channel_error,\
+                nsigma[0] * channel_error, color='r', alpha=0.5)
+            if nsigma[1] is not None:
+                ax.fill_between(channels, -nsigma[1] * channel_error,\
+                    nsigma[1] * channel_error, color='r', alpha=0.2)
         else:
-            ax.fill_between(channels, mean_to_plot - (nsigma * channel_error),\
-                mean_to_plot + (nsigma * channel_error), color='r', alpha=0.3)
+            ax.fill_between(channels,\
+                mean_to_plot - (nsigma[0] * channel_error),\
+                mean_to_plot + (nsigma[0] * channel_error), color='r',\
+                alpha=0.5)
+            if nsigma[1] is not None:
+                ax.fill_between(channels,\
+                    mean_to_plot - (nsigma[1] * channel_error),\
+                    mean_to_plot + (nsigma[1] * channel_error), color='r',\
+                    alpha=0.2)
         ax.plot(channels, np.zeros_like(channels), color='k', linewidth=1)
         if subtract_truth:
             ax.plot(channels, np.zeros_like(channels), color='k',\
