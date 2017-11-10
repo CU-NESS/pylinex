@@ -404,7 +404,7 @@ class ExtractionPlotter(object):
     def plot_subbasis_fit(self, icurve=0, quantity_to_minimize=None, nsigma=1,\
         name=None, true_curves={}, title='Subbasis fit', subtract_truth=False,\
         plot_truth=False, yscale='linear', error_to_plot='posterior',\
-        verbose=True, ax=None, scale_factor=1, show=False):
+        verbose=True, ax=None, scale_factor=1, channels=None, show=False):
         """
         Plots a subbasis fit from this Extractor.
         
@@ -478,7 +478,8 @@ class ExtractionPlotter(object):
         channel_error = scale_factor * channel_error
         if plot_truth or subtract_truth:
             true_curve = scale_factor * true_curve
-        channels = np.arange(len(channel_error))
+        if channels is None:
+            channels = np.arange(len(channel_error))
         if subtract_truth:
             mean_to_plot = channel_mean - true_curve
         else:
@@ -488,20 +489,20 @@ class ExtractionPlotter(object):
             nsigma = [nsigma, None]
         if subtract_truth and (error_to_plot == 'likelihood'):
             ax.fill_between(channels, -nsigma[0] * channel_error,\
-                nsigma[0] * channel_error, color='r', alpha=0.5)
+                nsigma[0] * channel_error, color='r', alpha=0.2)
             if nsigma[1] is not None:
                 ax.fill_between(channels, -nsigma[1] * channel_error,\
-                    nsigma[1] * channel_error, color='r', alpha=0.2)
+                    nsigma[1] * channel_error, color='r', alpha=0.1)
         else:
             ax.fill_between(channels,\
                 mean_to_plot - (nsigma[0] * channel_error),\
                 mean_to_plot + (nsigma[0] * channel_error), color='r',\
-                alpha=0.5)
+                alpha=0.35)
             if nsigma[1] is not None:
                 ax.fill_between(channels,\
                     mean_to_plot - (nsigma[1] * channel_error),\
                     mean_to_plot + (nsigma[1] * channel_error), color='r',\
-                    alpha=0.2)
+                    alpha=0.15)
         ax.plot(channels, np.zeros_like(channels), color='k', linewidth=1)
         if subtract_truth:
             ax.plot(channels, np.zeros_like(channels), color='k',\
