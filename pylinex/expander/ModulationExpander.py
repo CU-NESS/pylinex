@@ -8,7 +8,7 @@ Description: File containing class representing an Expander which expands its
 """
 import numpy as np
 import numpy.linalg as la
-from ..util import create_hdf5_dataset
+from ..util import create_hdf5_dataset, sequence_types
 from .Expander import Expander
 
 class ModulationExpander(Expander):
@@ -46,7 +46,12 @@ class ModulationExpander(Expander):
                Any additional axes represent multiple parts of the output which
                should be modulated differently from the input.
         """
-        self._modulating_factors = value
+        if type(value) in sequence_types:
+            self._modulating_factors = np.array(value)
+        else:
+            raise TypeError("modulating_factors should be an array of at " +\
+                "least one dimension whose last axis represents the space " +\
+                "of the input.")
     
     @property
     def ndim(self):

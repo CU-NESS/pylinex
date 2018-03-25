@@ -7,10 +7,11 @@ Description: File containing a container for many Expander objects associated
              with different names.
 """
 import numpy as np
-from ..util import Savable, create_hdf5_dataset
+from ..util import Savable, Loadable, create_hdf5_dataset, get_hdf5_value
 from .Expander import Expander
+from .LoadExpander import load_expander_from_hdf5_group
 
-class ExpanderSet(Savable):
+class ExpanderSet(Savable, Loadable):
     """
     Container class for many Expander objects associated with string names.
     """
@@ -18,8 +19,8 @@ class ExpanderSet(Savable):
         """
         Initializes a new ExpanderSet with the given contents.
         
-        data: the data with which to infer "true" curves
-        error: the error with which to define inner product
+        data: the data from which to infer "true" curves
+        error: the error from which to define inner product
         expanders: dictionary of expanders to store in this object
         """
         self.error = error
@@ -305,4 +306,22 @@ class ExpanderSet(Savable):
             link=error_link)
         for name in self.expanders:
             self.expanders[name].fill_hdf5_group(group.create_group(name))
+    
+    @staticmethod
+    def load_from_hdf5_group(group):
+        """
+        Loads an ExpanderSet object from the given hdf5 file group.
+        
+        group: hdf5 file group which ExpanderSet was saved in using one of
+               fill_hdf5_group or save methods
+        
+        returns: ExpanderSet object loaded from the given hdf5 file group
+        """
+        data = get_hdf5_value(group['__data__'])
+        error = get_hdf5_value(group['__error__'])
+        expanders = {}
+        for name in group:
+            if name not in ['__data__', '__error__']:
+                expanders[name] = load_expander_from_hdf5_group(group[name])
+        return ExpanderSet(data, error, **expanders)
 

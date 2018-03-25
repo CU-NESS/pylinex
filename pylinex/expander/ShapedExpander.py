@@ -127,8 +127,7 @@ class ShapedExpander(Expander):
         
         returns: 1D vector from expanded space
         """
-        full_output_shape = vector.shape[:-1] + self.output_shape
-        return np.reshape(self.expander(vector), full_output_shape)
+        return np.reshape(self.expander(vector), self.output_shape)
     
     def contract_error(self, error):
         """

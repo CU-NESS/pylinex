@@ -7,10 +7,10 @@ Description: File containing a class representing a quantity which is an
              attribute of an object (which may or may not exist at the time of
              initialization).
 """
-from ..util import Savable
+from ..util import Savable, Loadable
 from .Quantity import Quantity
 
-class AttributeQuantity(Quantity, Savable):
+class AttributeQuantity(Quantity, Savable, Loadable):
     """
     Class representing a quantity which is an attribute of an object. That
     object may or may not exist at the time of the initialization of this
@@ -49,4 +49,22 @@ class AttributeQuantity(Quantity, Savable):
         group.attrs['name'] = self.name
         group.attrs['class'] = 'AttributeQuantity'
         group.attrs['attribute_name'] = self.attribute_name
+    
+    @staticmethod
+    def load_from_hdf5_group(group):
+        """
+        Loads an AttributeQuantity from the given hdf5 group.
         
+        group: hdf5 file group from which to load an AttributeQuantity
+        
+        returns: AttributeQuantity loaded from given hdf5 file group
+        """
+        try:
+            assert group.attrs['class'] == 'AttributeQuantity'
+        except:
+            raise TypeError("This hdf5 file group does not seem to contain " +\
+                "an AttributeQuantity.")
+        name = group.attrs['name']
+        attribute_name = group.attrs['attribute_name']
+        return AttributeQuantity(attribute_name, name=name)
+

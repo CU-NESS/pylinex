@@ -11,10 +11,12 @@ import os
 import numpy as np
 import matplotlib.pyplot as pl
 from matplotlib.colors import LogNorm
-from ..util import get_hdf5_value
-from ..basis import load_basis_sum_from_hdf5_group
+from distpy import GaussianDistribution, ChiSquaredDistribution
+from ..util import get_hdf5_value, sequence_types
+from ..quantity import load_quantity_from_hdf5_group
+from ..expander import ExpanderSet
+from ..basis import BasisSum
 from ..fitter import Extractor
-from ..expander import ExpanderSet, load_expander_set_from_hdf5_group
 try:
     import h5py
 except:
@@ -77,6 +79,45 @@ class ExtractionPlotter(object):
         return self._file
     
     @property
+    def training_set_ranks(self):
+        """
+        Property storing a dictionary of the effective ranks of the training
+        sets (indexed by name) used by the Extractor which generated the hdf5
+        file at the heart of this object.
+        """
+        if not hasattr(self, '_training_set_ranks'):
+            self._training_set_ranks =\
+                {name: self.file['ranks'].attrs[name] for name in self.names}
+        return self._training_set_ranks
+    
+    @property
+    def training_set_rank_indices(self):
+        """
+        Property storing a dictionary with tuples containing the dimension and
+        rank index as values indexed by the associated subbasis name.
+        """
+        if not hasattr(self, '_training_set_rank_indices'):
+            self._training_set_rank_indices = {}
+            for name in self.names:
+                rank = self.training_set_ranks[name]
+                for (idimension, dimension) in enumerate(self.dimensions):
+                    if name in dimension:
+                        if rank in dimension[name]:
+                            rank_index =\
+                                np.where(dimension[name] == rank)[0][0]
+                        else:
+                            print(("rank of {0!s} ({1:d}) not in its grid " +\
+                                "dimension. Are you sure you're using " +\
+                                "enough terms?").format(name, rank))
+                            rank_index = None
+                        self._training_set_rank_indices[name] =\
+                            (idimension, rank_index)
+                        break
+                    else:
+                        pass
+        return self._training_set_rank_indices
+    
+    @property
     def dimensions(self):
         """
         Property storing the dimension list which contains dictionaries with
@@ -90,7 +131,7 @@ class ExtractionPlotter(object):
                 subgroup = group['dimension_{}'.format(idim)]
                 this_dimension = {}
                 for key in subgroup:
-                    this_dimension[key] = subgroup[key]
+                    this_dimension[key] = subgroup[key].value
                 self._dimensions.append(this_dimension)
                 idim += 1
         return self._dimensions
@@ -120,8 +161,16 @@ class ExtractionPlotter(object):
         Gets the grid associated with the quantity of the given name.
         
         name: name of quantity which desired grid concerns
+              if None, the quantity_to_minimize is used
+        
+        returns: the numpy.ndarray grid associated with the given name
         """
-        return get_hdf5_value(self.file['meta_fitter/grids/{!s}'.format(name)])
+        if name is None:
+            return get_hdf5_value(self.file[\
+                'meta_fitter/grids/{!s}'.format(self.quantity_to_minimize)])
+        else:
+            return get_hdf5_value(\
+                self.file['meta_fitter/grids/{!s}'.format(name)])
     
     def __getitem__(self, key):
         """
@@ -140,13 +189,13 @@ class ExtractionPlotter(object):
         
         returns: list of string tick labels
         """
-        dimension = self.dimensions[0]
+        dimension = self.dimensions[idimension]
         mode_numbers = [dimension[key] for key in dimension]
         if all([np.allclose(mode_numbers[i], mode_numbers[0])\
             for i in range(len(mode_numbers))]):
             ticks = mode_numbers[0]
         else:
-            ticks = np.arange(self.dimension_lengths[0])
+            ticks = np.arange(self.dimension_lengths[idimension])
         return ['{:d}'.format(tick) for tick in ticks]
     
     @property
@@ -202,6 +251,45 @@ class ExtractionPlotter(object):
         return self._ylabel
     
     @property
+    def basis_sum(self):
+        """
+        Property storing the basis_sum which is used to fit the single data
+        curve at the heart of this object. If there is more than one data
+        curve, this property will throw an error. In that case, you should use
+        the get_basis_sum function instead.
+        """
+        if not hasattr(self, '_basis_sum'):
+            if self.multiple_data_curves:
+                raise AttributeError("The basis_sum property does not make " +\
+                    "sense when there are multiple data curves. Use the " +\
+                    "get_basis_sum function of the ExtractionPlotter class " +\
+                    "instead.")
+            else:
+                self._basis_sum = self.get_basis_sum()
+        return self._basis_sum
+    
+    def get_basis_sum(self, icurve=None):
+        """
+        Gets the basis_sum deteremined optimal for the given data curve.
+        
+        icurve: index of data curve for which to find the basis_sum (only
+                necessary if multiple data curves are given)
+        
+        returns: basis_sum object determined optimal to fit the given data
+        """
+        group_name = 'meta_fitter/optimal_fitter'
+        if self.multiple_data_curves:
+            if icurve is None:
+                raise ValueError("Since multiple data curves are included " +\
+                    "in this Extractor, an index of the data curve for " +\
+                    "which the basis_sum is desired is required to be " +\
+                    "passed to get_basis_sum.")
+            else:
+                group_name = '{0!s}s/data_curve_{1}'.format(group_name, icurve)
+        group_name = '{!s}/basis_sum'.format(group_name)
+        return BasisSum.load_from_hdf5_group(self.file[group_name])
+    
+    @property
     def channel_mean(self):
         """
         Property storing the channel mean of the fit to the data.
@@ -219,7 +307,7 @@ class ExtractionPlotter(object):
                         this_mean = get_hdf5_value(\
                             fitter_group['posterior/channel_mean'])[icurve]
                     else:
-                        basis_sum = load_basis_sum_from_hdf5_group(\
+                        basis_sum = BasisSum.load_from_hdf5_group(\
                             fitter_group['basis_sum'])
                         parameter_mean = get_hdf5_value(\
                             fitter_group['posterior/parameter_mean'])
@@ -232,12 +320,87 @@ class ExtractionPlotter(object):
                 self._channel_mean = get_hdf5_value(self.file[\
                     'meta_fitter/optimal_fitter/posterior/channel_mean'])
             else:
-                basis_sum = load_basis_sum_from_hdf5_group(\
+                basis_sum = BasisSum.load_from_hdf5_group(\
                     self.file['meta_fitter/optimal_fitter/basis_sum'])
                 parameter_mean = get_hdf5_value(self.file[\
                     'meta_fitter/optimal_fitter/posterior/parameter_mean'])
                 self._channel_mean = np.dot(parameter_mean, basis_sum.basis)
         return self._channel_mean
+    
+    @property
+    def parameter_mean(self):
+        """
+        Property storing the parameter mean of the fit to the data.
+        """
+        if not hasattr(self, '_parameter_mean'):
+            if self.multiple_data_curves:
+                self._parameter_mean = []
+                for icurve in range(self.num_data_curves):
+                    fitter_group = self.file[('meta_fitter/optimal_fitters/' +\
+                        'data_curve_{}').format(icurve)]
+                    parameter_mean = get_hdf5_value(\
+                        fitter_group['posterior/parameter_mean'])
+                    self._parameter_mean.append(parameter_mean)
+                self._parameter_mean = np.array(self._parameter_mean)
+            else:
+                self._parameter_mean = get_hdf5_value(self.file[\
+                    'meta_fitter/optimal_fitter/posterior/parameter_mean'])
+        return self._parameter_mean
+    
+    @property
+    def parameter_covariance(self):
+        """
+        Property storing the parameter covariance of the fit to the data.
+        """
+        if not hasattr(self, '_parameter_covariance'):
+            if self.multiple_data_curves:
+                self._parameter_covariance = []
+                for icurve in range(self.num_data_curves):
+                    fitter_group = self.file[('meta_fitter/optimal_fitters/' +\
+                        'data_curve_{}').format(icurve)]
+                    parameter_covariance = get_hdf5_value(\
+                        fitter_group['posterior/parameter_covariance'])
+                    self._parameter_covariance.append(parameter_covariance)
+                self._parameter_covariance =\
+                    np.array(self._parameter_covariance)
+            else:
+                self._parameter_covariance = get_hdf5_value(self.file[\
+                    'meta_fitter/optimal_fitter/posterior/' +\
+                    'parameter_covariance'])
+        return self._parameter_covariance
+    
+    @property
+    def parameter_distribution(self):
+        """
+        Property storing a GaussianDistribution object containing the
+        parameter_mean property as its mean and parameter_covariance property
+        as its covariance.
+        """
+        if not hasattr(self, '_parameter_distribution'):
+            self._parameter_distribution = GaussianDistribution(\
+                self.parameter_mean, self.parameter_covariance)
+        return self._parameter_distribution
+    
+    def get_fit(self, grid_indices):
+        """
+        Gets the fit associated with the given grid indices.
+        
+        grid_indices: list of indices into the grid for which to return the fit
+                      (indices may be negative)
+        
+        returns: (basis_sum, parameter_mean, parameter_covariance)
+        """
+        grid_indices = [index % length\
+            for (index, length) in zip(grid_indices, self.dimension_lengths)]
+        grid_string =\
+            '_'.join(['{}'.format(grid_index) for grid_index in grid_indices])
+        fitter_group = self.file['meta_fitter/fitters/{}'.format(grid_string)]
+        basis_sum = BasisSum.load_from_hdf5_group(fitter_group['basis_sum'])
+        parameter_mean =\
+            get_hdf5_value(fitter_group['posterior/parameter_mean'])
+        parameter_covariance =\
+            get_hdf5_value(fitter_group['posterior/parameter_covariance'])
+        return (basis_sum, parameter_mean, parameter_covariance)
     
     @property
     def channel_means(self):
@@ -251,12 +414,12 @@ class ExtractionPlotter(object):
                 for icurve in range(self.num_data_curves):
                     fitter_group = self.file[('meta_fitter/' +\
                         'optimal_fitters/data_curve_{}').format(icurve)]
-                    basis_sum = load_basis_sum_from_hdf5_group(\
+                    basis_sum = BasisSum.load_from_hdf5_group(\
                         fitter_group['basis_sum'])
                     for name in self.names:
                         if 'channel_mean' in\
                             fitter_group['posterior/{!s}'.format(name)]:
-                            this_mean = get_hdf5_value( fitter_group[\
+                            this_mean = get_hdf5_value(fitter_group[\
                                 'posterior/{!s}/channel_mean'.format(name)])[\
                                 icurve]
                         else:
@@ -271,7 +434,7 @@ class ExtractionPlotter(object):
             else:
                 self._channel_means = {}
                 fitter_group = self.file['meta_fitter/optimal_fitter']
-                basis_sum = load_basis_sum_from_hdf5_group(\
+                basis_sum = BasisSum.load_from_hdf5_group(\
                     fitter_group['basis_sum'])
                 for name in self.names:
                     if 'channel_mean' in\
@@ -285,6 +448,104 @@ class ExtractionPlotter(object):
                         self._channel_means[name] =\
                             np.dot(parameter_mean, basis_sum[name].basis)
         return self._channel_means
+    
+    @property
+    def parameter_means(self):
+        """
+        Property storing a dictionary of parameter means indexed by name of
+        data component under concern.
+        """
+        if not hasattr(self, '_parameter_means'):
+            if self.multiple_data_curves:
+                self._parameter_means = {name: [] for name in self.names}
+                for icurve in range(self.num_data_curves):
+                    fitter_group = self.file[('meta_fitter/' +\
+                        'optimal_fitters/data_curve_{}').format(icurve)]
+                    for name in self.names:
+                        this_mean = get_hdf5_value(fitter_group[\
+                            'posterior/{!s}/parameter_mean'.format(name)])
+                        self._parameter_means[name].append(this_mean)
+                for name in self.names:
+                    self._parameter_means[name] =\
+                        np.array(self._parameter_means[name])
+            else:
+                self._parameter_means = {}
+                fitter_group = self.file['meta_fitter/optimal_fitter']
+                for name in self.names:
+                    self._parameter_means[name] = get_hdf5_value(fitter_group[\
+                        'posterior/{!s}/parameter_mean'.format(name)])
+        return self._parameter_means
+    
+    @property
+    def parameter_covariances(self):
+        """
+        Property storing a dictionary of parameter covariance indexed by name
+        of data component under concern.
+        """
+        if not hasattr(self, '_parameter_covariances'):
+            if self.multiple_data_curves:
+                self._parameter_covariances = {name: [] for name in self.names}
+                for icurve in range(self.num_data_curves):
+                    fitter_group = self.file[('meta_fitter/' +\
+                        'optimal_fitters/data_curve_{}').format(icurve)]
+                    for name in self.names:
+                        this_covariance = get_hdf5_value(fitter_group[\
+                            'posterior/{!s}/parameter_covariance'.format(\
+                            name)])
+                        self._parameter_covariances[name].append(\
+                            this_covariance)
+                for name in self.names:
+                    self._parameter_covariances[name] =\
+                        np.array(self._parameter_covariances[name])
+            else:
+                self._parameter_covariances = {}
+                fitter_group = self.file['meta_fitter/optimal_fitter']
+                for name in self.names:
+                    self._parameter_covariances[name] = get_hdf5_value(\
+                        fitter_group[('posterior/{!s}/' +\
+                        'parameter_covariance').format(name)])
+        return self._parameter_covariances
+    
+    def get_parameter_indices(self, names):
+        """
+        Gets the indices of parameters describing the given subbases.
+        
+        names: list of names of subbases of the optimal BasisSum
+        
+        returns: 1D numpy.ndarray of indices of parameters
+        """
+        num_basis_vectors = self.basis_sum.num_basis_vectors
+        slices = [self.basis_sum.slices_by_name[name] for name in names]
+        parameter_indices =\
+            [range(*slc.indices(num_basis_vectors)) for slc in slices]
+        return np.concatenate(parameter_indices)
+    
+    def marginalized_parameter_mean(self, names):
+        """
+        Marginalizes the parameter mean so as to only include the given names
+        (in the given order).
+        
+        names: sequence of subbasis names to include in the output
+        
+        returns: 1D numpy.ndarray of parameter means whose length is determined
+                 by the number of parameters which describe the given names
+        """
+        parameter_indices = self.get_parameter_indices(names)
+        return self.parameter_mean[...,parameter_indices]
+    
+    def marginalized_parameter_covariance(self, names):
+        """
+        Marginalizes the parameter covariance so as to only include the given
+        names (in the given order).
+        
+        names: sequence of subbasis names to include in the output
+        
+        returns: square 2D numpy.ndarray whose shape is determined the number
+                 of parameters which describe the given names
+        """
+        parameter_indices = self.get_parameter_indices(names)
+        return self.parameter_covariance[...,parameter_indices,:]\
+            [...,:,parameter_indices]
     
     @property
     def channel_error(self):
@@ -402,9 +663,10 @@ class ExtractionPlotter(object):
                 return separated_curves[name]
 
     def plot_subbasis_fit(self, icurve=0, quantity_to_minimize=None, nsigma=1,\
-        name=None, true_curves={}, title='Subbasis fit', subtract_truth=False,\
-        plot_truth=False, yscale='linear', error_to_plot='posterior',\
-        verbose=True, ax=None, scale_factor=1, channels=None, show=False):
+        name=None, true_curves={}, title=None, xlabel=None, ylabel=None,\
+        subtract_truth=False, plot_truth=False, yscale='linear',\
+        error_to_plot='posterior', verbose=True, ax=None, scale_factor=1,\
+        channels=None, fontsize=24, show=False):
         """
         Plots a subbasis fit from this Extractor.
         
@@ -417,6 +679,8 @@ class ExtractionPlotter(object):
                      whose values are the "true" curves representing those
                      components
         title: title of the created plot
+        xlabel: label of x axis
+        ylabel: label of y axis
         subtract_truth: if True, the curve to plot has "true" curve subtracted
                                  from it
         plot_truth: if True and subtract_truth is False, plot "true" curve in
@@ -455,7 +719,7 @@ class ExtractionPlotter(object):
                 fitter_group_name + 's/data_curve_{}'.format(icurve)
         basis_sum_group_name = '{!s}/basis_sum'.format(fitter_group_name)
         basis_sum =\
-            load_basis_sum_from_hdf5_group(self.file[basis_sum_group_name])
+            BasisSum.load_from_hdf5_group(self.file[basis_sum_group_name])
         posterior_group_name = '{!s}/posterior'.format(fitter_group_name)
         if name is None:
             basis = basis_sum.basis
@@ -497,12 +761,12 @@ class ExtractionPlotter(object):
             ax.fill_between(channels,\
                 mean_to_plot - (nsigma[0] * channel_error),\
                 mean_to_plot + (nsigma[0] * channel_error), color='r',\
-                alpha=0.35)
+                alpha=0.5)
             if nsigma[1] is not None:
                 ax.fill_between(channels,\
                     mean_to_plot - (nsigma[1] * channel_error),\
                     mean_to_plot + (nsigma[1] * channel_error), color='r',\
-                    alpha=0.15)
+                    alpha=0.3)
         ax.plot(channels, np.zeros_like(channels), color='k', linewidth=1)
         if subtract_truth:
             ax.plot(channels, np.zeros_like(channels), color='k',\
@@ -510,10 +774,15 @@ class ExtractionPlotter(object):
         elif plot_truth:
             ax.plot(channels, true_curve, color='k', linewidth=1)
         ax.set_yscale(yscale)
-        ax.set_title(title, size='xx-large')
+        if title is not None:
+            ax.set_title(title, size=fontsize)
+        if xlabel is not None:
+            ax.set_xlabel(xlabel, size=fontsize)
+        if ylabel is not None:
+            ax.set_ylabel(ylabel, size=fontsize)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5)
         if show:
             pl.show()
-        
     
     def plot_subbasis_fit_grid(self, icurve=0, nsigma=1, name=None,\
         true_curves={}, title='Subbasis fit grid', subtract_truth=False,\
@@ -561,8 +830,10 @@ class ExtractionPlotter(object):
                 'meta_fitter/fitters/{}_{}/posterior'.format(icol, irow)
             if name is not None:
                 group_name = group_name + '/{!s}'.format(name)
-            channel_mean = get_hdf5_value(\
-                self.file['{!s}/channel_mean'.format(group_name)])
+            if name is None:
+                channel_mean = self.channel_mean
+            else:
+                channel_mean = self.channel_means[name]
             if self.multiple_data_curves:
                 channel_mean = channel_mean[icurve]
             channel_error = get_hdf5_value(\
@@ -623,19 +894,275 @@ class ExtractionPlotter(object):
         else:
             pl.imshow(grid.T, **kwargs)
         pl.colorbar()
-        pl.xlim((-0.5, self.dimension_lengths[0] - 0.5))
+        xlim = (-0.5, self.dimension_lengths[0] - 0.5)
+        pl.xlim(xlim)
         pl.xticks(np.arange(self.dimension_lengths[0]), self.xticks)
         pl.xlabel(self.xlabel)
         if not oneD:
-            pl.ylim((-0.5, self.dimension_lengths[1] - 0.5))
+            ylim = (-0.5, self.dimension_lengths[1] - 0.5)
+            pl.ylim(ylim)
             pl.yticks(np.arange(self.dimension_lengths[1]), self.yticks)
             pl.ylabel(self.ylabel)
+            try:
+                rank_indices = []
+                for dimension in self.dimensions:
+                    for basis_name in dimension:
+                        rank_indices.append(\
+                            self.training_set_rank_indices[basis_name][1])
+                        break
+                (xrank_index, yrank_index) = rank_indices
+                if xrank_index is not None:
+                    pl.plot([xrank_index - 0.5] * 2, ylim, color='r',\
+                        linestyle='--')
+                if yrank_index is not None:
+                    pl.plot(xlim, [yrank_index - 0.5] * 2, color='r',\
+                        linestyle='--')
+            except:
+                pass # this says "don't worry about it if you can't plot ranks"
         if log_from_min:
             pl.title('{0!s} grid (log from min={1:.3g})'.format(name,\
                 grid_min))
         else:
             pl.title('{!s} grid'.format(name))
         if show:
+            pl.show()
+    
+    def plot_parameter_number_grid(self, quantity_to_minimize=None,
+        cmap='binary', show=False):
+        """
+        Plots a histogram of the number of parameters used in each dimension.
+        
+        quantity_to_minimize: if None, the default quantity_to_minimize is used
+                              otherwise, this should be the string name of a
+                                         quantity whose minimization can be
+                                         used to decide on a basis truncation
+        cmap: the name of the colormap to use for the histogram
+        show: if True, matplotlib.pyplot.show() is called before this function
+              returns
+        """
+        minimization_grid = self[quantity_to_minimize]
+        if not self.multiple_data_curves:
+            minimization_grid = minimization_grid[...,np.newaxis]
+        grid_shape = minimization_grid.shape[:-1]
+        for name in self.dimensions[0]:
+            left = self.dimensions[0][name][0]
+            right = self.dimensions[0][name][-1]
+            try:
+                xrank = self.training_set_ranks[name]
+            except:
+                pass # don't worry if ranks are unavailable
+            break
+        for name in self.dimensions[1]:
+            bottom = self.dimensions[1][name][0]
+            top = self.dimensions[1][name][-1]
+            try:
+                yrank = self.training_set_ranks[name]
+            except:
+                pass # don't worry if ranks are unavailable
+            break
+        (xs, ys) = (np.arange(left, right + 1), np.arange(bottom, top + 1))
+        xbins = np.arange(left, right + 2) - 0.5
+        xlim = (xbins[0], xbins[-1])
+        ybins = np.arange(bottom, top + 2) - 0.5
+        ylim = (ybins[0], ybins[-1])
+        minimization_grid =\
+            np.resize(minimization_grid, (-1, self.num_data_curves))
+        flattened_argmins = np.argmin(minimization_grid, axis=0)
+        (x_indices, y_indices) =\
+            np.unravel_index(flattened_argmins, grid_shape)
+        (x_values, y_values) = (xs[x_indices], ys[y_indices])
+        pl.figure()
+        pl.hist2d(x_values, y_values, cmap=cmap, bins=(xbins, ybins))
+        try:
+            pl.plot([xrank + 0.5] * 2, ylim, color='r', linestyle='--')
+            pl.plot(xlim, [yrank + 0.5] * 2, color='r', linestyle='--')
+        except:
+            pass # don't worry if ranks are unavailable
+        pl.xlim(xlim)
+        pl.ylim(ylim)
+        pl.colorbar()
+        pl.xlabel(self.xlabel)
+        pl.ylabel(self.ylabel)
+        pl.xticks(np.arange(left, right + 1), self.xticks)
+        pl.yticks(np.arange(bottom, top + 1), self.yticks)
+        if show:
+            pl.show()
+    
+    def plot_histogram(self, quantity_name, quantity_to_minimize=None,\
+        color=None, ax=None, bins=None, cumulative=False, normed=False,\
+        label=None, restricted=False, show=False):
+        """
+        Plots a histogram (or multiple if many quantities to minimize are
+        given) of the given quantity. NOTE: matplotlib's histogram functions
+        may yield strange and subtly wrong results when using cumulative=True
+        AND normed=True!
+        
+        quantity_name: the name of the quantity for which to plot a histogram
+        quantity_to_minimize: the quantity which was calculated by this
+                              Forecaster object which should be minimized to
+                              choose the SVD truncation. If None, the
+                              quantity_to_minimize passed to the initializer of
+                              the Extractor saved at self.file_name
+                              is minimized. Can also be a list of quantities if
+                              multiple histograms should be plotted.
+        ax: matplotlib.Axes object on which to plot the histogram. if None, a
+            new figure is created.
+        bins: the bins to use for the Axes.hist function
+        cumulative: True for cdf, False for pdf
+        normed: boolean determining whether to norm the histogram
+        label: the label to add associated with the histogram. If
+               quantity_to_minimize is a sequence, label goes unused.
+        restricted: if True, grid is restricted at ranks when minimizing
+        show: if True, matplotlib.pyplot.show() is called before this function
+                       returns
+        
+        returns: bins, array or list of arrays
+        """
+        if not self.multiple_data_curves:
+            raise NotImplementedError("Only one data curve is included in " +\
+                "this ExtractionPlotter, so a histogram doesn't make much " +\
+                "sense.")
+        if ax is None:
+            fig = pl.figure()
+            ax = fig.add_subplot(111)
+        if type(quantity_to_minimize) in sequence_types:
+            bins_to_return = []
+            for (iquantity, quantity) in enumerate(quantity_to_minimize):
+                if color is None:
+                    this_color = None
+                elif type(color) in sequence_types:
+                    this_color = color[iquantity]
+                else:
+                    raise TypeError("color argument not understood. If " +\
+                        "multiple quantities to minimize are given, it " +\
+                        "should be either None or a sequence of strings of " +\
+                        "the same length as the number of quantities to " +\
+                        "minimize.")
+                bins_to_return.append(self.plot_histogram(quantity_name,\
+                    quantity, ax=ax, normed=normed, cumulative=cumulative,\
+                    bins=bins, color=this_color, label=quantity,\
+                    restricted=restricted, show=False))
+                ax.legend()
+            return bins_to_return
+        else:
+            if restricted:
+                to_hist = self.restricted_statistics(quantity_name,\
+                    quantity_to_minimize=quantity_to_minimize)
+            else:
+                statistics = self.statistics_by_minimized_quantity(\
+                    minimized_quantity=quantity_to_minimize,\
+                    grid_quantities=self.compiled_quantity.quantities)
+                if quantity_name in statistics:
+                    to_hist = statistics[quantity_name]
+                else:
+                    raise ValueError(("{0!s} was not a statistic that was " +\
+                        "stored in the file. The available statistics are " +\
+                        "{1!s}.").format(quantity_name,\
+                        [key for key in statistics.keys()]))
+            (nums, bins, patches) = ax.hist(to_hist, bins=bins,\
+                histtype='step', cumulative=cumulative, normed=normed,\
+                color=color, label=label)
+            return bins
+        if show:
+            pl.legend()
+            pl.show()
+    
+    def plot_normalized_deviance_histograms(self, quantity_to_minimize=None,\
+        bins=None, fontsize=24, show=False):
+        """
+        Plots normalized deviance histograms for restricted and unrestricted
+        grids on the same axes.
+        
+        quantity_to_minimize: string name of quantity to minimize when
+                              computing deviances
+        bins: integer number of bins to use for each histogram
+        fontsize: size of labels and title
+        show: if True, matplotlib.pyplot.show() is called before this function
+              returns
+        """
+        fig = pl.figure()
+        ax = fig.add_subplot(111)
+        self.plot_normalized_deviance_histogram(\
+            quantity_to_minimize=quantity_to_minimize, color='b', ax=ax,\
+            bins=bins, fontsize=fontsize, restricted=False, show=False,\
+            label='unrestricted')
+        self.plot_normalized_deviance_histogram(\
+            quantity_to_minimize=quantity_to_minimize, color='r', ax=ax,\
+            bins=bins, fontsize=fontsize, restricted=True, show=show,\
+            label='rank-restricted')
+    
+    def plot_normalized_deviance_histogram(self, quantity_to_minimize=None,\
+        color=None, ax=None, bins=None, fontsize=24, restricted=False,\
+        label=None, show=False):
+        """
+        Plots a histogram of the normalized deviance and the expected reduced
+        chi squared distributions.
+        
+        quantity_to_minimize: if None, only the statistics for the default
+                                       quantity_to_minimize are shown
+                              if a string, only the statistics with the given
+                                           quantity_to_minimize are shown
+                              if a sequence of string(s), describes the
+                                                          quantities whose
+                                                          deviance histogram
+                                                          should be plotted
+        color: the color (if quantity_to_minimize is None or a string) or
+               sequence of colors to use (if quantity_to_minimize is a
+               sequence)
+        ax: either None or a matplotlib.axes.Axes object
+        bins: bins argument to pass on to matplotlib.axes.Axes.hist function
+        fontsize: size of font for title and labels, default 24
+        restricted: if True, grid for minimization is truncated at ranks
+        show: if True, matplotlib.pyplot.show() is called before this function
+                       returns
+        """
+        if ax is None:
+            fig = pl.figure()
+            ax = fig.add_subplot(111)
+        bins = self.plot_histogram('normalized_bias_statistic',\
+            quantity_to_minimize=quantity_to_minimize, color=color, ax=ax,\
+            bins=bins, cumulative=False, normed=True, restricted=restricted,\
+            label=label, show=False)
+        if type(quantity_to_minimize) not in sequence_types:
+            quantity_to_minimize = [quantity_to_minimize]
+            bins = [bins]
+            if type(color) not in sequence_types:
+                color = [color]
+        for (index, minimized_quantity) in enumerate(quantity_to_minimize):
+            this_color = color[index]
+            these_bins = bins[index]
+            num_bins = len(these_bins)
+            if restricted:
+                degrees_of_freedom =\
+                    self.restricted_statistics('degrees_of_freedom',\
+                    quantity_to_minimize=minimized_quantity)
+            else:
+                degrees_of_freedom =\
+                    self.statistics_by_minimized_quantity(\
+                    minimized_quantity)['degrees_of_freedom']
+            median_degrees_of_freedom = int(np.median(degrees_of_freedom))
+            degrees_of_freedom = np.unique(degrees_of_freedom)
+            median_distribution =\
+                ChiSquaredDistribution(median_degrees_of_freedom, reduced=True)
+            distributions = [ChiSquaredDistribution(dof, reduced=True)\
+                for dof in degrees_of_freedom]
+            x_values =\
+                np.linspace(these_bins[0], these_bins[-1], 10 * num_bins)
+            y_values = np.array([np.exp(distribution.log_value(x_values))\
+                for distribution in distributions])
+            ax.plot(x_values, np.exp(median_distribution.log_value(x_values)),\
+                color=this_color)
+            ax.fill_between(x_values, np.min(y_values, axis=0),\
+                np.max(y_values, axis=0), color=this_color)
+        title = 'Normalized deviance histogram'
+        if restricted:
+            title = title + ' (rank-restricted)'
+        ax.set_title(title, size=fontsize)
+        ax.set_xlabel('Deviance, $D$', size=fontsize)
+        ax.set_ylabel('PDF', size=fontsize)
+        ax.tick_params(width=2.5, length=7.5, labelsize=fontsize)
+        if show:
+            pl.legend()
             pl.show()
     
     @property
@@ -710,7 +1237,8 @@ class ExtractionPlotter(object):
                                 new_statistics[key].append(this_attribute)
                             else:
                                 new_statistics[key] = [this_attribute]
-                    for quantity_name in grid_quantities:
+                    for grid_quantity in grid_quantities:
+                        quantity_name = grid_quantity.name
                         if quantity_name not in group.attrs:
                             minimum_indices = self.minimum_indices(\
                                 minimized_quantity, icurve)
@@ -752,6 +1280,55 @@ class ExtractionPlotter(object):
                  self._statistics_by_minimized_quantity[\
                      minimized_quantity] = new_statistics
         return self._statistics_by_minimized_quantity[minimized_quantity]
+    
+    def restricted_statistics(self, statistic, quantity_to_minimize=None):
+        """
+        Finds grid-restricted statistics.
+        
+        statistic: string name of the statistic to find
+                   (e.g. 'normalized_bias_statistic')
+        quantity_to_minimize: if None, self.quantity_to_minimize is minimized
+        
+        returns: 1D array of the given statistics
+        """
+        if quantity_to_minimize is None:
+            quantity_to_minimize = self.quantity_to_minimize
+        grid = get_hdf5_value(self.file['meta_fitter/grids/{!s}'.format(\
+            quantity_to_minimize)])
+        restriction_slice = []
+        for dimension in self.dimensions:
+            for name in dimension:
+                rank_index = self.training_set_rank_indices[name][1]
+                if rank_index is None:
+                    restriction_slice.append(slice(None))
+                else:
+                    restriction_slice.append(slice(rank_index + 1))
+                break
+        if self.multiple_data_curves:
+            restriction_slice.append(slice(None))
+        else:
+            restriction_slice.append(None)
+        restriction_slice = tuple(restriction_slice)
+        restricted_grid = grid[restriction_slice]
+        grid_shape = restricted_grid.shape[:-1]
+        num_curves = restricted_grid.shape[-1]
+        flattened_grid = np.reshape(restricted_grid, (-1, num_curves))
+        argmins = np.argmin(flattened_grid, axis=0)
+        unraveled_indices = np.unravel_index(argmins, grid_shape)
+        statistics = []
+        for icurve in range(num_curves):
+            grid_string = ('{}' + ('_{}' * (len(grid_shape) - 1)))
+            grid_string =\
+                grid_string.format(*[ui[icurve] for ui in unraveled_indices])
+            fitter_group =\
+                self.file['meta_fitter/fitters/{!s}'.format(grid_string)]
+            statistic_values = fitter_group.attrs[statistic]
+            if self.multiple_data_curves and\
+                isinstance(statistic_values, np.ndarray):
+                statistics.append(fitter_group.attrs[statistic][icurve])
+            else:
+                statistics.append(fitter_group.attrs[statistic])
+        return np.array(statistics)
     
     @property
     def multiple_data_curves(self):
@@ -840,7 +1417,7 @@ class ExtractionPlotter(object):
         """
         if not hasattr(self, '_expander_set'):
             self._expander_set =\
-                load_expander_set_from_hdf5_group(self.file['expanders'])
+                ExpanderSet.load_from_hdf5_group(self.file['expanders'])
         return self._expander_set
     
     @property
@@ -918,4 +1495,22 @@ class ExtractionPlotter(object):
         self.file.close()
         del self._file
     
+    def __enter__(self):
+        """
+        Enters into a with-statement with this plotter as the context manager.
+        
+        returns: self
+        """
+        return self
+    
+    def __exit__(self, exception_type, exception_value, traceback):
+        """
+        Exits a with-statement which used this plotter as the context manager.
+        Closes the file associated with this plotter.
+        
+        exception_type: type of exception thrown in with-statement
+        exception_value: the exception thrown in with-statement
+        traceback: a traceback of the exception thrown in with-statement
+        """
+        self.close()
 

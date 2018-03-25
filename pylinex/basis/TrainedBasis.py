@@ -155,24 +155,14 @@ class TrainedBasis(Basis):
                              "elements as the basis.")
     
     @property
-    def diagonal_importances(self):
-        """
-        Property storing a 2D array which has the importances of the modes on
-        the diagonal.
-        """
-        if not hasattr(self, '_diagonal_importances'):
-            self._diagonal_importances = np.diag(self.importances)
-        return self._diagonal_importances
-    
-    @property
     def training_set_fit_coefficients(self):
         """
         Property storing the coefficients of the fit to each training set
         """
         if not hasattr(self, '_training_set_fit_coefficients'):
-            self._training_set_fit_coefficients = np.dot(\
-                self.training_set_space_singular_vectors.T,\
-                self.diagonal_importances)
+            self._training_set_fit_coefficients =\
+                self.training_set_space_singular_vectors.T *\
+                self.importances[np.newaxis,:]
         return self._training_set_fit_coefficients
     
     @property
@@ -194,9 +184,9 @@ class TrainedBasis(Basis):
         the training set.
         """
         if not hasattr(self, '_prior_mean'):
-            self._prior_mean = np.dot(self.diagonal_importances,\
-                self.summed_training_set_space_singular_vectors)
-            self._prior_mean = self._prior_mean / self.training_set_length
+            self._prior_mean = (self.importances *\
+                self.summed_training_set_space_singular_vectors) /\
+                self.training_set_length
         return self._prior_mean
     
     @property
@@ -210,15 +200,15 @@ class TrainedBasis(Basis):
             self._prior_covariance =\
                 self.summed_training_set_space_singular_vectors[:,np.newaxis]
             self._prior_covariance =\
-                np.dot(self._prior_covariance, self._prior_covariance.T)
+                (self._prior_covariance * self._prior_covariance.T)
             self._prior_covariance =\
                 self._prior_covariance / self.training_set_length
             self._prior_covariance =\
                 np.identity(self.num_basis_vectors) - self._prior_covariance
             self._prior_covariance =\
-                np.dot(self.diagonal_importances, self._prior_covariance)
+                (self.importances[:,np.newaxis] * self._prior_covariance)
             self._prior_covariance =\
-                np.dot(self._prior_covariance, self.diagonal_importances)
+                (self.importances[np.newaxis,:] * self._prior_covariance)
             self._prior_covariance =\
                 self._prior_covariance / (self.training_set_length - 1)
         return self._prior_covariance

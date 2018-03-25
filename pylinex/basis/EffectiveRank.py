@@ -13,7 +13,8 @@ import numpy as np
 from .TrainedBasis import TrainedBasis
 
 def effective_training_set_rank(training_set, noise_level, method='abs',\
-    number_of_modes_to_consider=None, use_min_noise_level=False, level=1.):
+    number_of_modes_to_consider=None, use_min_noise_level=False, level=1.,\
+    suppress_runtime_error=False):
     """
     Finds the number of modes which are needed to fit the given training set to
     the given noise level.
@@ -37,7 +38,13 @@ def effective_training_set_rank(training_set, noise_level, method='abs',\
                          otherwise, noise level's changes with different data
                                     channels are accounted for
     level: multiple of the noise level to consider
-    
+    suppress_runtime_error: if True, if no considered rank satisfies constraint
+                                     defined by the arguments to this function,
+                                     number_of_modes_to_consider is returned
+                            if False, if no considered rank satisfies
+                                      constraint defined by the arguments to
+                                      this function, a RuntimeError is raised.
+                                      This is the default behavior.
     
     returns: integer number of modes necessary to fit every curve in the
              training set to within noise_level
@@ -46,6 +53,7 @@ def effective_training_set_rank(training_set, noise_level, method='abs',\
         number_of_modes_to_consider = np.min(training_set.shape)
     svd_basis = TrainedBasis(training_set, number_of_modes_to_consider,\
         error=noise_level)
+    level2 = (level ** 2)
     for rank in range(1, number_of_modes_to_consider + 1):
         importance_weighted_basis =\
             svd_basis.basis[:rank].T * svd_basis.importances[np.newaxis,:rank]
@@ -58,13 +66,16 @@ def effective_training_set_rank(training_set, noise_level, method='abs',\
         if method.lower() == 'rms':
             mean_squared_normalized_bias =\
                 np.mean(np.power(normalized_bias, 2), axis=1)
-            if np.all(mean_squared_normalized_bias < level):
+            if np.all(mean_squared_normalized_bias < level2):
                 return rank
         elif method.lower() == 'abs':
             if np.all(normalized_bias < level):
                 return rank
         else:
             raise ValueError("method not recognized. Must be 'rms' or 'abs'.")
-    raise RuntimeError("The rank of the given training set was larger than " +\
-        "the number of modes considered.")
+    if suppress_runtime_error:
+        return number_of_modes_to_consider
+    else:
+        raise RuntimeError("The rank of the given training set was larger " +\
+            "than the number of modes considered.")
 

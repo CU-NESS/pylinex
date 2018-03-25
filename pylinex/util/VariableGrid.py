@@ -12,7 +12,7 @@ Description: File containing a class representing an object which can store
              grid on the smaller space.
 """
 import numpy as np
-from .TypeCategories import sequence_types
+from distpy import sequence_types
 try:
     # this runs with no issues in python 2 but raises error in python 3
     basestring

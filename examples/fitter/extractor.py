@@ -9,6 +9,7 @@ Description: Example of how to use Extractor class to go from training set,
              deal with an arbitrary number of subbasis to separate from each
              other.
 """
+import os
 import numpy as np
 import numpy.random as rand
 from distpy import GaussianDistribution
@@ -33,4 +34,13 @@ extractor = Extractor(data, error, ['signal'], [training_set],\
     [{'signal': np.arange(1, 21)}], quantity, 'BPIC')
 
 extractor.fitter.plot_subbasis_fit(name='signal', show=True)
+
+hdf5_file_name = 'TEST_DELETE_THIS.hdf5'
+try:
+    extractor.save(hdf5_file_name)
+except:
+    os.remove(hdf5_file_name)
+    raise
+else:
+    os.remove(hdf5_file_name)
 

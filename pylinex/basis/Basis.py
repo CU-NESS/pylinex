@@ -424,6 +424,19 @@ class Basis(Savable):
         except ValueError:
             self.expander.fill_hdf5_group(group.create_group('expander'))
     
+    @staticmethod
+    def load_from_hdf5_group(group):
+        """
+        Loads a Basis object from the given hdf5 group.
+        
+        group: hdf5 file group from which to load a Basis object
+        
+        returns: a Basis which was stored in the given hdf5 file group
+        """
+        basis = get_hdf5_value(group['basis'])
+        expander = load_expander_from_hdf5_group(group['expander'])
+        return Basis(basis, expander=expander)
+    
     def plot(self, basis_indices=slice(None), title='Basis', x_values=None,\
         show=True, fig=None, ax=None, **kwargs):
         """
@@ -446,16 +459,5 @@ class Basis(Savable):
         ax.set_title(title)
         if show:
             pl.show()
-
-def load_basis_from_hdf5_group(group):
-    """
-    Allows for Basis objects to be read from hdf5 file groups.
     
-    group: hdf5 file group from which to load the basis
-    
-    returns: Basis object stored in the hdf5 group
-    """
-    basis = get_hdf5_value(group['basis'])
-    expander = load_expander_from_hdf5_group(group['expander'])
-    return Basis(basis, expander=expander)
 

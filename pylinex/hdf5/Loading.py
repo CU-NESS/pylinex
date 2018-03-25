@@ -7,10 +7,9 @@ Description: File containing functions which load objects from hdf5 files. They
              require the use of h5py, a common Python library.
 """
 from ..quantity import load_quantity_from_hdf5_group
-from ..expander import load_expander_from_hdf5_group,\
-    load_expander_set_from_hdf5_group
-from ..basis import load_basis_from_hdf5_group,\
-    load_basis_set_from_hdf5_group, load_basis_sum_from_hdf5_group
+from ..expander import load_expander_from_hdf5_group
+from ..model import load_model_from_hdf5_group
+from ..loglikelihood import load_loglikelihood_from_hdf5_group
 try:
     import h5py
 except:
@@ -27,7 +26,6 @@ def ensure_h5py_installed():
         raise NotImplementedError("hdf5 files can't be loaded because h5py " +\
             "isn't installed. Install h5py and retry to continue.")
 
-
 def load_quantity_from_hdf5_file(file_name):
     """
     Loads a Quantity object from the given hdf5 file.
@@ -42,7 +40,6 @@ def load_quantity_from_hdf5_file(file_name):
     quantity = load_quantity_from_hdf5_group(hdf5_file)
     hdf5_file.close()
     return quantity
-
 
 def load_expander_from_hdf5_file(file_name):
     """
@@ -59,61 +56,32 @@ def load_expander_from_hdf5_file(file_name):
     hdf5_file.close()
     return expander
 
-
-def load_expander_set_from_hdf5_file(file_name):
+def load_model_from_hdf5_file(file_name):
     """
-    Loads an ExpanderSet object from the given hdf5 file.
+    Loads a Model object from an hdf5 file.
     
-    group: hdf5 file from which to load data with which to recreate an Expander
-           object
+    file_name: name of the hdf5 file from which to load data about the Model
     
-    returns: ExpanderSet object of appropriate type
+    returns: Model object loaded from the given hdf5 file
     """
     ensure_h5py_installed()
     hdf5_file = h5py.File(file_name, 'r')
-    expander_set = load_expander_set_from_hdf5_group(hdf5_file)
+    model = load_model_from_hdf5_group(hdf5_file)
     hdf5_file.close()
-    return expander_set
+    return model
 
-def load_basis_from_hdf5_file(file_name):
+def load_loglikelihood_from_hdf5_file(file_name):
     """
-    Allows for Basis objects to be read from hdf5 files.
+    Loads a Loglikelihood object from an hdf5 file.
     
-    file_name: name of the hdf5 file from which to load the basis
+    file_name: name of the hdf5 file from which to load data about the
+               Loglikelihood
     
-    returns: Basis object stored in the hdf5 file
+    returns: Loglikelihood object loaded from the given hdf5 file
     """
     ensure_h5py_installed()
     hdf5_file = h5py.File(file_name, 'r')
-    basis = load_basis_from_hdf5_group(hdf5_file)
+    loglikelihood = load_loglikelihood_from_hdf5_group(hdf5_file)
     hdf5_file.close()
-    return basis
-
-def load_basis_set_from_hdf5_file(file_name):
-    """
-    Loads a BasisSet object from an hdf5 file.
-    
-    file_name: name of the hdf5 file from which to load data about the BasisSet
-    
-    returns: BasisSet object loaded from the given hdf5 file
-    """
-    ensure_h5py_installed()
-    hdf5_file = h5py.File(file_name, 'r')
-    basis_set = load_basis_set_from_hdf5_group(hdf5_file)
-    hdf5_file.close()
-    return basis_set
-
-def load_basis_sum_from_hdf5_file(file_name):
-    """
-    Loads a BasisSum object from an hdf5 file.
-    
-    file_name: name of the hdf5 file from which to load data about the BasisSum
-    
-    returns: BasisSum object loaded from the given hdf5 file
-    """
-    ensure_h5py_installed()
-    hdf5_file = h5py.File(file_name, 'r')
-    basis_sum = load_basis_sum_from_hdf5_group(hdf5_file)
-    hdf5_file.close()
-    return basis_sum
+    return model
 

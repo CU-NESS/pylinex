@@ -184,7 +184,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
         if self.data.ndim > 1:
             if which_data is None:
                 raise ValueError("which_data must be given if data is not 1D.")
-            elif isinstance(which_data, int):
+            elif type(which_data) in int_types:
                 grid_slice = grid_slice + (which_data,)
             else:
                 grid_slice = grid_slice + tuple(which_data)
@@ -310,7 +310,8 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
                 basis_links = basis_links_from_indices(indices)
                 (prior_mean_links, prior_covariance_links) =\
                     prior_links_from_indices(indices)
-                self.fitter.fill_hdf5_group(subgroup, data_link=data_link,\
+                fitter = self.fitter_from_indices(indices)
+                fitter.fill_hdf5_group(subgroup, data_link=data_link,\
                     error_link=error_link, basis_links=basis_links,\
                     expander_links=expander_links,\
                     prior_mean_links=prior_mean_links,\
@@ -334,13 +335,15 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
                         if quantity.name == self.quantity_to_minimize:
                             group[left_group_name] = group[right_group_name]
                 else:
+                    indices = self.minimize_quantity(\
+                        self.quantity_to_minimize, data_indices)
                     subsubgroup = group.create_group(left_group_name)
                     basis_links = basis_links_from_indices(indices)
                     (prior_mean_links, prior_covariance_links) =\
                         prior_links_from_indices(indices)
-                    self.fitter[data_indices].fill_hdf5_group(subsubgroup,\
-                        data_link=data_link, error_link=error_link,\
-                        basis_links=basis_links,\
+                    fitter = self.fitter_from_indices(indices)
+                    fitter.fill_hdf5_group(subsubgroup, data_link=data_link,\
+                        error_link=error_link, basis_links=basis_links,\
                         expander_links=expander_links,\
                         prior_mean_links=prior_mean_links,\
                         prior_covariance_links=prior_covariance_links,\

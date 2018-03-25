@@ -7,8 +7,11 @@ Description: File containing a class representing a list of Quantities to be
              evaluated with the same (or overlapping) arguments. When it is
              called, each underlying Quantity is called.
 """
-from ..util import int_types, sequence_types, Savable
+from ..util import int_types, sequence_types, Savable, Loadable
 from .Quantity import Quantity
+from .AttributeQuantity import AttributeQuantity
+from .ConstantQuantity import ConstantQuantity
+from .FunctionQuantity import FunctionQuantity
 try:
     # this runs with no issues in python 2 but raises error in python 3
     basestring
@@ -16,7 +19,7 @@ except:
     # this try/except allows for python 2/3 compatible string type checking
     basestring = str
 
-class CompiledQuantity(Quantity, Savable):
+class CompiledQuantity(Quantity, Savable, Loadable):
     """
     Class representing a list of Quantities to be evaluated with the same (or
     overlapping) arguments. When it is called, each underlying Quantity is
@@ -193,6 +196,41 @@ class CompiledQuantity(Quantity, Savable):
             savable = isinstance(quantity, Savable)
             if (not excluded) and savable:
                 subgroup = group.create_group('quantity_{}'.format(iquantity))
-                quantity.fill_hdf5_group(subgroup)
+                if isinstance(quantity, Savable):
+                    quantity.fill_hdf5_group(subgroup)
+                else:
+                    raise TypeError("This CompiledQuantity cannot be saved " +\
+                        "because it contains Quantity objects which cannot " +\
+                        "be saved.")
                 iquantity += 1
+    
+    @staticmethod
+    def load_from_hdf5_group(group):
+        """
+        Loads a CompiledQuantity from the given hdf5 group.
+        
+        group: hdf5 file group from which to load a CompiledQuantity
+        
+        returns: CompiledQuantity loaded from given hdf5 file group
+        """
+        try:
+            assert group.attrs['class'] == 'CompiledQuantity'
+        except:
+            raise TypeError("This hdf5 file group does not seem to contain " +\
+                "a CompiledQuantity.")
+        name = group.attrs['name']
+        iquantity = 0
+        quantities = []
+        while 'quantity_{}'.format(iquantity) in group:
+            subgroup = group['quantity_{}'.format(iquantity)]
+            try:
+                class_name = subgroup.attrs['class']
+                cls = eval(class_name)
+            except:
+                raise TypeError("One of the quantities in this " +\
+                    "CompiledQuantity could not be loaded; its class was " +\
+                    "not recognized.")
+            quantities.append(cls.load_from_hdf5_group(subgroup))
+            iquantity += 1
+        return CompiledQuantity(name, *quantities)
 

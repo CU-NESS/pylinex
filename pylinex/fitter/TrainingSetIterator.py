@@ -474,4 +474,10 @@ class TrainingSetIterator(object):
         desired_block = self.get_block(self.block_sequence[self.iblock])
         self.iblock = self.iblock + 1
         return desired_block
+    
+    def __next__(self):
+        """
+        Alias for next included for Python 2/3 compatibility.
+        """
+        return self.next()
 

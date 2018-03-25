@@ -10,8 +10,8 @@ Description: File containing a set of Basis objects representing different
 """
 import numpy as np
 import matplotlib.pyplot as pl
-from .Basis import Basis, load_basis_from_hdf5_group
-from .BasisSet import BasisSet, load_names_and_bases_from_hdf5_group
+from .Basis import Basis
+from .BasisSet import BasisSet
 try:
     # this runs with no issues in python 2 but raises error in python 3
     basestring
@@ -33,8 +33,8 @@ class BasisSum(BasisSet, Basis):
         """
         BasisSet.__init__(self, names, bases)
         try:
-            self.basis =\
-                np.concatenate([basis.expanded_basis for basis in bases],\
+            self.basis = np.concatenate(\
+                [basis.expanded_basis for basis in self.component_bases],\
                 axis=0)
         except:
             raise ValueError("The shapes of the given bases were not " +\
@@ -98,6 +98,17 @@ class BasisSum(BasisSet, Basis):
         kwargs: keyword arguments to pass on to BasisSet.fill_hdf5_group
         """
         BasisSet.fill_hdf5_group(self, group, *args, **kwargs)
+
+    @staticmethod
+    def load_from_hdf5_group(group):
+        """
+        Loads a BasisSum from the given hdf5 group.
+        
+        group: the hdf5 group from which to load BasisSum
+        
+        returns: BasisSum object stored in the given hdf5 group
+        """
+        return BasisSum(*BasisSet.load_names_and_bases_from_hdf5_group(group))
     
     def __call__(self, parameters):
         """
@@ -109,14 +120,4 @@ class BasisSum(BasisSet, Basis):
         return: sum of the results of all the expanded bases in this BasisSum
         """
         return Basis.__call__(self, parameters)
-
-def load_basis_sum_from_hdf5_group(group):
-    """
-    Loads a BasisSum from the given hdf5 group.
-    
-    group: the hdf5 group from which to load BasisSum
-    
-    returns: BasisSum object stored in the given hdf5 group
-    """
-    return BasisSum(*load_names_and_bases_from_hdf5_group(group))
 

@@ -7,8 +7,8 @@ Description: File containing a class which is a constainer for Basis objects.
              It doesn't necessarily put any restrictions on the Basis objects
              which can be held.
 """
-from ..util import sequence_types
-from .Basis import Basis, load_basis_from_hdf5_group
+from ..util import int_types, sequence_types
+from .Basis import Basis
 try:
     # this runs with no issues in python 2 but raises error in python 3
     basestring
@@ -148,7 +148,7 @@ class BasisSet(object):
             return self.basis_subsets(**key)
         elif key is None:
             return self
-        elif isinstance(key, int):
+        elif type(key) in int_types:
             return self.component_bases[key]
         else:
             raise KeyError("key not recognized.")
@@ -216,6 +216,12 @@ class BasisSet(object):
         self._index_of_basis_to_return += 1
         return self[self.names[self._index_of_basis_to_return - 1]]
     
+    def __next__(self):
+        """
+        Alias for next included for Python 2/3 compatibility.
+        """
+        return self.next()
+    
     def fill_hdf5_group(self, group, basis_links=None, expander_links=None):
         """
         Fills the given hdf5 file group with data about this basis set.
@@ -234,6 +240,37 @@ class BasisSet(object):
                 expander_link=expander_link)
             subgroup.attrs['name'] = name
     
+    @staticmethod
+    def load_names_and_bases_from_hdf5_group(group):
+        """
+        Loads a BasisSet object from an hdf5 file group.
+        
+        group: the hdf5 file group from which to load data about the BasisSet
+        
+        returns: (names, bases) where names is a list of strings and bases is a
+                 list of Basis objects
+        """
+        names = []
+        component_bases = []
+        iname = 0
+        while ('basis_{}'.format(iname)) in group:
+            subgroup = group['basis_{}'.format(iname)]
+            names.append(subgroup.attrs['name'])
+            component_bases.append(Basis.load_from_hdf5_group(subgroup))
+            iname += 1
+        return (names, component_bases)
+    
+    @staticmethod
+    def load_from_hdf5_group(group):
+        """
+        Loads a BasisSet from the given hdf5 group.
+        
+        group: the hdf5 group from which to load BasisSet
+        
+        returns: BasisSet object stored in the given hdf5 group
+        """
+        return BasisSet(*BasisSet.load_names_and_bases_from_hdf5_group(group))
+    
     def __add__(self, other):
         """
         Allows for the addition of two BasisSets. It basically concatenates the
@@ -250,7 +287,7 @@ class BasisSet(object):
         else:
             raise TypeError("Can only add together two BasisSet objects.")
     
-    def __call__(self, parameters):
+    def __call__(self, parameters, expanded=True):
         """
         Finds the values of the bases in this BasisSet associated with the
         given parameters.
@@ -260,36 +297,7 @@ class BasisSet(object):
         
         returns: list of outcomes of all bases
         """
-        return [self[name](parameters[slices_by_name[name]])\
-            for name in self.names]
-
-def load_names_and_bases_from_hdf5_group(group):
-    """
-    Loads a BasisSet object from an hdf5 file group.
-    
-    group: the hdf5 file group from which to load data about the BasisSet
-    
-    returns: (names, bases) where names is a list of strings and bases is a
-             list of Basis objects
-    """
-    names = []
-    component_bases = []
-    iname = 0
-    while ('basis_{}'.format(iname)) in group:
-        subgroup = group['basis_{}'.format(iname)]
-        names.append(subgroup.attrs['name'])
-        component_bases.append(load_basis_from_hdf5_group(subgroup))
-        iname += 1
-    return (names, component_bases)
-
-def load_basis_set_from_hdf5_group(group):
-    """
-    Loads a basis set from the given hdf5 group.
-    
-    group: the hdf5 group from which to load BasisSet
-    
-    returns: BasisSet object stored in the given hdf5 group
-    """
-    return BasisSet(*load_names_and_bases_from_hdf5_group(group))
+        return [self[name](parameters[...,self.slices_by_name[name]],\
+            expanded=expanded) for name in self.names]
     
 

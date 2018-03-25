@@ -12,7 +12,7 @@ from ..util import Savable, VariableGrid, create_hdf5_dataset, sequence_types,\
     int_types, bool_types
 from ..quantity import QuantityFinder, FunctionQuantity, CompiledQuantity
 from ..expander import Expander, NullExpander, ExpanderSet
-from ..basis import TrainedBasis, BasisSum
+from ..basis import TrainedBasis, BasisSum, effective_training_set_rank
 from .MetaFitter import MetaFitter
 try:
     # this runs with no issues in python 2 but raises error in python 3
@@ -349,6 +349,49 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
                             "non-sequence.")
     
     @property
+    def training_set_ranks(self):
+        """
+        Property storing the effective ranks of the training sets given. This
+        is computed by fitting the training set with its own SVD modes and
+        checking how many terms are necessary to fit down to the
+        (expander-contracted) noise level.
+        """
+        if not hasattr(self, '_training_set_ranks'):
+            self._training_set_ranks = {}
+            for (name, expander, training_set) in\
+                zip(self.names, self.expanders, self.training_sets):
+                self._training_set_ranks[name] = effective_training_set_rank(\
+                    training_set, expander.contract_error(self.error))
+        return self._training_set_ranks
+    
+    @property
+    def training_set_rank_indices(self):
+        """
+        Property storing a dictionary with tuples containing the dimension and
+        rank index as values indexed by the associated subbasis name.
+        """
+        if not hasattr(self, '_training_set_rank_indices'):
+            self._training_set_rank_indices = {}
+            for name in self.names:
+                rank = self.training_set_ranks[name]
+                for (idimension, dimension) in self.dimensions:
+                    if name in dimension:
+                        if rank in dimension[name]:
+                            rank_index =\
+                                np.where(dimension[name] == rank)[0][0]
+                        else:
+                            print(("rank of {0!s} (1:d) not in its grid " +\
+                                "dimension. Are you sure you're using " +\
+                                "enough terms?").format(name, rank))
+                            rank_index = None
+                        self._training_set_rank_indices[name] =\
+                            (idimension, rank_index)
+                        break
+                    else:
+                        pass
+        return self._training_set_rank_indices
+    
+    @property
     def training_set_lengths(self):
         """
         Property storing the number of channels in each of the different
@@ -523,6 +566,9 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             save_all_fitters=save_all_fitters, data_link=data_link,\
             error_link=error_link, expander_links=expander_links,\
             save_channel_estimates=save_channel_estimates)
+        subgroup = group.create_group('ranks')
+        for name in self.names:
+            subgroup.attrs[name] = self.training_set_ranks[name]
         if save_training_sets:
             subgroup = group.create_group('training_sets')
             for ibasis in range(self.num_bases):

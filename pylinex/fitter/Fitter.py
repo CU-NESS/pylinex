@@ -11,6 +11,7 @@ import numpy as np
 import numpy.linalg as npla
 import scipy.linalg as scila
 import matplotlib.pyplot as pl
+from distpy import GaussianDistribution
 from ..util import Savable, create_hdf5_dataset
 from ..basis import Basis, BasisSum
 from .TrainingSetIterator import TrainingSetIterator
@@ -509,7 +510,7 @@ class Fitter(Savable):
         if not hasattr(self, '_likelihood_channel_bias'):
             if self.has_priors:
                 self._likelihood_channel_bias =\
-                    self.likelihood_channel_mean - self.data
+                    self.data - self.likelihood_channel_mean
             else:
                 self._likelihood_channel_bias = self.channel_bias
         return self._likelihood_channel_bias
@@ -624,9 +625,9 @@ class Fitter(Savable):
         space.
         """
         if not hasattr(self, '_channel_error'):
-            self._channel_error = np.sqrt(np.diag(\
-                np.dot(self.basis_sum.basis.T,\
-                np.dot(self.parameter_covariance, self.basis_sum.basis))))
+            SAT = np.dot(self.parameter_covariance, self.basis_sum.basis)
+            self._channel_error =\
+                np.sqrt(np.einsum('ab,ab->b', self.basis_sum.basis, SAT))
         return self._channel_error
     
     @property
@@ -659,6 +660,21 @@ class Fitter(Savable):
             self._parameter_mean =\
                 np.dot(self.parameter_covariance, self._parameter_mean.T).T
         return self._parameter_mean
+    
+    @property
+    def parameter_distribution(self):
+        """
+        Property storing a GaussianDistribution object describing the
+        distribution of the parameters of this fitter.
+        """
+        if not hasattr(self, '_parameter_distribution'):
+            if self.multiple_data_curves:
+                raise ValueError("parameter_distribution only makes sense " +\
+                    "if the Fitter has only one data curve.")
+            else:
+                self._parameter_distribution = GaussianDistribution(\
+                    self.parameter_mean, self.parameter_covariance)
+        return self._parameter_distribution
     
     @property
     def posterior_significance(self):
@@ -699,7 +715,7 @@ class Fitter(Savable):
         likelihood estimate of the data minus the data)
         """
         if not hasattr(self, '_channel_bias'):
-            self._channel_bias = self.channel_mean - self.data
+            self._channel_bias = self.data - self.channel_mean
         return self._channel_bias
     
     @property
@@ -1400,10 +1416,10 @@ class Fitter(Savable):
                                  "subbasis_channel_bias if the name of a " +\
                                  "subbasis is specified.")
             if self.multiple_data_curves and (true_curve.ndim == 1):
-                return self.subbasis_channel_mean(name=name) -\
-                    true_curve[np.newaxis,:]
+                return true_curve[np.newaxis,:] -\
+                    self.subbasis_channel_mean(name=name)
             else:
-                return self.subbasis_channel_mean(name=name) - true_curve
+                return true_curve - self.subbasis_channel_mean(name=name)
     
     def subbasis_weighted_bias(self, name=None, true_curve=None):
         """
@@ -1497,7 +1513,6 @@ class Fitter(Savable):
             num_curves_to_score =\
                 np.prod([ts.shape[0] for ts in training_sets])
         score = score / (num_curves_to_score * num_channels)
-        print("sizes={!s}, score={!s}".format(self.sizes, score))
         return score
     
     def fill_hdf5_group(self, root_group, data_link=None, error_link=None,\
@@ -1561,7 +1576,7 @@ class Fitter(Savable):
         root_group.attrs['normalized_likelihood_bias_statistic'] =\
             self.normalized_likelihood_bias_statistic
         root_group.attrs['normalized_bias_statistic'] =\
-            self.normalized_likelihood_bias_statistic
+            self.normalized_bias_statistic
         if self.has_priors:
             root_group.attrs['log_evidence_per_data_channel'] =\
                 self.log_evidence_per_data_channel

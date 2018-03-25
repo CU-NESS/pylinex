@@ -9,10 +9,11 @@ Description: File containing a class representing a quantity that is calculated
              when called. When called, it must be given an object on which to
              call the function.
 """
-from ..util import sequence_types, Savable, create_hdf5_dataset
+from ..util import sequence_types, Savable, Loadable, create_hdf5_dataset,\
+    get_hdf5_value
 from .Quantity import Quantity
 
-class FunctionQuantity(Quantity, Savable):
+class FunctionQuantity(Quantity, Savable, Loadable):
     """
     Class representing a quantity that is calculated through the use of a
     member function of an object. It stores the arguments and keyword arguments
@@ -105,4 +106,31 @@ class FunctionQuantity(Quantity, Savable):
         subgroup = group.create_group('kwargs')
         for key in self.function_kwargs:
             create_hdf5_dataset(subgroup, key, data=self.function_kwargs[key])
+    
+    @staticmethod
+    def load_from_hdf5_group(group):
+        """
+        Loads a FunctionQuantity from the given hdf5 group.
+        
+        group: hdf5 file group from which to load a FunctionQuantity
+        
+        returns: FunctionQuantity loaded from given hdf5 file group
+        """
+        try:
+            assert group.attrs['class'] == 'FunctionQuantity'
+        except:
+            raise TypeError("This hdf5 file group does not seem to contain " +\
+                "a FunctionQuantity.")
+        name = group.attrs['name']
+        args = []
+        iarg = 0
+        subgroup = group['args']
+        while 'arg_{}'.format(iarg) in subgroup:
+            args.append(get_hdf5_value(subgroup['arg_{}'.format(iarg)]))
+            iarg += 1
+        subgroup = group['kwargs']
+        kwargs = {}
+        for key in subgroup:
+            kwargs[key] = get_hdf5_value(subgroup[key])
+        return FunctionQuantity(name, *args, **kwargs)
 

@@ -28,8 +28,9 @@ quantity = AttributeQuantity('BPIC')
 
 dimension = {'polynomial': np.arange(1, 16)}
 
-meta_fitter = MetaFitter(basis_sum, data, error, quantity, dimension)
-fitter = meta_fitter.minimize_quantity('BPIC')
+meta_fitter = MetaFitter(basis_sum, data, error, quantity, quantity.name,\
+    dimension)
+fitter = meta_fitter.fitter_from_indices(meta_fitter.minimize_quantity('BPIC'))
 fitter.plot_subbasis_fit(nsigma=1, name=name, true_curve=noiseless_data,\
     x_values=xs, colors='r', show=True)
 
