@@ -177,9 +177,9 @@ class RestrictedModel(Model):
         """
         group.attrs['class'] = 'RestrictedModel'
         if model_link is None:
-            group['model'] = model_link
-        else:
             self.model.fill_hdf5_group(group.create_group('model'))
+        else:
+            group['model'] = model_link
         (minima, maxima) = self.bounds
         create_hdf5_dataset(group, 'minima', data=minima)
         create_hdf5_dataset(group, 'maxima', data=maxima)
