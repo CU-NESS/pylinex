@@ -17,7 +17,7 @@ To clone a copy and install: ::
     python setup.py develop
     cd ..
     hg clone https://bitbucket.org/ktausch/pylinex
-    cd perses
+    cd pylinex
     python setup.py develop
 
 The first four lines above are necessary only if you do not already have distpy installed.
