@@ -21,4 +21,5 @@ from pylinex.model.InterpolatedModel import InterpolatedModel
 from pylinex.model.TruncatedBasisHyperModel import TruncatedBasisHyperModel
 from pylinex.model.TransformedModel import TransformedModel
 from pylinex.model.RenamedModel import RenamedModel
+from pylinex.model.RestrictedModel import RestrictedModel
 from pylinex.model.LoadModel import load_model_from_hdf5_group

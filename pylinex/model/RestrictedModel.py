@@ -7,7 +7,8 @@ Description: File containing a class representing a Model which is the same as
              an underlying model except the values of its parameters are
              restricted to within given values.
 """
-from ..util import create_hdf5_dataset
+import numpy as np
+from ..util import create_hdf5_dataset, sequence_types
 from .Model import Model
 
 class RestrictedModel(Model):
