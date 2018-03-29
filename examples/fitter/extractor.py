@@ -25,13 +25,16 @@ coefficient_distribution = GaussianDistribution(mean_vector, covariance_matrix)
 training_set_coefficients = coefficient_distribution.draw(ntrain)
 training_set = np.array([np.polyval(coeff[-1::-1], xs)\
                                        for coeff in training_set_coefficients])
-quantity = CompiledQuantity('BPIC', AttributeQuantity('BPIC'))
+quantity = CompiledQuantity('compiled', AttributeQuantity('BPIC'))
 
 error = np.ones_like(xs) * 1e-3
 data = rand.normal(0, 1, error.shape) * error
+names = ['signal']
+training_sets = [training_set]
+dimensions = [{'signal': np.arange(1, 21)}]
 
-extractor = Extractor(data, error, ['signal'], [training_set],\
-    [{'signal': np.arange(1, 21)}], quantity, 'BPIC')
+extractor =\
+    Extractor(data, error, names, training_sets, dimensions, quantity, 'BPIC')
 
 extractor.fitter.plot_subbasis_fit(name='signal', show=True)
 

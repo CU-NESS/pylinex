@@ -257,11 +257,13 @@ class Expression(Savable, Loadable):
             raise ValueError("group doesn't appear to point to an " +\
                 "Expression object.")
     
-    def __call__(self, *args):
+    def __call__(self, *args, **kwargs):
         """
         Evaluates this expression at the given arguments.
         
-        args: sequence of arguments at which to evaluate expression
+        *args: arguments at which to evaluate expression
+        **kwargs: extra keyword arguments with which to define context of
+                  expression string
         
         returns: object dependent on given expression string
         """
@@ -270,6 +272,7 @@ class Expression(Savable, Loadable):
             context = locals().copy()
             context.update(self.imports)
             context.update(self.kwargs)
+            context.update(kwargs)
             arg_strings = ['args[{}]'.format(index)\
                 for index in range(self.num_arguments)]
             return eval(self.string.format(*arg_strings), context)
