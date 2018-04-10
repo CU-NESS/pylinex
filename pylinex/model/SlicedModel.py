@@ -73,7 +73,7 @@ class SlicedModel(Model):
                 else:
                     self._constant_parameters = value
                     (indices, values) = ([], [])
-                    for key in self.model.parameters:
+                    for key in value:
                         indices.append(self.model.parameters.index(key))
                         values.append(value[key])
                     (indices, values) = (np.array(indices), np.array(values))
