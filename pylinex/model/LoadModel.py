@@ -1,7 +1,7 @@
 """
 File: pylinex/model/LoadModel.py
 Author: Keith Tauscher
-Date: 29 Dec 2017
+Update date: 9 Apr 2018
 
 Description: File containing a function which can load a Model object from an
              hdf5 file group.
@@ -24,6 +24,7 @@ from .ExpressionModel import ExpressionModel
 from .RenamedModel import RenamedModel
 from .RestrictedModel import RestrictedModel
 from .ExpandedModel import ExpandedModel
+from .SlicedModel import SlicedModel
 
 # These are the model classes where it's valid to load the model using
 # XXXXX.load_from_hdf5_group(group) or XXXXX.load(hdf5_file_name). Other
@@ -36,7 +37,10 @@ self_loadable_model_classes =\
 
 # Model classes which are simple wrappers around exactly one other Model class
 meta_model_classes =\
-    ['ExpandedModel', 'RenamedModel', 'RestrictedModel', 'TransformedModel']
+[\
+    'ExpandedModel', 'RenamedModel', 'RestrictedModel', 'TransformedModel',\
+    'SlicedModel'\
+]
 
 # Model classes which are wrappers around an arbitrary number of Model classes
 compound_model_classes = ['CompositeModel', 'SumModel', 'ProductModel']
@@ -74,6 +78,11 @@ def load_model_from_hdf5_group(group):
             maxima = get_hdf5_value(group['maxima'])
             bounds = [bound_tuple for bound_tuple in zip(minima, maxima)]
             return RestrictedModel(model, bounds)
+        elif class_name == 'SlicedModel':
+            subgroup = group['constant_parameters']
+            constant_parameters =\
+                {key: subgroup.attrs[key] for key in subgroup.attrs}
+            return SlicedModel(model, **constant_parameters)
         else:
             raise RuntimeError("This should never happen. Is there a model " +\
                 "loading function missing from LoadModel.py?")

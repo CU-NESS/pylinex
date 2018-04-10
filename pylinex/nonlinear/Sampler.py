@@ -30,8 +30,8 @@ class Sampler(object):
     def __init__(self, file_name, nwalkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
         prior_distribution_set=None, steps_per_checkpoint=100, verbose=True,\
-        restart_mode=None, args=[], kwargs={}, use_ensemble_sampler=False,\
-        proposal_covariance_reduction_factor=1.):
+        restart_mode=None, nthreads=1, args=[], kwargs={},\
+        use_ensemble_sampler=False, proposal_covariance_reduction_factor=1.):
         """
         Initializes a new sampler with the given file_name, loglikelihood,
         jumping distribution set, and guess distribution set.
@@ -75,6 +75,9 @@ class Sampler(object):
                               the hdf5 file. (if None, it is set to 100)
         verbose: if True, the time is printed after the completion of each
                           checkpoint (and before the first checkpoint)
+        nthreads: the number of threads to use in log likelihood calculations
+                  for walkers. Default: 1, 1 is best unless loglikelihood is
+                  very slow
         args: extra positional arguments to pass on to the likelihood
         kwargs: extra keyword arguments to pass on to the likelihood
         use_ensemble_sampler: if True, EnsembleSampler of emcee is used
@@ -85,6 +88,7 @@ class Sampler(object):
                                               jumping_distribution_set is None
         """
         self.use_ensemble_sampler = use_ensemble_sampler
+        self.nthreads = nthreads
         self.proposal_covariance_reduction_factor =\
             proposal_covariance_reduction_factor
         self.restart_mode = restart_mode
@@ -99,6 +103,31 @@ class Sampler(object):
         self.args = args
         self.kwargs = kwargs
         self.file # loads in things for restart if necessary
+    
+    @property
+    def nthreads(self):
+        """
+        Property storing the number of threads to use in calculating log
+        likelihood values.
+        """
+        if not hasattr(self, '_nthreads'):
+            raise AttributeError("nthreads referenced before it was set.")
+        return self._nthreads
+    
+    @nthreads.setter
+    def nthreads(self, value):
+        """
+        Setter for the number of threads to use in log likelihood calculations.
+        
+        value: a positive integer; 1 is best unless loglikelihood is very slow
+        """
+        if type(value) in int_types:
+            if value > 0:
+                self._nthreads = value
+            else:
+                raise ValueError("nthreads must be non-negative.")
+        else:
+            raise TypeError("nthreads was set to a non-int.")
     
     @property
     def use_ensemble_sampler(self):
@@ -830,12 +859,12 @@ class Sampler(object):
             if self.use_ensemble_sampler:
                 self._sampler = EnsembleSampler(self.nwalkers,\
                     len(self.parameters), self.logprobability, args=self.args,\
-                    kwargs=self.kwargs)
+                    kwargs=self.kwargs, threads=self.nthreads)
             else:
                 self._sampler = MetropolisHastingsSampler(self.parameters,\
                     self.nwalkers, self.logprobability,\
-                    self.jumping_distribution_set, args=self.args,\
-                    kwargs=self.kwargs)
+                    self.jumping_distribution_set, nthreads=self.nthreads,\
+                    args=self.args, kwargs=self.kwargs)
         return self._sampler
     
     @property

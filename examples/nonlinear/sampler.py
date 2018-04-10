@@ -16,6 +16,7 @@ from pylinex import GaussianModel, TanhModel, GaussianLoglikelihood, BurnRule,\
 
 seed = 1234567890
 
+nthreads = 1 # to test multithreading, set to > 1
 file_name = 'TESTING_SAMPLER_CLASS.hdf5'
 num_channels = 100
 num_iterations = 100
@@ -55,7 +56,7 @@ try:
     sampler = Sampler(file_name, nwalkers, loglikelihood,\
         jumping_distribution_set=jumping_distribution_set,\
         guess_distribution_set=guess_distribution_set,\
-        prior_distribution_set=None,\
+        prior_distribution_set=None, nthreads=nthreads,\
         steps_per_checkpoint=steps_per_checkpoint, restart_mode=None)
     sampler.run_checkpoints(quarter_ncheckpoints)
     sampler.close()
