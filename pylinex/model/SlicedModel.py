@@ -6,6 +6,7 @@ Date: 9 Apr 2018
 Description: File containing a class represening a model which has one or more
              of its parameters fixed.
 """
+import numpy as np
 from .Model import Model
 
 class SlicedModel(Model):
