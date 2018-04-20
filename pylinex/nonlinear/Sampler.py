@@ -103,6 +103,7 @@ class Sampler(object):
         self.args = args
         self.kwargs = kwargs
         self.file # loads in things for restart if necessary
+        self.close()
     
     @property
     def nthreads(self):
@@ -654,13 +655,27 @@ class Sampler(object):
                 "must be given to Sampler initializer.")
     
     @property
+    def started(self):
+        """
+        Property storing a boolean describing whether or not this sampler has
+        been started (i.e. whether its file has been opened at least once).
+        """
+        if not hasattr(self, '_started'):
+            self._started = False
+        return self._started
+    
+    @property
     def file(self):
         """
         Property storing the h5py file in which all info from this sampler will
         be saved.
         """
         if not hasattr(self, '_file'):
-            self._setup()
+            if self.started:
+                self._file = h5py.File(self.file_name, 'r+')
+            else:
+                self._setup()
+                self._started = True
         return self._file
     
     @property
@@ -1001,6 +1016,7 @@ class Sampler(object):
         """
         self.update_state()
         self.save_checkpoint()
+        self.close()
     
     def update_state(self):
         """
@@ -1040,5 +1056,6 @@ class Sampler(object):
         being saved.
         """
         self.file.close()
+        del self._file
     
 
