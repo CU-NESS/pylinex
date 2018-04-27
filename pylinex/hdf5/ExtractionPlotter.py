@@ -1368,6 +1368,17 @@ class ExtractionPlotter(object):
         return self._data
     
     @property
+    def num_channels(self):
+        """
+        Property storing the integer number of data channels being fit in the
+        Extractor which made the file at the heart of this ExtractionPlotter
+        object.
+        """
+        if not hasattr(self, '_num_channels'):
+            self._num_channels = self.data.shape[-1]
+        return self._num_channels
+    
+    @property
     def error(self):
         """
         Property storing the error associated with the data of the Extractor
