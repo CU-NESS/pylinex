@@ -661,6 +661,65 @@ class ExtractionPlotter(object):
                     "order to infer the desired one.")
             else:
                 return separated_curves[name]
+    
+    def plot_residual(self, icurve=0, title=None, xlabel=None, ylabel=None,\
+        ax=None, scale_factor=1, channels=None, fontsize=24, label=None,\
+        show=False, **plot_kwargs):
+        """
+        Plots the residual of the full model fit to the data (with the chosen
+        minimized quantity).
+        
+        icurve: Index of residual to plot. Only necessary/used when multiple
+                data curves are present
+        title: title to put on plot
+        xlabel: label to put on x-axis
+        ylabel: label to put on y-axis
+        ax: Axes instance on which to make this plot
+        scale_factor: factor by which to multiply residual before plotting
+        channels: x-values to use for the plot. If None is given, then
+                  np.arange(num_channels) is used as the x-values
+        fontsize: size of fonts for tick labels, axis labels, title, and legend
+        label: if None, no legend label is applied. Otherwise label is taken to
+               be a string which can be formatted as string.format(rms=rms)
+               where rms is the rms residual multiplied by the scale factor
+        show: if True, matplotlib.pyplot.show() is called before this function
+              returns
+        plot_kwargs: extra keyword arguments to matplotlib.pyplot.plot
+        
+        returns: None if show is True, Axes instance containing plot otherwise
+        """
+        if ax is None:
+            fig = pl.figure()
+            ax = fig.add_subplot(111)
+        residual = self.data - self.channel_mean
+        if self.multiple_data_curves:
+            if type(icurve) in int_types:
+                residual = residual[icurve]
+            else:
+                raise TypeError("Since there are multiple data curves " +\
+                    "stored in this ExtractionPlotter, icurve must be set " +\
+                    "to an integer.")
+        if channels is None:
+            channels = np.arange(len(residual))
+        if label is not None:
+            rms = np.sqrt(np.mean(np.power(residual, 2))) * scale_factor
+            label = label.format(rms=rms)
+        ax.plot(channels, residual * scale_factor, label=label, **plot_kwargs)
+        if xlabel is not None:
+            ax.set_xlabel(xlabel, size=fontsize)
+        if ylabel is not None:
+            ax.set_ylabel(ylabel, size=fontsize)
+        if title is not None:
+            ax.set_title(title, size=fontsize)
+        if label is not None:
+            ax.legend(fontsize=fontsize)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+            which='major')
+        ax.tick_params(width=1.5, length=4.5, which='minor')
+        if show:
+            pl.show()
+        else:
+            return ax
 
     def plot_subbasis_fit(self, icurve=0, quantity_to_minimize=None, nsigma=1,\
         name=None, true_curves={}, title=None, xlabel=None, ylabel=None,\
@@ -693,6 +752,8 @@ class ExtractionPlotter(object):
         verbose: if True, useful reminders to the user are printed
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
+        
+        returns: None if show is True, Axes instance containing plot otherwise
         """
         if ax is None:
             fig = pl.figure()
@@ -783,6 +844,8 @@ class ExtractionPlotter(object):
         ax.tick_params(labelsize=fontsize, width=2.5, length=7.5)
         if show:
             pl.show()
+        else:
+            return ax
     
     def plot_subbasis_fit_grid(self, icurve=0, nsigma=1, name=None,\
         true_curves={}, title='Subbasis fit grid', subtract_truth=False,\
@@ -1063,9 +1126,6 @@ class ExtractionPlotter(object):
                 histtype='step', cumulative=cumulative, normed=normed,\
                 color=color, label=label)
             return bins
-        if show:
-            pl.legend()
-            pl.show()
     
     def plot_normalized_deviance_histograms(self, quantity_to_minimize=None,\
         bins=None, fontsize=24, show=False):
@@ -1115,6 +1175,8 @@ class ExtractionPlotter(object):
         restricted: if True, grid for minimization is truncated at ranks
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
+        
+        returns: None if show is True, Axes instance containing plot otherwise
         """
         if ax is None:
             fig = pl.figure()
@@ -1164,6 +1226,8 @@ class ExtractionPlotter(object):
         if show:
             pl.legend()
             pl.show()
+        else:
+            return ax
     
     @property
     def statistics(self):
