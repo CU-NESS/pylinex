@@ -988,7 +988,7 @@ class NLFitter(object):
                 if (row + 1) == num_parameters:
                     ax.set_xlabel(parameter_x, size=fontsize, rotation=15)
                     ax.tick_params(labelbottom='on')
-                    ax.tick_params(axis='x', labelrotation=45)
+                    #ax.tick_params(axis='x', labelrotation=45)
                 if (column == 0):
                     if (row != 0):
                         ax.set_ylabel(parameter_y, size=fontsize, rotation=60,\

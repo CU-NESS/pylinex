@@ -628,8 +628,9 @@ class Sampler(object):
             self.prior_distribution_set.fill_hdf5_group(\
                 group.create_group('chunk0'))
         group = self.file.create_group('jumping_distribution_sets')
-        self.jumping_distribution_set.fill_hdf5_group(\
-            group.create_group('chunk0'))
+        if self.jumping_distribution_set is not None:
+            self.jumping_distribution_set.fill_hdf5_group(\
+                group.create_group('chunk0'))
         self.loglikelihood.fill_hdf5_group(\
             self.file.create_group('loglikelihood'))
         group = self.file.create_group('checkpoints')
@@ -647,7 +648,8 @@ class Sampler(object):
         if restart:
             self._setup_restarted_file()
         elif (self.guess_distribution_set is not None) and\
-            (self.jumping_distribution_set is not None):
+            ((self.jumping_distribution_set is not None) or\
+            (self.use_ensemble_sampler)):
             self._setup_new_file()
         else:
             raise ValueError("If this is not a restart, " +\

@@ -9,6 +9,7 @@ Description: File containing class representing a least square fitter which
 """
 import numpy as np
 import numpy.linalg as la
+import matplotlib.pyplot as pl
 from scipy.optimize import minimize
 from distpy import cast_to_transform_list, DistributionSet
 from ..loglikelihood import Loglikelihood
@@ -159,6 +160,17 @@ class LeastSquareFitter(object):
         return self._covariance_estimates
     
     @property
+    def reconstructions(self):
+        """
+        Property storing the output of the model of the loglikelihood evaluated
+        at the best known input value.
+        """
+        if not hasattr(self, '_reconstructions'):
+            self._reconstructions = np.array([self.loglikelihood.model(argmin)\
+                for argmin in self.argmins])
+        return self._reconstructions
+    
+    @property
     def min(self):
         """
         Property storing the minimum negative Loglikelihood value found in all
@@ -191,6 +203,14 @@ class LeastSquareFitter(object):
         hessian.
         """
         return self.covariance_estimates[np.argmin(self.mins)]
+    
+    @property
+    def reconstruction(self):
+        """
+        Property storing the maximum likelihood reconstruction of the modeled
+        curve.
+        """
+        return self.reconstructions[np.argmin(self.mins)]
     
     def generate_guess(self):
         """
@@ -257,15 +277,178 @@ class LeastSquareFitter(object):
         for index in range(iterations):
             self.iteration()
     
-    @property
-    def reconstruction(self):
+    def plot_reconstructions(self, parameter_indices=slice(None), model=None,\
+        only_best=False, scale_factor=1, ax=None, channels=None, label=None,\
+        xlabel=None, ylabel=None, title=None, fontsize=24, show=False,\
+        **plot_kwargs):
         """
-        Property storing the output of the model of the loglikelihood evaluated
-        at the best known input value.
-        """
-        if not hasattr(self, '_reconstruction'):
-            self._reconstruction = self.loglikelihood.model(self.argmin)
-        return self._reconstruction
+        Plots all reconstructions (or only the best one) found by this fitter.
         
+        parameter_indices: indices of parameters to feed to model.
+                           If None, all parameters are used
+        model: model to run on given parameter sample
+        only_best: if True, only the best fit reconstruction is plotted
+        scale_factor: multiplicative factor with which to affect every
+                      reconstruction, default 1.
+        ax: Axes instance on which to make this plot, or None if a new one
+            should be made
+        channels: if None (default), channel index is shown on x-axis.
+                  Otherwise, channels should be a 1D array to use as x-axis
+        label: label to use in legend for curve(s)
+        xlabel: string label to place on x-axis (defaults to parameter)
+        ylabel: string label to place on y-axis (defaults to '# of occurrences'
+                in 1D case and parameter2 in 2D case)
+        title: string title to place on top of plot
+        fontsize: size of font to use for labels, titles, etc.
+        ax: the Axes instance on which to plot the histogram
+        show: if True, matplotlib.pyplot.show() is called before this function
+              returns
+        hist_kwargs: extra keyword arguments to pass on to matplotlib's plot
+                     function (e.g. 'color', 'label', etc.)
+        
+        returns: None if show is True, Axes instance with plot otherwise
+        """
+        if ax is None:
+            fig = pl.figure()
+            ax = fig.add_subplot(111)
+        if model is None:
+            model = self.loglikelihood.model
+            parameter_indices = slice(None)
+        if only_best:
+            curve = model(self.argmin[parameter_indices])
+            if channels is None:
+                channels = np.arange(len(curve))
+            ax.plot(channels, curve * scale_factor, label=label, **plot_kwargs)
+        else:
+            curves = np.array([model(argmin[parameter_indices])\
+                for argmin in self.argmins])
+            if channels is None:
+                channels = np.arange(curve.shape[1])
+            ax.plot(channels, curves[0] * scale_factor, label=label,\
+                **plot_kwargs)
+            ax.plot(channels, curves[1:].T * scale_factor, **plot_kwargs)
+        if xlabel is not None:
+            ax.set_xlabel(xlabel, size=fontsize)
+        if ylabel is not None:
+            ax.set_ylabel(ylabel, size=fontsize)
+        if title is not None:
+            ax.set_title(title, size=fontsize)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+            which='major')
+        ax.tick_params(width=1.5, length=4.5, which='minor')
+        if label is not None:
+            ax.legend(fontsize=fontsize)
+        if show:
+            pl.show()
+        else:
+            return ax
     
+    def plot_parameter_histogram(self, parameter, parameter2=None,\
+        use_transforms=True, xlabel=None, ylabel=None, title=None,\
+        fontsize=24, ax=None, show=False, **hist_kwargs):
+        """
+        Plots a histogram of the parameter values on which iterations ended.
+        This function is capable of making both 1D and 2D histograms.
+        
+        parameter: either the parameter to make a histogram of (in 1D case) or
+                   parameter to plot on x-axis of histogram (in 2D case)
+        parameter2: parameter to plot on y-axis of histogram (in 2D case).
+                    If None, a 1D histogram of parameter is plotted
+        use_transforms: if True (default), values of parameter(s) are
+                        transformed before binning and plotting
+        xlabel: string label to place on x-axis (defaults to parameter)
+        ylabel: string label to place on y-axis (defaults to '# of occurrences'
+                in 1D case and parameter2 in 2D case)
+        title: string title to place on top of plot
+        fontsize: size of font to use for labels, titles, etc.
+        ax: the Axes instance on which to plot the histogram
+        show: if True, matplotlib.pyplot.show() is called before this function
+              returns
+        hist_kwargs: extra keyword arguments to pass on to matplotlib's hist
+                     (or hist2d) function (e.g. 'bins', 'label', etc.)
+        
+        returns: None if show is True, Axes instance with plot otherwise
+        """
+        if ax is None:
+            fig = pl.figure()
+            ax = fig.add_subplot(111)
+        if use_transforms:
+            to_sample = self.transformed_argmins
+        else:
+            to_sample = self.argmins
+        to_sample = np.array(to_sample)[np.isfinite(np.array(self.mins)),:]
+        parameter_index = self.loglikelihood.model.parameters.index(parameter)
+        parameter_sample = to_sample[:,parameter_index]
+        multidimensional = (parameter2 is not None)
+        if multidimensional:
+            parameter2_index =\
+                self.loglikelihood.model.parameters.index(parameter2)
+            parameter2_sample = to_sample[:,parameter2_index]
+            ax.hist2d(parameter_sample, parameter2_sample, **hist_kwargs)
+        else:
+            ax.hist(parameter_sample, **hist_kwargs)
+        if xlabel is None:
+            xlabel = parameter
+        ax.set_xlabel(xlabel, size=fontsize)
+        if ylabel is None:
+            if multidimensional:
+                ylabel = parameter2
+            else:
+                ylabel = '# of occurrences'
+        ax.set_ylabel(ylabel, size=fontsize)
+        if title is None:
+            title = 'Least square fit parameter histogram'
+        ax.set_title(title, size=fontsize)
+        if 'label' in hist_kwargs:
+            ax.legend(fontsize=fontsize)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+            which='major')
+        ax.tick_params(width=1.5, length=4.5, which='minor')
+        if show:
+            pl.show()
+        else:
+            return ax
+    
+    def plot_loglikelihood_histogram(self, xlabel='$\ln{\mathcal{L}}$',\
+        ylabel='# of occurrences', title='Log likelihood histogram',\
+        fontsize=24, ax=None, show=False, **hist_kwargs):
+        """
+        Plots a histogram of the loglikelihood values found by this
+        LeastSquareFitter.
+        
+        xlabel: string label to place on x-axis
+        ylabel: string label to place on y-axis
+        title: string title to place on top of plot
+        fontsize: size of font to use for labels, titles, etc.
+        ax: the Axes instance on which to plot the histogram
+        show: if True, matplotlib.pyplot.show() is called before this function
+              returns
+        hist_kwargs: extra keyword arguments to pass on to matplotlib's hist
+                     function (e.g. 'bins', 'label', etc.)
+ 
+        returns: None if show is True, Axes instance containing plot otherwise
+        """
+        if ax is None:
+            fig = pl.figure()
+            ax = fig.add_subplot(111)
+        # '-' below necessary because, internally, -loglikelihood was minimized
+        to_sample = -np.array(self.mins)
+        to_sample = to_sample[np.isfinite(to_sample)]
+        ax.hist(to_sample, **hist_kwargs)
+        if xlabel is not None:
+            ax.set_xlabel(xlabel, size=fontsize)
+        if ylabel is not None:
+            ax.set_ylabel(ylabel, size=fontsize)
+        if title is not None:
+            ax.set_title(title, size=fontsize)
+        if 'label' in hist_kwargs:
+            ax.legend(fontsize=fontsize)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+            which='major')
+        ax.tick_params(width=1.5, length=4.5, which='minor')
+        if show:
+            pl.show()
+        else:
+            return ax
+        
 
