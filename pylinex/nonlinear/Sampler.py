@@ -945,7 +945,7 @@ class Sampler(object):
         Property storing the current random state of the sampler.
         """
         if not hasattr(self, '_rstate'):
-            self._rstate = None
+            self._rstate = np.random.get_state()
         return self._rstate
     
     @rstate.setter
@@ -1055,9 +1055,10 @@ class Sampler(object):
     def close(self):
         """
         Closes the h5py file object in which all information of this sampler is
-        being saved.
+        being saved (if it is open).
         """
-        self.file.close()
-        del self._file
+        if hasattr(self, '_file'):
+            self.file.close()
+            del self._file
     
 
