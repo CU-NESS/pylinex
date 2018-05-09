@@ -118,6 +118,18 @@ class BasisSet(object):
         return self._slices_by_name
     
     @property
+    def parameter_names(self):
+        """
+        Gets names to associate with the coefficients of this BasisSet. It is a
+        list of strings of length num_basis_vectors.
+        """
+        if not hasattr(self, '_parameter_names'):
+            self._parameter_names = sum([['{0!s}_a{1:d}'.format(name, index)\
+                for index in range(self[name].num_basis_vectors)]\
+                for name in self.names], [])
+        return self._parameter_names
+    
+    @property
     def num_basis_vectors(self):
         """
         Property storing the number of basis functions stored in this BasisSet
