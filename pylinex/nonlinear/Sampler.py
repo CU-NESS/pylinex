@@ -891,12 +891,17 @@ class Sampler(object):
         """
         if not hasattr(self, '_pos'):
             self._pos = []
+            iterations = 0
             while len(self._pos) < self.nwalkers:
                 draw = self.guess_distribution_set.draw()
                 if (self.prior_distribution_set is None) or\
                     np.isfinite(self.prior_distribution_set.log_value(draw)):
                     self._pos.append(\
                         [draw[param] for param in self.parameters])
+                if (iterations >= 100 * self.nwalkers):
+                    raise RuntimeError("100*nwalkers positions have been " +\
+                        "drawn but not enough have had finite likelihood.")
+                iterations += 1
             self._pos = np.array(self._pos)
         return self._pos
     
@@ -979,11 +984,14 @@ class Sampler(object):
         else:
             raise TypeError("checkpoint_index was set to a non-int.")
     
-    def run_checkpoints(self, ncheckpoints):
+    def run_checkpoints(self, ncheckpoints, silence_error=False):
         """
         Runs this sampler for given number of checkpoints.
         
         ncheckpoints: positive integer
+        silence_error: if True, if a KeyboardInterrupt is performed during the
+                       run, then it is silenced and this function simply
+                       returns. Default, False
         """
         if self.verbose:
             print("Starting checkpoint #{0} at {1!s}.".format(\
@@ -994,7 +1002,10 @@ class Sampler(object):
                 self.run_checkpoint()
             except KeyboardInterrupt:
                 # TODO possibly check if some remnants were incompletely saved?
-                break
+                if silence_error:
+                    break
+                else:
+                    raise
     
     def run_checkpoint(self):
         """
