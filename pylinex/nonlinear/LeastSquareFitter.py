@@ -179,13 +179,24 @@ class LeastSquareFitter(object):
         return np.min(self.mins)
     
     @property
+    def best_fit_index(self):
+        """
+        Property storing the index of the maximum likelihood fit.
+        """
+        if self.mins:
+            return np.argmin(self.mins)
+        else:
+            raise NotImplementedError("There is no best fit index because " +\
+                "there have been no successful least square fits.")
+    
+    @property
     def argmin(self):
         """
         Property storing the parameter values of the point which was associated
         with the minimum negative Loglikelihood value found in all iterations
         of this fitter.
         """
-        return self.argmins[np.argmin(self.mins)]
+        return self.argmins[self.best_fit_index]
     
     @property
     def transformed_argmin(self):
@@ -193,7 +204,7 @@ class LeastSquareFitter(object):
         Property storing the transformed parameter values at the minimum value
         found so far.
         """
-        return self.transformed_argmins[np.argmin(self.mins)]
+        return self.transformed_argmins[self.best_fit_index]
     
     @property
     def covariance_estimate(self):
@@ -202,7 +213,7 @@ class LeastSquareFitter(object):
         to the lowest endpoint. If None, something went wrong in inverting
         hessian.
         """
-        return self.covariance_estimates[np.argmin(self.mins)]
+        return self.covariance_estimates[self.best_fit_index]
     
     @property
     def reconstruction(self):
@@ -210,7 +221,7 @@ class LeastSquareFitter(object):
         Property storing the maximum likelihood reconstruction of the modeled
         curve.
         """
-        return self.reconstructions[np.argmin(self.mins)]
+        return self.reconstructions[self.best_fit_index]
     
     def generate_guess(self):
         """
@@ -250,6 +261,8 @@ class LeastSquareFitter(object):
         else:
             optimize_result = minimize(self.loglikelihood, guess,\
                 args=(True,), method='Nelder-Mead')
+        if np.isnan(optimize_result.fun):
+            return
         self.mins.append(optimize_result.fun)
         argmin = optimize_result.x
         self.argmins.append(argmin)
@@ -326,7 +339,8 @@ class LeastSquareFitter(object):
                 channels = np.arange(curve.shape[1])
             ax.plot(channels, curves[0] * scale_factor, label=label,\
                 **plot_kwargs)
-            ax.plot(channels, curves[1:].T * scale_factor, **plot_kwargs)
+            if curves.shape[0] > 1:
+                ax.plot(channels, curves[1:].T * scale_factor, **plot_kwargs)
         if xlabel is not None:
             ax.set_xlabel(xlabel, size=fontsize)
         if ylabel is not None:

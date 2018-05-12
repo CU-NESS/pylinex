@@ -553,9 +553,15 @@ class Sampler(object):
             prior_distribution_set = None
         jumping_distribution_set_group_name =\
             'jumping_distribution_sets/{!s}'.format(chunk_string)
-        jumping_distribution_set =\
-            JumpingDistributionSet.load_from_hdf5_group(\
-            self.file[jumping_distribution_set_group_name])
+        if jumping_distribution_set_group_name in self.file:
+            jumping_distribution_set =\
+                JumpingDistributionSet.load_from_hdf5_group(\
+                self.file[jumping_distribution_set_group_name])
+        elif self.use_ensemble_sampler:
+            jumping_distribution_set = None
+        else:
+            raise ValueError("It seems that you are attempting to restart " +\
+                "an EnsembleSampler with a MetropolisHastingsSampler.")
         return (guess_distribution_set, prior_distribution_set,\
             jumping_distribution_set)
     
@@ -1002,7 +1008,7 @@ class Sampler(object):
                 self.run_checkpoint()
             except KeyboardInterrupt:
                 # TODO possibly check if some remnants were incompletely saved?
-                if silence_error:
+                if silence_error or (self.nthreads > 1):
                     break
                 else:
                     raise
