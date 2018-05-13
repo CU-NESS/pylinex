@@ -13,6 +13,14 @@ class NullExpander(Expander):
     Class representing an Expander which doesn't actually do anything to its
     inputs. It simply returns them back.
     """
+    def copy(self):
+        """
+        Finds and returns a deep copy of this expander.
+        
+        returns: another NullExpander
+        """
+        return NullExpander()
+    
     def apply(self, vector):
         """
         Expands vector from smaller original space to larger expanded space.

@@ -8,11 +8,23 @@ Description: File containing class representing an object which expands vectors
 """
 from ..util import Savable
 
+cannot_instantiate_expander_error =\
+    NotImplementedError("Cannot directly instantiate Expander class.")
+
 class Expander(Savable):
     """
     Class representing an object which expands vectors from one space to
     another.
     """
+    def copy(self):
+        """
+        Finds and returns a deep copy of this expander. Must be implemented
+        separately by each subclass of Expander.
+        
+        returns: copied Expander of same class as self
+        """
+        raise cannot_instantiate_expander_error
+    
     def apply(self, vector):
         """
         Expands vector from smaller original space to larger expanded space.
@@ -21,8 +33,7 @@ class Expander(Savable):
         
         returns: 1D vector from expanded space
         """
-        raise NotImplementedError("Cannot directly instantiate Expander " +\
-                                  "class.")
+        raise cannot_instantiate_expander_error
     
     def contract_error(self, error):
         """
@@ -32,8 +43,7 @@ class Expander(Savable):
         
         returns: 1D vector from original space
         """
-        raise NotImplementedError("Cannot directly instantiate Expander " +\
-                                  "class.")
+        raise cannot_instantiate_expander_error
     
     def invert(self, data, error):
         """
@@ -45,8 +55,7 @@ class Expander(Savable):
         
         returns: most likely original-space curve to cause given data
         """
-        raise NotImplementedError("Cannot directly instantiate Expander " +\
-                                  "class.")
+        raise cannot_instantiate_expander_error
     
     def is_compatible(self, original_space_size, expanded_space_size):
         """
@@ -58,8 +67,7 @@ class Expander(Savable):
         
         returns: True iff the given sizes are compatible with this Expander
         """
-        raise NotImplementedError("Cannot directly instantiate Expander " +\
-                                  "class.")
+        raise cannot_instantiate_expander_error
     
     def original_space_size(self, expanded_space_size):
         """
@@ -69,8 +77,7 @@ class Expander(Savable):
         
         returns: input space size
         """
-        raise NotImplementedError("Cannot directly instantiate Expander " +\
-                                  "class.")
+        raise cannot_instantiate_expander_error
     
     def expanded_space_size(self, original_space_size):
         """
@@ -80,8 +87,7 @@ class Expander(Savable):
         
         returns: output space size
         """
-        raise NotImplementedError("Cannot directly instantiate Expander " +\
-                                  "class.")
+        raise cannot_instantiate_expander_error
     
     def channels_affected(self, original_space_size):
         """
@@ -93,8 +99,7 @@ class Expander(Savable):
         returns: 1D numpy.ndarray of indices of data channels possibly affected
                  by data expanded by this Expander object 
         """
-        raise NotImplementedError("Cannot directly instantiate Expander " +\
-                                  "class.")
+        raise cannot_instantiate_expander_error
     
     def fill_hdf5_group(self, group):
         """
@@ -102,8 +107,7 @@ class Expander(Savable):
         
         group: hdf5 file group to which to write
         """
-        raise NotImplementedError("Cannot directly instantiate Expander " +\
-                                  "class.")
+        raise cannot_instantiate_expander_error
     
     def __eq__(self, other):
         """
@@ -114,8 +118,7 @@ class Expander(Savable):
         returns: True if this object and other are identical,
                  False otherwise
         """
-        raise NotImplementedError("Cannot directly instantiate Expander " +\
-                                  "class.")
+        raise cannot_instantiate_expander_error
     
     def __call__(self, vector):
         """

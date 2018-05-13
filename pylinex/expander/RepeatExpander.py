@@ -46,6 +46,14 @@ class RepeatExpander(Expander):
         else:
             raise TypeError("nrepeats was set to a non-integer.")
     
+    def copy(self):
+        """
+        Finds and returns a deep copy of this expander.
+        
+        returns: copied RepeatExpander
+        """
+        return RepeatExpander(self.nrepeats)
+    
     def apply(self, vector):
         """
         Expands vector from smaller original space to larger expanded space.

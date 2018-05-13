@@ -171,6 +171,19 @@ class PadExpander(Expander):
         else:
             raise TypeError("pad_value was set to a non-number.")
     
+    def copy(self):
+        """
+        Finds and returns a deep copy of this expander.
+        
+        returns: copied PadExpander
+        """
+        pads_before_string = '{0:d}{1!s}'.format(self.pads_before,\
+            '*' if self.pads_before_multiplicative else '+')
+        pads_after_string = '{0:d}{1!s}'.format(self.pads_after,\
+            '*' if self.pads_after_multiplicative else '+')
+        return PadExpander(pads_before_string, pads_after_string,\
+            pad_value=self.pad_value)
+    
     def get_pad_size(self, original_space_size, pad_number, is_multiplicative):
         """
         Gets the pad size associated with the given input size as well as a

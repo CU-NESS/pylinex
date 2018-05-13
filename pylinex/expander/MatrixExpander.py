@@ -60,6 +60,14 @@ class MatrixExpander(Expander):
             raise TypeError("matrix was set to an array of less than 2 " +\
                             "dimensions.")
     
+    def copy(self):
+        """
+        Finds and returns a deep copy of this expander.
+        
+        returns: copied MatrixExpander
+        """
+        return MatrixExpander(self.matrix.copy())
+    
     def apply(self, vector):
         """
         Expands vector from smaller original space to larger expanded space.

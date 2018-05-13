@@ -34,6 +34,15 @@ class CompositeExpander(Expander):
             raise AttributeError("expanders was referenced before it was set.")
         return self._expanders
     
+    def copy(self):
+        """
+        Finds and returns a deep copy of this Expander.
+        
+        returns: another CompositeExpander with deep-copied component expanders
+        """
+        return CompositeExpander(*[expander.copy()\
+            for expander in self.expanders])
+    
     @expanders.setter
     def expanders(self, value):
         """

@@ -76,6 +76,19 @@ class CompoundModel(Model):
             raise ValueError("Length of models sequence was not the same " +\
                 "as the number of names given.")
     
+    def __getitem__(self, key):
+        """
+        Gets the model associated with the given name.
+        
+        key: string describing desired submodel; either name string of the
+             submodel or (only if this CompoundModel object is composed of
+             other CompoundModel objects) sequence of nested name strings
+             joined by '/'
+        
+        returns: Model object representing desired (possibly nested) submodel
+        """
+        return self.submodel(key)
+    
     def submodel(self, key):
         """
         Finds the submodel associated with the given key.

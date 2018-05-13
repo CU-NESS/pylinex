@@ -43,6 +43,15 @@ class BasisSum(BasisSet, Basis):
         else:
             self.expander = None
     
+    def copy(self):
+        """
+        Finds and returns a deep copy of this BasisSum.
+        
+        returns: new BasisSum object with names and bases copied from this one
+        """
+        return BasisSum([name for name in self.names],\
+            [basis.copy() for basis in self.component_bases])
+    
     def basis_dot_products(self, error=None):
         """
         Finds the dot products between the Basis objects underlying this
@@ -120,4 +129,26 @@ class BasisSum(BasisSet, Basis):
         return: sum of the results of all the expanded bases in this BasisSum
         """
         return Basis.__call__(self, parameters)
+    
+    def __eq__(self, other):
+        """
+        Checks to see if other is a BasisSum containing the same component
+        bases under the same names.
+        
+        other: object with which to check for equality
+        
+        returns: True if other is a BasisSum containing the same bases under
+                 the same names. False otherwise
+        """
+        if isinstance(other, BasisSum):
+            if self.num_bases:
+                names_equal = all([(sname == oname)\
+                    for (sname, oname) in zip(self.names, other.names)])
+                bases_equal = all([(sbasis == obasis) for (sbasis, obasis) in\
+                    zip(self.component_bases, other.component_bases)])
+                return (names_equal and bases_equal)
+            else:
+                return False
+        else:
+            return False
 

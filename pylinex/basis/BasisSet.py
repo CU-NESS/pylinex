@@ -40,6 +40,15 @@ class BasisSet(object):
             raise TypeError("names and bases given to BasisSet were not " +\
                             "lists.")
     
+    def copy(self):
+        """
+        Finds and returns a deep copy of this BasisSet.
+        
+        returns: new BasisSet object with names and bases copied from this one
+        """
+        return BasisSet([name for name in self.names],\
+            [basis.copy() for basis in self.component_bases])
+    
     @property
     def component_bases(self):
         """
@@ -74,7 +83,7 @@ class BasisSet(object):
         """
         if not hasattr(self, '_names'):
             raise AttributeError("For some reason, names has not yet been " +\
-                                 "set.")
+                "set.")
         return self._names
     
     @names.setter
@@ -91,15 +100,14 @@ class BasisSet(object):
             raise ValueError("Not all names given to BasisSet were unique.")
     
     @property
-    def name_dict(self):
+    def num_bases(self):
         """
-        Dictionary connecting names to the internal index with which they are
-        associated.
+        Property storing the integer number of Basis objects contained in this
+        BasisSet.
         """
-        if not hasattr(self, '_name_dict'):
-            self._name_dict =\
-                {self.names[iname]: iname for iname in range(len(self.names))}
-        return self._name_dict
+        if not hasattr(self, '_num_bases'):
+            self._num_bases = len(self.names)
+        return self._num_bases
     
     @property
     def slices_by_name(self):
@@ -112,9 +120,9 @@ class BasisSet(object):
             rindex = 0
             self._slices_by_name = {None: slice(None)}
             for name in self.names:
-                self._slices_by_name[name] =\
-                    slice(rindex, rindex + self[name].num_basis_vectors)
-                rindex = rindex + self[name].num_basis_vectors
+                next_rindex = rindex + len(self[name])
+                self._slices_by_name[name] = slice(rindex, next_rindex)
+                rindex = next_rindex
         return self._slices_by_name
     
     @property
@@ -125,8 +133,8 @@ class BasisSet(object):
         """
         if not hasattr(self, '_parameter_names'):
             self._parameter_names = sum([['{0!s}_a{1:d}'.format(name, index)\
-                for index in range(self[name].num_basis_vectors)]\
-                for name in self.names], [])
+                for index in range(len(self[name]))] for name in self.names],\
+                [])
         return self._parameter_names
     
     @property
@@ -136,7 +144,7 @@ class BasisSet(object):
         """
         if not hasattr(self, '_num_basis_vectors'):
             self._num_basis_vectors =\
-                sum([self[name].num_basis_vectors for name in self.names])
+                sum([len(self[name]) for name in self.names])
         return self._num_basis_vectors
     
     def __getitem__(self, key):
@@ -155,7 +163,7 @@ class BasisSet(object):
                  otherwise, returns Basis object
         """
         if isinstance(key, basestring):
-            return self.component_bases[self.name_dict[key]]
+            return self.component_bases[self.names.index(key)]
         elif isinstance(key, dict):
             return self.basis_subsets(**key)
         elif key is None:
@@ -165,6 +173,25 @@ class BasisSet(object):
         else:
             raise KeyError("key not recognized.")
     
+    def __delitem__(self, key):
+        """
+        Deletes the basis associated with the given string key (i.e. name).
+        
+        key: string which is one of the names of the bases in this BasisSet
+        """
+        if key in self.names:
+            name_index = self.names.index(key)
+            self.names.pop(name_index)
+            self.component_bases.pop(name_index)
+            del self.sizes[key]
+            delattr(self, '_num_bases')
+            delattr(self, '_slices_by_name')
+            delattr(self, '_num_basis_vectors')
+            delattr(self, '_parameter_names')
+        else:
+            raise ValueError(("There is no basis with key '{!s}' in this " +\
+                "BasisSet.").format(key))
+    
     @property
     def sizes(self):
         """
@@ -172,8 +199,7 @@ class BasisSet(object):
         of basis vectors in that basis set as values.
         """
         if not hasattr(self, '_sizes'):
-            self._sizes =\
-                {name: self[name].num_basis_vectors for name in self.names}
+            self._sizes = {name: len(self[name]) for name in self.names}
         return self._sizes
     
     def component_basis_subsets(self, **subsets):
@@ -211,7 +237,8 @@ class BasisSet(object):
         """
         Returns an iterator over the sets of basis functions in this BasisSet.
         This object acts as its own iterator. This method simply resets private
-        attribute values to restart the internal iterator.
+        attribute values to restart the internal iterator. The return value of
+        the iteration is a name string, not a Basis object.
         """
         self._index_of_basis_to_return = 0
         return self
@@ -221,18 +248,34 @@ class BasisSet(object):
         Since this BasisSet is its own iterator, it must have a next() method
         which returns the next basis. In this case, the "private"
         _index_of_basis_to_return property is used to store the index of the
-        name of the next basis to return.
+        name to return.
         """
         if self._index_of_basis_to_return == len(self.names):
+            delattr(self, '_index_of_basis_to_return')
             raise StopIteration
         self._index_of_basis_to_return += 1
-        return self[self.names[self._index_of_basis_to_return - 1]]
+        return self.names[self._index_of_basis_to_return - 1]
     
     def __next__(self):
         """
         Alias for next included for Python 2/3 compatibility.
         """
         return self.next()
+    
+    def __contains__(self, key):
+        """
+        Checks to see if the given key string describes a basis in this
+        BasisSet.
+        
+        key: string name for which to check
+        
+        returns: True if key is in names. False otherwise
+        """
+        if isinstance(key, basestring):
+            return (key in self.names)
+        else:
+            raise TypeError("Only strings can be checked for through the " +\
+                "__contains__ method.")
     
     def fill_hdf5_group(self, group, basis_links=None, expander_links=None):
         """
@@ -312,4 +355,36 @@ class BasisSet(object):
         return [self[name](parameters[...,self.slices_by_name[name]],\
             expanded=expanded) for name in self.names]
     
+    def __eq__(self, other):
+        """
+        Checks to see if other is a BasisSet containing the same component
+        bases under the same names.
+        
+        other: object with which to check for equality
+        
+        returns: True if other is a BasisSet containing the same bases under
+                 the same names. False otherwise
+        """
+        if isinstance(other, BasisSet):
+            if self.num_bases:
+                names_equal = all([(sname == oname)\
+                    for (sname, oname) in zip(self.names, other.names)])
+                bases_equal = all([(sbasis == obasis) for (sbasis, obasis) in\
+                    zip(self.component_bases, other.component_bases)])
+                return (names_equal and bases_equal)
+            else:
+                return False
+        else:
+            return False
+    
+    def __ne__(self, other):
+        """
+        Checks whether other is a functionally different BasisSet than this
+        one. This function enforces (self != other) == (not (self == other)).
+        
+        other: object with which to check for inequality
+        
+        returns: the opposite of __eq__ called with same arguments
+        """
+        return (not self.__eq__(other))
 

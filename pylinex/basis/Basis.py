@@ -176,7 +176,9 @@ class Basis(Savable):
         """
         Property storing the number of basis vectors stored in this object.
         """
-        return self.basis.shape[0]
+        if not hasattr(self, '_num_basis_vectors'):
+            self._num_basis_vectors = self.basis.shape[0]
+        return self._num_basis_vectors
     
     @property
     def expander(self):
@@ -215,9 +217,19 @@ class Basis(Savable):
         expander.
         """
         if not hasattr(self, '_expanded_basis'):
-            self._expanded_basis = np.array([self.expander(self.basis[i])\
-                for i in range(self.num_basis_vectors)])
+            self._expanded_basis = np.array([self.expander(self.basis[index])\
+                for index in range(len(self))])
         return self._expanded_basis
+    
+    def __len__(self):
+        """
+        Alias for the num_basis_vectors property. The implementation of this
+        function allows the built-in function len to be called on Basis
+        objects.
+        
+        returns: number of vectors in this basis
+        """
+        return self.num_basis_vectors
     
     def generate_gaussian_prior(self, curves, error=None,\
         covariance_expansion_factor=1., diagonal=False):
@@ -459,8 +471,9 @@ class Basis(Savable):
         expander = load_expander_from_hdf5_group(group['expander'])
         return Basis(basis, expander=expander)
     
-    def plot(self, basis_indices=slice(None), title='Basis', x_values=None,\
-        show=True, fig=None, ax=None, **kwargs):
+    def plot(self, basis_indices=slice(None), x_values=None, title='Basis',\
+        xlabel=None, ylabel=None, fontsize=20, fig=None, ax=None, show=True,\
+        **kwargs):
         """
         Plots the basis vectors stored in this Basis object.
         
@@ -478,8 +491,54 @@ class Basis(Savable):
             ax = fig.add_subplot(111)
         ax.plot(x_values, self.basis[basis_indices].T, **kwargs)
         ax.plot(x_values, np.zeros_like(x_values), linewidth=1, color='k')
-        ax.set_title(title)
+        if title is not None:
+            ax.set_title(title, size=fontsize)
+        if xlabel is not None:
+            ax.set_xlabel(xlabel, size=fontsize)
+        if ylabel is not None:
+            ax.set_ylabel(ylabel, size=fontsize)
         if show:
             pl.show()
+        else:
+            return ax
     
+    def copy(self):
+        """
+        Creates and returns a deep copy of this basis (except it is guaranteed
+        to have Basis class).
+        
+        returns: a Basis object with the same (but copied to a different RAM
+                 location) basis array and expander as this one. It will have
+                 the base Basis class, however, not the same class as self.
+        """
+        return Basis(self.basis.copy(), self.expander.copy())
+    
+    def __eq__(self, other):
+        """
+        Checks if other represents the same basis as this one. However, this
+        method ignores class differences.
+        
+        other: object with which to check for equality
+        
+        returns: True if other has the same basis vectors and expander.
+                 False otherwise
+        """
+        if isinstance(other, Basis):
+            basis_vectors_equal =\
+                np.allclose(self.basis, other.basis, rtol=1e-6, atol=0)
+            expanders_equal = (self.expander == other.expander)
+            return (basis_vectors_equal and expanders_equal)
+        else:
+            return False
+    
+    def __ne__(self, other):
+        """
+        Checks whether other is a functionally different Basis than this one.
+        This function enforces (self != other) == (not (self == other)).
+        
+        other: object with which to check for inequality
+        
+        returns: the opposite of __eq__ called with same arguments
+        """
+        return (not self.__eq__(other))
 

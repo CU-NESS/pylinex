@@ -53,6 +53,14 @@ class ModulationExpander(Expander):
                 "least one dimension whose last axis represents the space " +\
                 "of the input.")
     
+    def copy(self):
+        """
+        Finds and returns a deep copy of this expander.
+        
+        returns: copied ModulationExpander
+        """
+        return ModulationExpander(self.modulating_factors.copy())
+    
     @property
     def ndim(self):
         """

@@ -29,6 +29,17 @@ class ShapedExpander(Expander):
         self.output_shape = output_shape
         self.expander = expander
     
+    def copy(self):
+        """
+        Finds and returns a deep copy of this expander.
+        
+        returns: copied ShapedExpander
+        """
+        expander = self.expander.copy()
+        input_shape = tuple([dimension for dimension in self.input_shape])
+        output_shape = tuple([dimension for dimension in self.output_shape])
+        return ShapedExpander(expander, input_shape, output_shape)
+    
     @property
     def input_shape(self):
         """
