@@ -8,6 +8,7 @@ Description: File containing a class representing a model which can be
              ordered set of basis vectors).
 """
 import numpy as np
+from ..util import numerical_types
 from ..basis import Basis
 from ..fitter import Fitter
 from .LoadableModel import LoadableModel
