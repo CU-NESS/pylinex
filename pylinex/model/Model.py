@@ -86,6 +86,45 @@ class Model(Savable):
         """
         raise shouldnt_instantiate_model_error
     
+    def quick_fit(self, data, error=None):
+        """
+        Performs a quick fit of this model to the given data with (or without)
+        a given noise level.
+        
+        data: 1D array to fit with this model
+        error: if None, the unweighted least square fit is given for
+                        parameter_mean and parameter_covariance will be
+                        nonsense
+               otherwise, error should either be a single number or a 1D array
+                          of same length as data
+        
+        returns: (parameter_mean, parameter_covariance) where parameter_mean is
+                 a length N (number of parameters) 1D array and
+                 parameter_covariance is a 2D array of shape (N,N). If no error
+                 is given, parameter_covariance doesn't really mean anything
+                 (especially if error is far from 1 in magnitude)
+        """
+        raise NotImplementedError("Either the Model subclass you are using " +\
+            "does not support quick_fit or it hasn't yet been implemented.")
+    
+    def quick_residual(self, data, error=None):
+        """
+        Performs a quick fit of this model to the given data with (or without)
+        a given noise level.
+        
+        data: 1D array to fit with this model
+        error: if None, the unweighted least square fit is given for
+                        parameter_mean and parameter_covariance will be
+                        nonsense
+               otherwise, error should either be a single number or a 1D array
+                          of same length as data
+        
+        returns: 1D array of data's shape containing residual of quick fit
+        """
+        (parameter_mean, parameter_covariance) =\
+            self.quick_fit(data, error=error)
+        return data - self(parameter_mean)
+    
     def fill_hdf5_group(self, group):
         """
         Fills the given hdf5 file group with information about this model.

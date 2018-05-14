@@ -8,10 +8,10 @@ Description: File containing a class representing a model which is a simple
              ['gaussian_A', 'gaussian_mu', 'gaussian_sigma'].
 """
 import numpy as np
-from ..util import Loadable, create_hdf5_dataset, get_hdf5_value
-from .Model import Model
+from ..util import create_hdf5_dataset, get_hdf5_value
+from .LoadableModel import LoadableModel
 
-class GaussianModel(Model, Loadable):
+class GaussianModel(LoadableModel):
     """
     Class representing a model which is a simple Gaussian, with parameters
     ['gaussian_A', 'gaussian_mu', 'gaussian_sigma'].
@@ -47,7 +47,7 @@ class GaussianModel(Model, Loadable):
         if value.ndim == 1:
             self._x_values = value
         else:
-            raise ValueError("x_values was set to a ")
+            raise ValueError("x_values was set to a non-array.")
     
     @property
     def num_channels(self):

@@ -7,6 +7,7 @@ Description: Imports for the pylinex.model module. See individual files for
              implementation details.
 """
 from pylinex.model.Model import Model
+from pylinex.model.LoadableModel import LoadableModel
 from pylinex.model.ConstantModel import ConstantModel
 from pylinex.model.BasisModel import BasisModel
 from pylinex.model.GaussianModel import GaussianModel

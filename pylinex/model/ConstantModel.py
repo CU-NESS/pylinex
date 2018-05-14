@@ -7,10 +7,10 @@ Description: File containing a simple Model which is a constant across
              channels. That constant is the sole parameter of the model.
 """
 import numpy as np
-from ..util import Savable, int_types
-from .Model import Model
+from ..util import int_types, numerical_types
+from .LoadableModel import LoadableModel
 
-class ConstantModel(Model):
+class ConstantModel(LoadableModel):
     """
     A simple Model which is a constant across channels. That constant is the
     sole parameter of the model.
@@ -110,6 +110,37 @@ class ConstantModel(Model):
         """
         group.attrs['class'] = 'ConstantModel'
         group.attrs['num_channels'] = self.num_channels
+    
+    def quick_fit(self, data, error=None):
+        """
+        Performs a quick fit of this model to the given data with (or without)
+        a given noise level.
+        
+        data: 1D array to fit with this constant model. If the length is
+              consistent with the expanded basis, then the expanded basis is
+              used. Otherwise, the unexpanded basis is attempted to be used. If
+              the length is inconsistent with both of these possibilities, then
+              an error is raised
+        error: if None, the unweighted least square fit is given for
+                        parameter_mean and parameter_covariance will be
+                        nonsense
+               otherwise, error should either be a single number or a 1D array
+                          of same length as data
+        
+        returns: (parameter_mean, parameter_covariance) where parameter_mean is
+                 a length 1 1D array and parameter_covariance is a 2D array of
+                 shape (1,1). If no error is given, parameter_covariance
+                 doesn't really mean anything (especially if error is far from
+                 1 in magnitude)
+        """
+        if error is None:
+            error = 1
+        if type(error) in numerical_types:
+            error = np.ones(self.num_channels) * error
+        inverse_squared_error = np.power(error, -2)
+        variance = 1 / np.sum(inverse_squared_error)
+        mean = variance * np.sum(data * inverse_squared_error)
+        return (mean * np.ones((1,)), variance * np.ones((1, 1)))
     
     def __eq__(self, other):
         """

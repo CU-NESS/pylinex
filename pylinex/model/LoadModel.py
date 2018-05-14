@@ -16,6 +16,7 @@ from .ConstantModel import ConstantModel
 from .BasisModel import BasisModel
 from .TruncatedBasisHyperModel import TruncatedBasisHyperModel
 from .GaussianModel import GaussianModel
+from .SinusoidalModel import SinusoidalModel
 from .TanhModel import TanhModel
 from .TransformedModel import TransformedModel
 from .SumModel import SumModel
@@ -33,7 +34,7 @@ from .SlicedModel import SlicedModel
 self_loadable_model_classes =\
 [\
     'BasisModel', 'ConstantModel', 'ExpressionModel', 'GaussianModel',\
-    'TanhModel', 'TruncatedBasisHyperModel'\
+    'SinusoidalModel', 'TanhModel', 'TruncatedBasisHyperModel'\
 ]
 
 # Model classes which are simple wrappers around exactly one other Model class

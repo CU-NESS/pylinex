@@ -7,10 +7,10 @@ Description: File containing a class representing a model based on the tanh
              function, of the form A*tanh[(x-mu)/sigma]
 """
 import numpy as np
-from ..util import create_hdf5_dataset, get_hdf5_value, Loadable
-from .Model import Model
+from ..util import create_hdf5_dataset, get_hdf5_value
+from .LoadableModel import LoadableModel
 
-class TanhModel(Model, Loadable):
+class TanhModel(LoadableModel):
     """
     Class representing a model based on the tanh function, of the form
     A*tanh[(x-mu)/sigma]

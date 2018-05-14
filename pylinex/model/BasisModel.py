@@ -8,11 +8,11 @@ Description: File containing a class representing a model which can be
              ordered set of basis vectors).
 """
 import numpy as np
-from ..util import Loadable
 from ..basis import Basis
-from .Model import Model
+from ..fitter import Fitter
+from .LoadableModel import LoadableModel
 
-class BasisModel(Model, Loadable):
+class BasisModel(LoadableModel):
     """
     Class representing a model which can be encapsulated by a single matrix
     (i.e. one described entirely by an ordered set of basis vectors).
@@ -118,6 +118,31 @@ class BasisModel(Model, Loadable):
                  (num_channels, num_parameters, num_parameters)
         """
         return np.zeros((self.num_channels,) + ((self.num_parameters,) * 2))
+    
+    def quick_fit(self, data, error=None):
+        """
+        Performs a quick fit of this model to the given data with (or without)
+        a given noise level.
+        
+        data: 1D array to fit with this constant model
+        error: if None, the unweighted least square fit is given for
+                        parameter_mean and parameter_covariance will be
+                        nonsense
+               otherwise, error should either be a single number or a 1D array
+                          of same length as data
+        
+        returns: (parameter_mean, parameter_covariance) where parameter_mean is
+                 a length N (number of basis vectors) 1D array and
+                 parameter_covariance is a 2D array of shape (N,N). If no error
+                 is given, parameter_covariance doesn't really mean anything
+                 (especially if error is far from 1 in magnitude)
+        """
+        if error is None:
+            error = 1
+        if type(error) in numerical_types:
+            error = error * np.ones_like(data)
+        fitter = Fitter(self.basis, data, error=error)
+        return (fitter.parameter_mean, fitter.parameter_covariance)
     
     def fill_hdf5_group(self, group):
         """

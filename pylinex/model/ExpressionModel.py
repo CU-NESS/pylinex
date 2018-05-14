@@ -7,8 +7,8 @@ Description: File containing class representing a model which is described
              entirely by Expression object(s).
 """
 import numpy as np
-from ..util import Expression, sequence_types, Loadable
-from .Model import Model
+from ..util import Expression, sequence_types
+from .LoadableModel import LoadableModel
 
 try:
     # this runs with no issues in python 2 but raises error in python 3
@@ -17,7 +17,7 @@ except:
     # this try/except allows for python 2/3 compatible string type checking
     basestring = str
 
-class ExpressionModel(Model, Loadable):
+class ExpressionModel(LoadableModel):
     """
     Class representing a model which is described entirely by Expression
     object(s).

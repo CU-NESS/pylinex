@@ -7,12 +7,12 @@ Description: A basis model where the number of terms used is decided by a
              parameter instead of being fixed.
 """
 import numpy as np
-from ..util import int_types, Loadable
+from ..util import int_types
 from ..basis import Basis
-from .Model import Model
+from .LoadableModel import LoadableModel
 from .BasisModel import BasisModel
 
-class TruncatedBasisHyperModel(Model, Loadable):
+class TruncatedBasisHyperModel(LoadableModel):
     """
     A BasisModel where the number of terms used is decided by a parameter
     instead of being fixed.
