@@ -300,6 +300,41 @@ class NLFitter(object):
         return self._lnprobability
     
     @property
+    def maximum_probability_multi_index(self):
+        """
+        Property storing a tuple of the form (iwalker, istep) where iwalker and
+        istep describe the maximizing index of the lnprobability array.
+        """
+        if not hasattr(self, '_maximum_probability_multi_index'):
+            self._maximum_probability_multi_index = np.unravel_index(\
+                np.argmax(self.lnprobability), self.lnprobability.shape)
+        return self._maximum_probability_multi_index
+    
+    @property
+    def maximum_probability_parameters(self):
+        """
+        Property storing the maximum probability set of parameters found by the
+        MCMC sampler upon which this NLFitter is based.
+        """
+        if not hasattr(self, '_maximum_probability_parameters'):
+            self._maximum_probability_parameters =\
+                self.chain[self.maximum_probability_multi_index]
+        return self._maximum_probability_parameters
+    
+    @property
+    def maximum_probability_parameter_dictionary(self):
+        """
+        Property storing the maximum probability parameters in the form of a
+        dictionary whose keys are the parameter names and whose values are the
+        maximum probability values.
+        """
+        if not hasattr(self, '_maximum_probability_parameter_dictionary'):
+            self._maximum_probability_parameter_dictionary =\
+                {name: value for (name, value) in\
+                zip(self.parameters, self.maximum_probability_parameters)}
+        return self._maximum_probability_parameter_dictionary
+    
+    @property
     def acceptance_fraction(self):
         """
         Property storing the acceptance fraction per walker per checkpoint in
@@ -657,7 +692,7 @@ class NLFitter(object):
         """
         index_sample = np.random.randint(0, high=self.nsamples, size=number)
         full_parameter_sample = self.flattened_chain[index_sample,:]
-        parameter_indices = self.get_parameter_indices(parameters)
+        parameter_indices = self.get_parameter_indices(parameters=parameters)
         return full_parameter_sample[:,parameter_indices]
     
     def subbasis_parameter_mean(self, parameters):
@@ -696,49 +731,69 @@ class NLFitter(object):
         return\
             self.parameter_covariance[:,parameter_indices][parameter_indices,:]
     
-    def reconstructions(self, number, parameters, model):
+    def reconstructions(self, number, parameters=None, model=None):
         """
         Computes reconstructions of a quantity by applying model to a sample of
         parameters from this fitter's chain.
         
         number: the number of reconstructions to create
-        parameters: if None, all parameters are used
+        parameters: if None (default), all parameters are used
                     if string, parameter which match the regular expression
                                given by parameters are used
                     if list of ints, the parameters with these indices are used
                     if list of strings, these parameters are used
-        model: the model with which to create reconstructions from parameters
+        model: if None (default), the full model in the loglikelihood is used
+               otherwise, the model with which to create reconstructions from
+                          parameters
         
         returns: 2D numpy.ndarray of shape (number, nchannels) containing
                  reconstructions created from the given model and parameters
         """
         parameter_sample = self.sample(number, parameters=parameters)
+        if model is None:
+            model = self.model
         return np.array([model(args) for args in parameter_sample])
     
-    def bias(self, number, parameters, model, true_curve):
+    def bias(self, number, parameters=None, model=None, true_curve=None):
         """
         Computes differences between a true_curve and reconstructions of the
         quantity made by applying model to a sample of parameters from this
         fitter's chain.
         
         number: the number of reconstructions to create and compare to data
-        parameters: if None, all parameters are used
+        parameters: if None (default), all parameters are used
                     if string, parameter which match the regular expression
                                given by parameters are used
                     if list of ints, the parameters with these indices are used
                     if list of strings, these parameters are used
-        model: the model with which to create reconstructions from parameters
-        true_curve: curve to subtract from all reconstructions to compute bias
+        model: if None (default), full likelihood's model is used
+               otherwise, the model with which to create reconstructions from
+                          parameters
+        true_curve: if None (default), model and parameters must also be None.
+                                       true_curve is replaced with the
+                                       loglikelihood's data curve.
+                    Otherwise, curve to subtract from all reconstructions to
+                               compute bias
         
         returns: 2D numpy.ndarray of (number, nchannels) containing differences
                  between true_curve and reconstructions created by applying
                  model to parameters
         """
-        reconstructions = self.reconstructions(number, parameters, model)
+        reconstructions =\
+            self.reconstructions(number, parameters=parameters, model=model)
+        if true_curve is None:
+            if (parameters is None) and (model is None):
+                true_curve = self.loglikelihood.data
+            else:
+                raise NotImplementedError("The bias cannot be computed if " +\
+                    "no true_curve is given unless the full " +\
+                    "loglikelihood's model and all parameters are used, in " +\
+                    "which case, if true_curve is None, it is replaced the " +\
+                    "loglikelihood's data vector.")
         return reconstructions - true_curve
     
     def reconstruction_confidence_intervals(self, number, probabilities,\
-        parameters, model):
+        parameters=None, model=None):
         """
         Computes confidence intervals on reconstructions of quantities created
         by applying the given model to the given parameters from this fitter's
@@ -747,17 +802,20 @@ class NLFitter(object):
         number: the number of curves to use in calculating the confidence
                 intervals
         probabilities: the confidence levels of the bands to compute
-        parameters: if None, all parameters are used
+        parameters: if None (default), all parameters are used
                     if string, parameter which match the regular expression
                                given by parameters are used
                     if list of ints, the parameters with these indices are used
                     if list of strings, these parameters are used
-        model: the model with which to create reconstructions from parameters
+        model: if None (default), full likelihood's model is used
+               otherwise, the model with which to create reconstructions from
+                          parameters
         
         returns: list of tuples of the form (band_min, band_max) representing
                  confidence_intervals with the given confidence levels
         """
-        reconstructions = self.reconstructions(number, parameters, model)
+        reconstructions =\
+            self.reconstructions(number, parameters=parameters, model=model)
         sorted_channel_values = np.sort(reconstructions, axis=0)
         single_input = (type(probabilities) in real_numerical_types)
         if single_input:
@@ -777,8 +835,8 @@ class NLFitter(object):
             return [(left_bands[index], right_bands[index])\
                 for index in range(len(probabilities))]
     
-    def bias_confidence_intervals(self, number, probabilities, parameters,\
-        model, true_curve):
+    def bias_confidence_intervals(self, number, probabilities,\
+        parameters=None, model=None, true_curve=None):
         """
         Computes confidence intervals on differences between reconstructions of
         quantities created by applying the given model to the given parameters
@@ -787,12 +845,14 @@ class NLFitter(object):
         number: the number of curves to use in calculating the confidence
                 intervals
         probabilities: the confidence levels of the bands to compute
-        parameters: if None, all parameters are used
+        parameters: if None (default), all parameters are used
                     if string, parameter which match the regular expression
                                given by parameters are used
                     if list of ints, the parameters with these indices are used
                     if list of strings, these parameters are used
-        model: the model with which to create reconstructions from parameters
+        model: if None (default), full likelihood's model is used
+               otherwise, the model with which to create reconstructions from
+                          parameters
         true_curve: curve to subtract from all reconstructions to compute bias
         
         returns: list of tuples of the form (band_min, band_max) representing
@@ -800,11 +860,91 @@ class NLFitter(object):
         """
         intervals = self.reconstruction_confidence_intervals(\
             number, probabilities, parameters=parameters, model=model)
+        if true_curve is None:
+            if parameters is None and model is None:
+                true_curve = self.loglikelihood.data
+            else:
+                raise NotImplementedError("The bias cannot be computed if " +\
+                    "no true_curve is given unless the full " +\
+                    "loglikelihood's model and all parameters are used, in " +\
+                    "which case, if true_curve is None, it is replaced the " +\
+                    "loglikelihood's data vector.")
         if type(probabilities) in real_numerical_types:
             return (intervals[0] - true_curve, intervals[1] - true_curve)
         else:
             return [(interval[0] - true_curve, interval[1] - true_curve)\
                 for interval in intervals]
+    
+    def plot_maximum_probability_reconstruction(self, parameters=None,\
+        model=None, true_curve=None, x_values=None, ax=None, xlabel=None,\
+        ylabel=None, title=None, fontsize=28, scale_factor=1., show=False):
+        """
+        Plots maximum probability reconstruction with the given model and
+        parameters.
+        
+        parameters: if None (default), all parameters are used
+                    if string, parameter which match the regular expression
+                               given by parameters are used
+                    if list of ints, the parameters with these indices are used
+                    if list of strings, these parameters are used
+        model: if None (default), full model is used
+               otherwise, the model with which to create reconstructions from
+                          parameters
+        true_curve: true form of the quantity being reconstructed
+        x_values: the array to use as the x_values of all plots.
+                  If None, x_values start at 0 and increment up in steps of 1
+        ax: the Axes instance on which to plot the confidence intervals
+        xlabel: string to place on x axis
+        ylabel: string to place on y axis
+        title: title to place on the Axes with this plot
+        show: if True, matplotlib.pyplot.show() is called before this function
+                       returns
+        
+        returns: None if show is True, otherwise Axes instance with plot
+        """
+        if ax is None:
+            fig = pl.figure()
+            ax = fig.add_subplot(111)
+        parameter_indices = self.get_parameter_indices(parameters=parameters)
+        maximum_probability_parameter_subset =\
+            self.maximum_probability_parameters[parameter_indices]
+        if (parameters is None) and (model is None) and (true_curve is None):
+            true_curve = self.loglikelihood.data * scale_factor
+        if model is None:
+            model = self.model
+        curve = model(maximum_probability_parameter_subset)
+        if x_values is None:
+            x_values = np.arange(len(curve))
+            to_plot = curve * scale_factor
+        if subtract_truth:
+            if true_curve is None:
+                raise NotImplementedError("Cannot subtract truth if true " +\
+                    "curve is None.")
+            else:
+                to_plot = to_plot - true_curve
+        ax.plot(x_values, to_plot, color='r', label='Max probability')
+        if true_curve is not None:
+            if subtract_truth:
+                ax.plot(x_values, np.zeros_like(true_curve), color='k',\
+                    label='input')
+            else:
+                ax.plot(x_values, true_curve, color='k', label='input')
+        ax.legend(fontsize=fontsize)
+        if title is None:
+            title = 'Maximum probability reconstruction{!s}'.format(\
+                ' bias' if subtract_truth else '')
+        ax.set_title(title, size=fontsize)
+        if xlabel is not None:
+            ax.set_xlabel(xlabel, size=fontsize)
+        if ylabel is not None:
+            ax.set_ylabel(ylabel, size=fontsize)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+            which='major')
+        ax.tick_params(width=1.5, length=4.5, which='minor')
+        if show:
+            pl.show()
+        else:
+            return ax
     
     def plot_reconstruction_confidence_intervals(self, number, probabilities,\
         parameters, model, true_curve=None, x_values=None, ax=None,\
@@ -815,12 +955,14 @@ class NLFitter(object):
         parameters, and confidence levels.
         
         number: number of curves used to compute of confidence intervals
-        parameters: if None, all parameters are used
+        parameters: if None (default), all parameters are used
                     if string, parameter which match the regular expression
                                given by parameters are used
                     if list of ints, the parameters with these indices are used
                     if list of strings, these parameters are used
-        model: the model with which to create reconstructions from parameters
+        model: if None (default), full model is used
+               otherwise, the model with which to create reconstructions from
+                          parameters
         true_curve: true form of the quantity being reconstructed
         x_values: the array to use as the x_values of all plots.
                   If None, x_values start at 0 and increment up in steps of 1
@@ -828,12 +970,16 @@ class NLFitter(object):
         alphas: the alpha values with which to fill in each interval (must be
                 sequence of values between 0 and 1 of length greater than or
                 equal to the length of probabilities.
+        xlabel: string to place on x axis
+        ylabel: string to place on y axis
         title: title to place on the Axes with this plot
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
+        
+        returns: None if show is True, otherwise Axes instance with plot
         """
         intervals = self.reconstruction_confidence_intervals(number,\
-            probabilities, parameters, model)
+            probabilities, parameters=parameters, model=model)
         if type(probabilities) in real_numerical_types:
             probabilities = [probabilities]
             intervals = [intervals]
@@ -848,7 +994,7 @@ class NLFitter(object):
             pconfidence = int(round(probabilities[index] * 100))
             ax.fill_between(x_values, intervals[index][0] * scale_factor,\
                 intervals[index][1] * scale_factor, alpha=alphas[index],\
-                color='r', label='{}% confidence'.format(pconfidence))
+                color='r', label='{:d}% confidence'.format(pconfidence))
         if true_curve is not None:
             ax.plot(x_values, true_curve, linewidth=2, color='k',\
                 label='input')
@@ -864,6 +1010,8 @@ class NLFitter(object):
         ax.tick_params(labelsize=fontsize, width=2.5, length=7.5)
         if show:
             pl.show()
+        else:
+            return ax
     
     def plot_chain(self, parameters=None, walkers=None, thin=1,\
         figsize=(8, 8), show=False, **reference_values):
@@ -886,7 +1034,7 @@ class NLFitter(object):
         reference_values: if applicable, value to plot on top of chains for
                           each parameter
         """
-        parameter_indices = self.get_parameter_indices(parameters)
+        parameter_indices = self.get_parameter_indices(parameters=parameters)
         num_parameter_plots = len(parameter_indices)
         if thin is None:
             thin = 1
@@ -921,7 +1069,7 @@ class NLFitter(object):
         fontsize: the size of the label fonts
         """
         fig = pl.figure(figsize=figsize)
-        parameter_indices = self.get_parameter_indices(parameters)
+        parameter_indices = self.get_parameter_indices(parameters=parameters)
         ticks = []
         bins = []
         for iparameter in parameter_indices:
@@ -1038,6 +1186,8 @@ class NLFitter(object):
         reference_value: a point at which to plot a dashed reference line
         fontsize: the size of the tick label font
         hist_kwargs: keyword arguments to pass on to matplotlib.Axes.hist
+        
+        returns: None if show is True, otherwise Axes instance with plot
         """
         parameter_index = self.get_parameter_index(parameter_index)
         if thin is None:
@@ -1060,6 +1210,8 @@ class NLFitter(object):
         ax.tick_params(width=2, length=6, labelsize=fontsize)
         if show:
             pl.show()
+        else:
+            return ax
     
     def plot_bivariate_histogram(self, parameter_index1, parameter_index2,\
         walkers=None, thin=1, ax=None, show=False, reference_value1=None,\
@@ -1085,6 +1237,8 @@ class NLFitter(object):
                           the y axis
         fontsize: the size of the tick label font
         hist_kwargs: keyword arguments to pass on to matplotlib.Axes.hist2d
+        
+        returns: None if show is True, otherwise Axes instance with plot
         """
         parameter_index1 = self.get_parameter_index(parameter_index1)
         parameter_index2 = self.get_parameter_index(parameter_index2)
@@ -1115,6 +1269,8 @@ class NLFitter(object):
         ax.tick_params(width=2, length=6, labelsize=fontsize)
         if show:
             pl.show()
+        else:
+            return ax
     
     def plot_lnprobability(self, walkers=None, log_scale=False,\
         title='Log probability', ax=None, show=False):
@@ -1130,6 +1286,8 @@ class NLFitter(object):
         ax: Axes instance on which to plot the log_probability chain
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
+        
+        returns: None if show is True, otherwise Axes instance with plot
         """
         if walkers is None:
             walkers = np.arange(self.nwalkers)
@@ -1152,6 +1310,8 @@ class NLFitter(object):
         ax.set_xlabel('Step number')
         if show:
             pl.show()
+        else:
+            return ax
     
     def plot_covariance_matrix(self, normalize_by_variances=False, fig=None,\
         ax=None, show=False, **imshow_kwargs):
@@ -1169,6 +1329,8 @@ class NLFitter(object):
                        matplotlib.axes.Axes.imshow function. Common keywords
                        include 'norm' and 'cmap'. imshow_kwargs should not
                        include 'extent'. It is worked out internally
+        
+        returns: None if show is True, otherwise Axes instance with plot
         """
         if ax is None:
             fig = pl.figure()
@@ -1186,6 +1348,8 @@ class NLFitter(object):
         fig.colorbar(image, cax=cax, orientation='vertical')
         if show:
             pl.show()
+        else:
+            return ax
     
     def plot_rescaling_factors(self, log_scale=False, ax=None, show=False):
         """
@@ -1195,6 +1359,8 @@ class NLFitter(object):
         ax: Axes instance on which to plot the acceptance fraction
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
+        
+        returns: None if show is True, otherwise Axes instance with plot
         """
         if ax is None:
             fig = pl.figure()
@@ -1210,6 +1376,8 @@ class NLFitter(object):
         ax.set_xlim((x_values[0] - 0.5, x_values[-1] + 0.5))
         if show:
             pl.show()
+        else:
+            return ax
     
     def plot_acceptance_fraction(self, walkers=None, average=False, ax=None,\
         log_scale=False, show=False):
@@ -1227,6 +1395,8 @@ class NLFitter(object):
         log_scale: if True, the acceptance fraction is shown in a semilogy plot
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
+        
+        returns: None if show is True, otherwise Axes instance with plot
         """
         if walkers is None:
             walkers = np.arange(self.nwalkers)
@@ -1265,4 +1435,6 @@ class NLFitter(object):
         ax.set_xlim((steps[0] - 0.5, steps[-1] + 0.5))
         if show:
             pl.show()
+        else:
+            return ax
 

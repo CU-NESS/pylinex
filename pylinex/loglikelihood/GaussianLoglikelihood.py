@@ -111,6 +111,8 @@ class GaussianLoglikelihood(Loglikelihood):
             logL_value = np.sum(self.weighted_bias(pars) ** 2) / (-2.)
         except ValueError:
             logL_value = -np.inf
+        if np.isnan(logL_value):
+            logL_value = -np.inf
         if return_negative:
             return -logL_value
         else:

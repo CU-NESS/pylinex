@@ -26,10 +26,10 @@ from pylinex.basis import Basis, PolynomialBasis, GramSchmidtBasis,\
     effective_training_set_rank
 from pylinex.fitter import TrainingSetIterator, Fitter, MetaFitter, Extractor
 from pylinex.model import Model, LoadableModel, ConstantModel, BasisModel,\
-    GaussianModel, TanhModel, CompoundModel, SumModel, ProductModel,\
-    CompositeModel, ExpressionModel, ExpandedModel, TransformedModel,\
-    RenamedModel, RestrictedModel, SlicedModel, InterpolatedModel,\
-    TruncatedBasisHyperModel, load_model_from_hdf5_group
+    GaussianModel, SinusoidalModel, TanhModel, CompoundModel, SumModel,\
+    ProductModel, CompositeModel, ExpressionModel, ExpandedModel,\
+    TransformedModel, RenamedModel, RestrictedModel, SlicedModel,\
+    InterpolatedModel, TruncatedBasisHyperModel, load_model_from_hdf5_group
 from pylinex.loglikelihood import Loglikelihood, GaussianLoglikelihood,\
     PoissonLoglikelihood, load_loglikelihood_from_hdf5_group
 from pylinex.nonlinear import Sampler, BurnRule, NLFitter, LeastSquareFitter,\

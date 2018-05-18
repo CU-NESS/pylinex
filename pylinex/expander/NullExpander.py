@@ -6,6 +6,7 @@ Date: 3 Sep 2017
 Description: File containing a class representing an Expander which doesn't
              actually do anything to its inputs. It simply returns them back.
 """
+import numpy as np
 from .Expander import Expander
 
 class NullExpander(Expander):

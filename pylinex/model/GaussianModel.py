@@ -63,9 +63,9 @@ class GaussianModel(LoadableModel):
     def parameters(self):
         """
         Property storing the parameters describing this model:
-        ['gaussian_A', 'gaussian_mu', 'gaussian_sigma']
+        ['amplitude', 'center', 'standard_deviation']
         """
-        return ['gaussian_A', 'gaussian_mu', 'gaussian_sigma']
+        return ['amplitude', 'center', 'standard_deviation']
     
     def __call__(self, pars):
         """
