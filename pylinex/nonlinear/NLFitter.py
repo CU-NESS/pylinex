@@ -876,8 +876,9 @@ class NLFitter(object):
                 for interval in intervals]
     
     def plot_maximum_probability_reconstruction(self, parameters=None,\
-        model=None, true_curve=None, x_values=None, ax=None, xlabel=None,\
-        ylabel=None, title=None, fontsize=28, scale_factor=1., show=False):
+        model=None, true_curve=None, subtract_truth=False, x_values=None,\
+        ax=None, xlabel=None, ylabel=None, title=None, fontsize=28,\
+        scale_factor=1., show=False):
         """
         Plots maximum probability reconstruction with the given model and
         parameters.
@@ -891,6 +892,8 @@ class NLFitter(object):
                otherwise, the model with which to create reconstructions from
                           parameters
         true_curve: true form of the quantity being reconstructed
+        subtract_truth: if True, true_curve is subtracted from all plotted
+                                 curve(s)
         x_values: the array to use as the x_values of all plots.
                   If None, x_values start at 0 and increment up in steps of 1
         ax: the Axes instance on which to plot the confidence intervals
