@@ -345,7 +345,7 @@ class LeastSquareFitter(object):
             ax.plot(channels, curve * scale_factor, label=label, **plot_kwargs)
         else:
             curves = np.array([model(argmin[parameter_indices])\
-                for (success, argmin) in zip(self.sucesses, self.argmins)\
+                for (success, argmin) in zip(self.successes, self.argmins)\
                 if success])
             if channels is None:
                 channels = np.arange(curve.shape[1])
