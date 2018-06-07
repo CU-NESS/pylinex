@@ -121,6 +121,16 @@ class LeastSquareFitter(object):
                 "DistributionSet object.")
     
     @property
+    def successes(self):
+        """
+        Property storing a list of booleans describing whether the
+        LeastSquareFitter exited successfully on each iteration.
+        """
+        if not hasattr(self, '_successes'):
+            self._successes = []
+        return self._successes
+    
+    @property
     def mins(self):
         """
         Property storing the minimum negative Loglikelihood values reached by
@@ -263,6 +273,7 @@ class LeastSquareFitter(object):
                 args=(True,), method='Nelder-Mead')
         if np.isnan(optimize_result.fun):
             return
+        self.successes.append(optimize_result.success)
         self.mins.append(optimize_result.fun)
         argmin = optimize_result.x
         self.argmins.append(argmin)
@@ -334,7 +345,8 @@ class LeastSquareFitter(object):
             ax.plot(channels, curve * scale_factor, label=label, **plot_kwargs)
         else:
             curves = np.array([model(argmin[parameter_indices])\
-                for argmin in self.argmins])
+                for (success, argmin) in zip(self.sucesses, self.argmins)\
+                if success])
             if channels is None:
                 channels = np.arange(curve.shape[1])
             ax.plot(channels, curves[0] * scale_factor, label=label,\

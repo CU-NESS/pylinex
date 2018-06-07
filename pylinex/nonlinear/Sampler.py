@@ -198,7 +198,8 @@ class Sampler(object):
                if 'continue', the Sampler will continue exactly as it left off
                if 'reinitialize', the Sampler uses the previous 
         """
-        if (value is None) or (value in ['continue', 'reinitialize']):
+        allowed_modes = ['continue', 'update', 'reinitialize']
+        if (value is None) or (value in allowed_modes):
             self._restart_mode = value
         else:
             raise ValueError("restart_mode was set to neither None, " +\
@@ -343,7 +344,7 @@ class Sampler(object):
             raise TypeError("chunk_index was not a non-negative integer.")
     
     def _setup_restart_continue(self, pos, lnprob, guess_distribution_set,\
-        prior_distribution_set, jumping_distribution_set, chunk_string):
+        prior_distribution_set, jumping_distribution_set):
         """
         Sets up a restart with restart_mode == 'continue'.
         
@@ -356,9 +357,6 @@ class Sampler(object):
         jumping_distribution_set: the JumpingDistributionSet describing the
                                   proposal distributions of the MCMC in the
                                   last saved chunk
-        last_saved_chunk_string: string of form 'chunk{}'.format(chunk_index)
-                                 where chunk index is the index of the last
-                                 saved chunk
         """
         self._pos = pos
         self._lnprob = lnprob
@@ -373,6 +371,54 @@ class Sampler(object):
         elif (self.jumping_distribution_set != jumping_distribution_set):
             raise ValueError("jumping_distribution_set changed since last " +\
                 "run, so restart_mode can't be 'continue'.")
+    
+    def _setup_restart_update(self, pos, lnprob, guess_distribution_set,\
+        prior_distribution_set, jumping_distribution_set,\
+        last_saved_chunk_string):
+        """
+        Sets up a restarted run which is begun with an update to the
+        JumpingDistributionSet but with no other update.
+        
+        pos: the walkers' last saved positions in parameter space
+        lnprob: lnprobability values of the walkers' last saved positions
+        guess_distribution_set: the DistributionSet describing the initial
+                                walker positions of the last saved chunk
+        prior_distribution_set: the DistributionSet describing the priors in
+                                the posterior explored by the last saved chunk
+        jumping_distribution_set: the JumpingDistributionSet describing the
+                                  proposal distributions of the MCMC in the
+                                  last saved chunk
+        last_saved_chunk_string: string of form 'chunk{}'.format(chunk_index)
+                                 where chunk index is the index of the last
+                                 saved chunk
+        """
+        self.chunk_index = self.chunk_index + 1
+        self.file.attrs['max_chunk_index'] = self.chunk_index
+        new_chunk_string = 'chunk{0:d}'.format(self.chunk_index)
+        self.file['checkpoints'].create_group(new_chunk_string)
+        self._pos = pos
+        self._lnprob = lnprob
+        if self.prior_distribution_set is None:
+            self.prior_distribution_set = prior_distribution_set
+        elif (self.prior_distribution_set != prior_distribution_set):
+            raise ValueError("prior_distribution_set changed since last " +\
+                "run, so restart_mode can't be 'continue'.")
+        if self.prior_distribution_set is not None:
+            group = self.file['prior_distribution_sets']
+            subgroup = group.create_group(new_chunk_string)
+            self.prior_distribution_set.fill_hdf5_group(subgroup)
+        self.guess_distribution_set = guess_distribution_set
+        group = self.file['guess_distribution_sets']
+        subgroup = group.create_group(new_chunk_string)
+        self.guess_distribution_set.fill_hdf5_group(subgroup)
+        if self.jumping_distribution_set is None:
+            self.jumping_distribution_set =\
+                self._generate_reinitialized_jumping_distribution_set(\
+                jumping_distribution_set, last_saved_chunk_string)
+        group = self.file['jumping_distribution_sets']
+        subgroup = group.create_group(new_chunk_string)
+        self.jumping_distribution_set.fill_hdf5_group(subgroup)
+        self.checkpoint_index = 0
     
     def _setup_restart_reinitialize(self, guess_distribution_set,\
         prior_distribution_set, jumping_distribution_set,\
@@ -391,13 +437,9 @@ class Sampler(object):
                                  where chunk index is the index of the last
                                  saved chunk
         """
-        last_checkpoints_group_name =\
-            'checkpoints/{!s}'.format(last_saved_chunk_string)
         self.chunk_index = self.chunk_index + 1
         self.file.attrs['max_chunk_index'] = self.chunk_index
         new_chunk_string = 'chunk{0:d}'.format(self.chunk_index)
-        next_checkpoints_group_name =\
-            'checkpoints/{!s}'.format(new_chunk_string)
         self.file['checkpoints'].create_group(new_chunk_string)
         if self.prior_distribution_set is None:
             self.prior_distribution_set = prior_distribution_set
@@ -610,6 +652,10 @@ class Sampler(object):
                 self.checkpoint_index = self.checkpoint_index + 1
             if self.restart_mode == 'continue':
                 self._setup_restart_continue(pos, lnprob,\
+                    guess_distribution_set, prior_distribution_set,\
+                    jumping_distribution_set)
+            elif self.restart_mode == 'update':
+                self._setup_restart_update(pos, lnprob,\
                     guess_distribution_set, prior_distribution_set,\
                     jumping_distribution_set, chunk_string)
             else:

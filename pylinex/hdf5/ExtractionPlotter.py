@@ -724,8 +724,8 @@ class ExtractionPlotter(object):
     def plot_subbasis_fit(self, icurve=0, quantity_to_minimize=None, nsigma=1,\
         name=None, true_curves={}, title=None, xlabel=None, ylabel=None,\
         subtract_truth=False, plot_truth=False, yscale='linear',\
-        error_to_plot='posterior', verbose=True, ax=None, scale_factor=1,\
-        channels=None, fontsize=24, show=False):
+        error_to_plot='posterior', plot_zero=False, verbose=True, ax=None,\
+        scale_factor=1, channels=None, fontsize=24, show=False):
         """
         Plots a subbasis fit from this Extractor.
         
@@ -749,6 +749,7 @@ class ExtractionPlotter(object):
                                        distribution (i.e. it is the "real"
                                        estimate)
                        if 'likelihood', 
+        plot_zero: if True (default: False), zero line is plotted
         verbose: if True, useful reminders to the user are printed
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
@@ -828,10 +829,8 @@ class ExtractionPlotter(object):
                     mean_to_plot - (nsigma[1] * channel_error),\
                     mean_to_plot + (nsigma[1] * channel_error), color='r',\
                     alpha=0.3)
-        ax.plot(channels, np.zeros_like(channels), color='k', linewidth=1)
-        if subtract_truth:
-            ax.plot(channels, np.zeros_like(channels), color='k',\
-                linewidth=1)
+        if subtract_truth or plot_zero:
+            ax.plot(channels, np.zeros_like(channels), color='k', linewidth=1)
         elif plot_truth:
             ax.plot(channels, true_curve, color='k', linewidth=1)
         ax.set_yscale(yscale)
@@ -841,6 +840,7 @@ class ExtractionPlotter(object):
             ax.set_xlabel(xlabel, size=fontsize)
         if ylabel is not None:
             ax.set_ylabel(ylabel, size=fontsize)
+        ax.set_xlim((channels[0], channels[-1]))
         ax.tick_params(labelsize=fontsize, width=2.5, length=7.5)
         if show:
             pl.show()
