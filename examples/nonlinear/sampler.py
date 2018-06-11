@@ -13,7 +13,6 @@ from distpy import UniformDistribution, GaussianDistribution, DistributionSet,\
     GaussianJumpingDistribution, JumpingDistributionSet
 from pylinex import GaussianModel, TanhModel, GaussianLoglikelihood, BurnRule,\
     Sampler, NLFitter
-from dare.util.ares_expression_model import make_ares_signal_model
 
 seed = 1234567890
 

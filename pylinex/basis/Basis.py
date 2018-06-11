@@ -16,10 +16,10 @@ import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as pl
 from distpy import GaussianDistribution
-from ..util import Savable, get_hdf5_value, create_hdf5_dataset
+from ..util import Savable, Loadable, get_hdf5_value, create_hdf5_dataset
 from ..expander import Expander, NullExpander, load_expander_from_hdf5_group
 
-class Basis(Savable):
+class Basis(Savable, Loadable):
     """
     Class surrounding a set of basis vectors and a way to expand those basis
     vectors into a larger data space. It contains methods which generate

@@ -12,7 +12,7 @@ import numpy.linalg as la
 import matplotlib.pyplot as pl
 from scipy.optimize import minimize
 from distpy import cast_to_transform_list, DistributionSet
-from ..loglikelihood import Loglikelihood
+from ..loglikelihood import Loglikelihood, GaussianLoglikelihood
 
 class LeastSquareFitter(object):
     """
@@ -150,6 +150,16 @@ class LeastSquareFitter(object):
         return self._argmins
     
     @property
+    def reduced_chi_squared_statistics(self):
+        """
+        Property storing the reduced chi squared statistics associated with the
+        points at which this LeastSquareFitter stops iterations.
+        """
+        if not hasattr(self, '_reduced_chi_squared_statistics'):
+            self._reduced_chi_squared_statistics = []
+        return self._reduced_chi_squared_statistics
+    
+    @property
     def transformed_argmins(self):
         """
         Property storing a list of transformed minima found so far by this
@@ -207,6 +217,25 @@ class LeastSquareFitter(object):
         of this fitter.
         """
         return self.argmins[self.best_fit_index]
+    
+    @property
+    def reduced_chi_squared_statistic(self):
+        """
+        Property storing the single number reduced chi squared corresponding to
+        the best fit result. Ideally, it should be near 1. If it is far from 1
+        (the working definition of 'far' is determined by the number of degrees
+        of freedom), then the fit is poor or the likelihood's error estimate is
+        wrong.
+        """
+        return self.reduced_chi_squared_statistics[self.best_fit_index]
+    
+    @property
+    def degrees_of_freedom(self):
+        """
+        Property storing the integer number of degrees of freedom of the
+        likelihood explored by this distribution.
+        """
+        return self.loglikelihood.degrees_of_freedom
     
     @property
     def transformed_argmin(self):
@@ -276,6 +305,9 @@ class LeastSquareFitter(object):
         self.successes.append(optimize_result.success)
         self.mins.append(optimize_result.fun)
         argmin = optimize_result.x
+        if isinstance(self.loglikelihood, GaussianLoglikelihood):
+            self.reduced_chi_squared_statistics.append(\
+                self.loglikelihood.reduced_chi_squared(argmin))
         self.argmins.append(argmin)
         self.transformed_argmins.append(self.transform_list.apply(argmin))
         if self.loglikelihood.hessian_computable:

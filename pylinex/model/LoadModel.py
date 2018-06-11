@@ -77,6 +77,8 @@ def load_model_from_hdf5_group(group):
                 context[words[3]] = getattr(module, words[3])
             else:
                 raise ValueError("Form of import string not recognized.")
+        context.update(globals())
+        context.update(locals())
         return eval(class_name, context).load_from_hdf5_group(group)
     except:
         if class_name in meta_model_classes:

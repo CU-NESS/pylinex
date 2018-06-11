@@ -118,6 +118,21 @@ class GaussianLoglikelihood(Loglikelihood):
         else:
             return logL_value
     
+    def reduced_chi_squared(self, parameters):
+        """
+        Computes the reduced chi squared statistic. It should follow a
+        chi2_reduced distribution with the correct number of degrees of
+        freedom.
+        
+        pars: the parameter values at which to evaluate the likelihood
+        
+        returns: single number statistic proportional to the value of this
+                 GaussianLoglikelihood object (since additive constant
+                 corresponding to normalization constant is not included)
+        """
+        return ((-2.) * self(parameters, return_negative=False)) /\
+            self.degrees_of_freedom
+    
     @property
     def gradient_computable(self):
         """

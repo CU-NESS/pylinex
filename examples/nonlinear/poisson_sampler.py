@@ -33,27 +33,27 @@ loglikelihood = PoissonLoglikelihood(data, model)
 
 prior_distribution_set = DistributionSet()
 prior_distribution_set.add_distribution(\
-    UniformDistribution(0, 100), 'gaussian_A')
+    UniformDistribution(0, 100), 'amplitude')
 prior_distribution_set.add_distribution(\
-    UniformDistribution(-5, 5), 'gaussian_mu')
+    UniformDistribution(-5, 5), 'center')
 prior_distribution_set.add_distribution(\
-    UniformDistribution(0, 10), 'gaussian_sigma')
+    UniformDistribution(0, 10), 'standard_deviation')
 
 guess_distribution_set = DistributionSet()
 guess_distribution_set.add_distribution(\
-    UniformDistribution(90, 110), 'gaussian_A')
+    UniformDistribution(90, 110), 'amplitude')
 guess_distribution_set.add_distribution(\
-    UniformDistribution(-0.1, 0.1), 'gaussian_mu')
+    UniformDistribution(-0.1, 0.1), 'center')
 guess_distribution_set.add_distribution(\
-    UniformDistribution(0.9, 1.1), 'gaussian_sigma')
+    UniformDistribution(0.9, 1.1), 'standard_deviation')
 
 jumping_distribution_set = JumpingDistributionSet()
 jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1),\
-    'gaussian_A')
+    'amplitude')
 jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-4),\
-    'gaussian_mu')
+    'center')
 jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-2),\
-    'gaussian_sigma', 'log10')
+    'standard_deviation', 'log10')
 
 np.random.seed(seed)
 
@@ -91,3 +91,4 @@ except:
 else:
     os.remove(file_name)
     pl.show()
+

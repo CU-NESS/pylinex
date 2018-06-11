@@ -48,6 +48,16 @@ class Loglikelihood(Savable, Loadable):
             raise ValueError("data given was not 1D.")
     
     @property
+    def num_channels(self):
+        """
+        Property storing the integer number of data channels in the data of
+        this Loglikelihood.
+        """
+        if not hasattr(self, '_num_channels'):
+            self._num_channels = len(self.data)
+        return self._num_channels
+    
+    @property
     def model(self):
         """
         Property storing the Model object which models the data used by this
@@ -88,6 +98,16 @@ class Loglikelihood(Savable, Loadable):
         if not hasattr(self, '_num_parameters'):
             self._num_parameters = len(self.parameters)
         return self._num_parameters
+    
+    @property
+    def degrees_of_freedom(self):
+        """
+        Property storing the integer number of degrees of freedom
+        (num_channels less num_parameters).
+        """
+        if not hasattr(self, '_degrees_of_freedom'):
+            self._degrees_of_freedom = self.num_channels - self.num_parameters
+        return self._degrees_of_freedom
     
     def fill_hdf5_group(self, group, *args, **kwargs):
         """

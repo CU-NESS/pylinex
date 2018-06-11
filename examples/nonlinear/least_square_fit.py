@@ -12,7 +12,7 @@ from distpy import UniformDistribution, GaussianDistribution, DistributionSet
 from pylinex import GaussianModel, TanhModel, GaussianLoglikelihood,\
     LeastSquareFitter
 
-seed = 12345
+seed = 1234
 np.random.seed(seed)
 
 num_channels = 1000
@@ -29,9 +29,9 @@ input_data = input_curve + input_noise
 loglikelihood = GaussianLoglikelihood(input_data, error, model)
 
 prior_set = DistributionSet()
-prior_set.add_distribution(UniformDistribution(-10, 10), 'gaussian_A')
-prior_set.add_distribution(UniformDistribution(-1, 1), 'gaussian_mu')
-prior_set.add_distribution(UniformDistribution(0, 1), 'gaussian_sigma')
+prior_set.add_distribution(UniformDistribution(-10, 10), 'amplitude')
+prior_set.add_distribution(UniformDistribution(-1, 1), 'center')
+prior_set.add_distribution(UniformDistribution(0, 1), 'standard_deviation')
 
 least_square_fitter = LeastSquareFitter(loglikelihood, prior_set)
 least_square_fitter.run(num_iterations)
@@ -40,6 +40,9 @@ argmin = least_square_fitter.argmin
 print('true={}'.format(true))
 print('found={}'.format(argmin))
 print('true-found={}'.format(true - argmin))
+print('reduced_chi_squared({0:d})={1:.4g}'.format(\
+    least_square_fitter.degrees_of_freedom,\
+    least_square_fitter.reduced_chi_squared_statistic))
 
 solution = model(argmin)
 

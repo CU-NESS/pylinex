@@ -33,8 +33,10 @@ names = ['signal']
 training_sets = [training_set]
 dimensions = [{'signal': np.arange(1, 21)}]
 
-extractor =\
-    Extractor(data, error, names, training_sets, dimensions, quantity, 'BPIC')
+extractor = Extractor(data, error, names, training_sets, dimensions,\
+    compiled_quantity=quantity, quantity_to_minimize='BPIC',\
+    expanders=None, num_curves_to_score=0, use_priors_in_fit=False,\
+    verbose=True)
 
 extractor.fitter.plot_subbasis_fit(name='signal', show=True)
 
