@@ -131,6 +131,14 @@ class LeastSquareFitter(object):
         return self._successes
     
     @property
+    def num_successes(self):
+        """
+        Property storing the number of successful iterations this least square
+        fitter has completed.
+        """
+        return sum(self.successes)
+    
+    @property
     def mins(self):
         """
         Property storing the minimum negative Loglikelihood values reached by
@@ -364,6 +372,10 @@ class LeastSquareFitter(object):
         
         returns: None if show is True, Axes instance with plot otherwise
         """
+        if self.num_successes == 0:
+            raise RuntimeError("None of this LeastSquareFitter object's " +\
+                "iterations were successful, so plotting the endpoints " +\
+                "doesn't really make sense.")
         if ax is None:
             fig = pl.figure()
             ax = fig.add_subplot(111)
@@ -384,7 +396,8 @@ class LeastSquareFitter(object):
             ax.plot(channels, curves[0] * scale_factor, label=label,\
                 **plot_kwargs)
             if curves.shape[0] > 1:
-                ax.plot(channels, curves[1:].T * scale_factor, **plot_kwargs)
+                ax.plot(channels, curves[1:].T * scale_factor,\
+                    **plot_kwargs)
         if xlabel is not None:
             ax.set_xlabel(xlabel, size=fontsize)
         if ylabel is not None:
