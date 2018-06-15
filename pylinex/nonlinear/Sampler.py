@@ -757,9 +757,23 @@ class Sampler(object):
             if set(value.params) == set(self.parameters):
                 self._jumping_distribution_set = value
             else:
-                raise ValueError("The given jumping_distribution_set " +\
-                    "described some parameters which aren't needed or " +\
-                    "didn't describe some parameters which were.")
+                not_needed_parameters =\
+                    set(value.params) - set(self.parameters)
+                missing_parameters = set(self.parameters) - set(value.params)
+                if not_needed_parameters and missing_parameters:
+                    raise ValueError(("The given jumping_distribution_set " +\
+                        "described some parameters which aren't needed " +\
+                        "({0!s}) and didn't describe some parameters which " +\
+                        "were needed ({1!s}).").format(not_needed_parameters,\
+                        missing_parameters))
+                elif not_needed_parameters:
+                    raise ValueError(("The given jumping_distribution_set " +\
+                        "described some parameters which aren't needed " +\
+                        "({!s}).").format(not_needed_parameters))
+                else:
+                    raise ValueError(("The given jumping_distribution_set " +\
+                        "is missing distributions for some parameters " +\
+                        "({!s}).").format(missing_parameters))
         else:
             raise TypeError("jumping_distribution_set was set to an object " +\
                 "which wasn't a JumpingDistributionSet object.")
@@ -789,9 +803,23 @@ class Sampler(object):
             if set(value.params) == set(self.parameters):
                 self._guess_distribution_set = value
             else:
-                raise ValueError("The given guess_distribution_set " +\
-                    "described some parameters which aren't needed or " +\
-                    "didn't describe some parameters which were.")
+                not_needed_parameters =\
+                    set(value.params) - set(self.parameters)
+                missing_parameters = set(self.parameters) - set(value.params)
+                if not_needed_parameters and missing_parameters:
+                    raise ValueError(("The given guess_distribution_set " +\
+                        "described some parameters which aren't needed " +\
+                        "({0!s}) and didn't describe some parameters which " +\
+                        "were needed ({1!s}).").format(not_needed_parameters,\
+                        missing_parameters))
+                elif not_needed_parameters:
+                    raise ValueError(("The given guess_distribution_set " +\
+                        "described some parameters which aren't needed " +\
+                        "({!s}).").format(not_needed_parameters))
+                else:
+                    raise ValueError(("The given guess_distribution_set " +\
+                        "is missing distributions for some parameters " +\
+                        "({!s}).").format(missing_parameters))
         else:
             raise TypeError("guess_distribution_set was set to something " +\
                 "other than a DistributionSet object.")
@@ -832,10 +860,26 @@ class Sampler(object):
         elif isinstance(value, DistributionSet):
             if set(value.params) == set(self.parameters):
                 self._prior_distribution_set = value
+            if set(value.params) == set(self.parameters):
+                self._prior_distribution_set = value
             else:
-                raise ValueError("The given prior_distribution_set " +\
-                    "described some parameters which aren't needed or " +\
-                    "didn't describe some parameters which were.")
+                not_needed_parameters =\
+                    set(value.params) - set(self.parameters)
+                missing_parameters = set(self.parameters) - set(value.params)
+                if not_needed_parameters and missing_parameters:
+                    raise ValueError(("The given prior_distribution_set " +\
+                        "described some parameters which aren't needed " +\
+                        "({0!s}) and didn't describe some parameters which " +\
+                        "were needed ({1!s}).").format(not_needed_parameters,\
+                        missing_parameters))
+                elif not_needed_parameters:
+                    raise ValueError(("The given prior_distribution_set " +\
+                        "described some parameters which aren't needed " +\
+                        "({!s}).").format(not_needed_parameters))
+                else:
+                    raise ValueError(("The given prior_distribution_set " +\
+                        "is missing distributions for some parameters " +\
+                        "({!s}).").format(missing_parameters))
         else:
             raise TypeError("prior_distribution_set was set to something " +\
                 "other than a DistributionSet object.")
