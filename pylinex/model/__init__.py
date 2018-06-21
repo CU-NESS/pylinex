@@ -26,3 +26,4 @@ from pylinex.model.RenamedModel import RenamedModel
 from pylinex.model.RestrictedModel import RestrictedModel
 from pylinex.model.SlicedModel import SlicedModel
 from pylinex.model.LoadModel import load_model_from_hdf5_group
+from pylinex.model.TrainingSetCreator import TrainingSetCreator

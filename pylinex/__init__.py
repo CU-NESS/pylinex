@@ -29,7 +29,8 @@ from pylinex.model import Model, LoadableModel, ConstantModel, BasisModel,\
     GaussianModel, SinusoidalModel, TanhModel, CompoundModel, SumModel,\
     ProductModel, CompositeModel, ExpressionModel, ExpandedModel,\
     TransformedModel, RenamedModel, RestrictedModel, SlicedModel,\
-    InterpolatedModel, TruncatedBasisHyperModel, load_model_from_hdf5_group
+    InterpolatedModel, TruncatedBasisHyperModel, load_model_from_hdf5_group,\
+    TrainingSetCreator
 from pylinex.loglikelihood import Loglikelihood, GaussianLoglikelihood,\
     PoissonLoglikelihood, load_loglikelihood_from_hdf5_group
 from pylinex.nonlinear import Sampler, BurnRule, NLFitter, LeastSquareFitter,\

@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as pl
 from distpy import UniformDistribution, GaussianDistribution, DistributionSet
 from pylinex import GaussianModel, TanhModel, GaussianLoglikelihood,\
-    LeastSquareFitter
+    LeastSquareFitter, autocorrelation
 
 seed = 1234
 np.random.seed(seed)
@@ -45,7 +45,30 @@ print('reduced_chi_squared({0:d})={1:.4g}'.format(\
     least_square_fitter.reduced_chi_squared_statistic))
 
 solution = model(argmin)
+residual = input_data - solution
+correlation = autocorrelation(residual)
+length = len(correlation)
+indices = np.arange(length)
+expected_correlation_mean = (indices == 0).astype(float)
+expected_correlation_standard_deviation_smallest =\
+    np.sqrt((1. / (length - indices)) + (2. / length))
+expected_correlation_standard_deviation_largest = 1 / np.sqrt(length - indices)
 
+fig = pl.figure()
+ax = fig.add_subplot(111)
+ax.scatter(indices[1:], np.abs(correlation[1:]), color='k',\
+    label='Observed points')
+ax.fill_between(indices[1:],\
+    expected_correlation_standard_deviation_smallest[1:],\
+    expected_correlation_standard_deviation_largest[1:], color='r',\
+    alpha=0.5, linewidth=3, label='possible $1\sigma$ error')
+ax.legend()
+ax.set_xscale('log')
+ax.set_yscale('log')
+ax.set_xlim((indices[0], indices[-1]))
+ax.set_ylim((1e-4, 1e0))
+
+pl.figure()
 pl.plot(x_values, input_data, color='k', linewidth=2)
 pl.plot(x_values, solution, color='r', linewidth=2)
 pl.xlim((x_values[0], x_values[-1]))

@@ -486,8 +486,9 @@ class Basis(Savable, Loadable):
         """
         if x_values is None:
             x_values = np.arange(self.num_smaller_channel_set_indices)
-        if (fig is None) or (ax is None):
+        if (fig is None) and (ax is None):
             fig = pl.figure()
+        if ax is None:
             ax = fig.add_subplot(111)
         ax.plot(x_values, self.basis[basis_indices].T, **kwargs)
         ax.plot(x_values, np.zeros_like(x_values), linewidth=1, color='k')
