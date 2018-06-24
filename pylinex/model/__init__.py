@@ -11,6 +11,7 @@ from pylinex.model.LoadableModel import LoadableModel
 from pylinex.model.ConstantModel import ConstantModel
 from pylinex.model.BasisModel import BasisModel
 from pylinex.model.GaussianModel import GaussianModel
+from pylinex.model.LorentzianModel import LorentzianModel
 from pylinex.model.SinusoidalModel import SinusoidalModel
 from pylinex.model.TanhModel import TanhModel
 from pylinex.model.CompoundModel import CompoundModel

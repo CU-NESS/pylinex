@@ -26,8 +26,8 @@ from pylinex.basis import Basis, PolynomialBasis, GramSchmidtBasis,\
     effective_training_set_rank
 from pylinex.fitter import TrainingSetIterator, Fitter, MetaFitter, Extractor
 from pylinex.model import Model, LoadableModel, ConstantModel, BasisModel,\
-    GaussianModel, SinusoidalModel, TanhModel, CompoundModel, SumModel,\
-    ProductModel, CompositeModel, ExpressionModel, ExpandedModel,\
+    GaussianModel, LorentzianModel, SinusoidalModel, TanhModel, CompoundModel,\
+    SumModel, ProductModel, CompositeModel, ExpressionModel, ExpandedModel,\
     TransformedModel, RenamedModel, RestrictedModel, SlicedModel,\
     InterpolatedModel, TruncatedBasisHyperModel, load_model_from_hdf5_group,\
     TrainingSetCreator

@@ -725,7 +725,7 @@ class ExtractionPlotter(object):
         name=None, true_curves={}, title=None, xlabel=None, ylabel=None,\
         subtract_truth=False, plot_truth=False, yscale='linear',\
         error_to_plot='posterior', plot_zero=False, verbose=True, ax=None,\
-        scale_factor=1, channels=None, fontsize=24, show=False):
+        scale_factor=1, channels=None, fontsize=24, color='r', show=False):
         """
         Plots a subbasis fit from this Extractor.
         
@@ -810,24 +810,24 @@ class ExtractionPlotter(object):
             mean_to_plot = channel_mean - true_curve
         else:
             mean_to_plot = channel_mean
-        ax.plot(channels, mean_to_plot, color='r', linewidth=1)
+        ax.plot(channels, mean_to_plot, color=color, linewidth=1)
         if type(nsigma) not in [list, tuple]:
             nsigma = [nsigma, None]
         if subtract_truth and (error_to_plot == 'likelihood'):
             ax.fill_between(channels, -nsigma[0] * channel_error,\
-                nsigma[0] * channel_error, color='r', alpha=0.2)
+                nsigma[0] * channel_error, color=color, alpha=0.5)
             if nsigma[1] is not None:
                 ax.fill_between(channels, -nsigma[1] * channel_error,\
-                    nsigma[1] * channel_error, color='r', alpha=0.1)
+                    nsigma[1] * channel_error, color=color, alpha=0.3)
         else:
             ax.fill_between(channels,\
                 mean_to_plot - (nsigma[0] * channel_error),\
-                mean_to_plot + (nsigma[0] * channel_error), color='r',\
+                mean_to_plot + (nsigma[0] * channel_error), color=color,\
                 alpha=0.5)
             if nsigma[1] is not None:
                 ax.fill_between(channels,\
                     mean_to_plot - (nsigma[1] * channel_error),\
-                    mean_to_plot + (nsigma[1] * channel_error), color='r',\
+                    mean_to_plot + (nsigma[1] * channel_error), color=color,\
                     alpha=0.3)
         if subtract_truth or plot_zero:
             ax.plot(channels, np.zeros_like(channels), color='k', linewidth=1)
@@ -850,7 +850,7 @@ class ExtractionPlotter(object):
     def plot_subbasis_fit_grid(self, icurve=0, nsigma=1, name=None,\
         true_curves={}, title='Subbasis fit grid', subtract_truth=False,\
         plot_truth=False, low_indices=(0,0), high_indices=(-1,-1),\
-        yscale='linear', show=False):
+        yscale='linear', color='r', show=False):
         """
         Plots a grid of subbasis fits.
         
@@ -906,9 +906,10 @@ class ExtractionPlotter(object):
             else:
                 mean_to_plot = channel_mean
             channels = np.arange(mean_to_plot.shape[-1])
-            ax.plot(channels, mean_to_plot, color='r', linewidth=2)
+            ax.plot(channels, mean_to_plot, color=color, linewidth=2)
             ax.fill_between(channels, mean_to_plot - (nsigma * channel_error),\
-                mean_to_plot + (nsigma * channel_error), color='r', alpha=0.3)
+                mean_to_plot + (nsigma * channel_error), color=color,\
+                alpha=0.3)
             ax.plot(channels, np.zeros_like(channels), color='k', linewidth=1)
             if subtract_truth:
                 ax.plot(channels, np.zeros_like(channels), color='k',\

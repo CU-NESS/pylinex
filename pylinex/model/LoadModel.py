@@ -16,6 +16,7 @@ from .ConstantModel import ConstantModel
 from .BasisModel import BasisModel
 from .TruncatedBasisHyperModel import TruncatedBasisHyperModel
 from .GaussianModel import GaussianModel
+from .LorentzianModel import LorentzianModel
 from .SinusoidalModel import SinusoidalModel
 from .TanhModel import TanhModel
 from .TransformedModel import TransformedModel

@@ -102,9 +102,9 @@ try:
         title='68% and 95% confidence intervals', show=False)
     fitter.close()
 except:
-    #os.remove(file_name)
+    os.remove(file_name)
     raise
 else:
-    #os.remove(file_name)
+    os.remove(file_name)
     pl.show()
 
