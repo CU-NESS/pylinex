@@ -66,11 +66,6 @@ class SlicedModel(Model):
                         "SlicedModel, which means that the SlicedModel " +\
                         "would be essentially identical to the underlying " +\
                         "model, making it unnecessary.")
-                elif len(value) == len(self.model.parameters):
-                    raise ValueError("constant_parameters encompass all " +\
-                        "parameters, so this model contains no variability " +\
-                        "whatsoever and can be summarized fully by a " +\
-                        "single curve.")
                 else:
                     self._constant_parameters = value
                     (indices, values) = ([], [])
