@@ -296,10 +296,10 @@ class LeastSquareFitter(object):
             if np.isfinite(self.loglikelihood(guess)):
                 break
             elif attempt >= attempt_threshold:
-                raise RuntimeError(("The training set given appears to be " +\
-                    "insufficient because {} different attempts were made " +\
-                    "to draw points with finite likelihood.").format(\
-                    attempt_threshold))
+                raise RuntimeError(("The prior set given appears to be " +\
+                    "insufficient because {:d} different attempts were " +\
+                    "made to draw points with finite likelihood, but all " +\
+                    "had 0 likelihood.").format(attempt_threshold))
             else:
                 attempt += 1
         if self.loglikelihood.gradient_computable:
@@ -331,6 +331,8 @@ class LeastSquareFitter(object):
             except:
                 covariance_estimate = None
             self.covariance_estimates.append(covariance_estimate)
+        else:
+            self.covariance_estimates.append(None)
     
     def run(self, iterations=1):
         """
