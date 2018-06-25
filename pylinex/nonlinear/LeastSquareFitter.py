@@ -394,7 +394,7 @@ class LeastSquareFitter(object):
                 for (success, argmin) in zip(self.successes, self.argmins)\
                 if success])
             if channels is None:
-                channels = np.arange(curve.shape[1])
+                channels = np.arange(curves.shape[1])
             ax.plot(channels, curves[0] * scale_factor, label=label,\
                 **plot_kwargs)
             if curves.shape[0] > 1:
