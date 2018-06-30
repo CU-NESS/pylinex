@@ -86,6 +86,18 @@ class NullExpander(Expander):
         """
         return np.arange(original_space_size)
     
+    def invert(self, data, error):
+        """
+        (Pseudo-)Inverts this expander in order to infer an original-space
+        curve from the given expanded-space data and error.
+        
+        data: data vector from which to imply an original space cause
+        error: Gaussian noise level in data
+        
+        returns: most likely original-space curve to cause given data
+        """
+        return data
+    
     def fill_hdf5_group(self, group):
         """
         Saves data about this in the given hdf5 file group.

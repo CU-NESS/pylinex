@@ -48,6 +48,14 @@ class BasisModel(LoadableModel):
             raise TypeError("basis was set to a non-Basis object.")
     
     @property
+    def expander(self):
+        """
+        Property which simply returns the expander property of the basis
+        underlying this model.
+        """
+        return self.basis.expander
+    
+    @property
     def num_channels(self):
         """
         Property storing the number of channels in the outputs of this model.

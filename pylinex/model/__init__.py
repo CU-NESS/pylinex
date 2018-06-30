@@ -14,11 +14,12 @@ from pylinex.model.GaussianModel import GaussianModel
 from pylinex.model.LorentzianModel import LorentzianModel
 from pylinex.model.SinusoidalModel import SinusoidalModel
 from pylinex.model.TanhModel import TanhModel
+from pylinex.model.ExpandedModel import ExpandedModel
 from pylinex.model.CompoundModel import CompoundModel
 from pylinex.model.SumModel import SumModel
+from pylinex.model.DirectSumModel import DirectSumModel
 from pylinex.model.ProductModel import ProductModel
 from pylinex.model.CompositeModel import CompositeModel
-from pylinex.model.ExpandedModel import ExpandedModel
 from pylinex.model.ExpressionModel import ExpressionModel
 from pylinex.model.InterpolatedModel import InterpolatedModel
 from pylinex.model.TruncatedBasisHyperModel import TruncatedBasisHyperModel

@@ -5,6 +5,7 @@ Date: 12 Nov 2017
 
 Description: File containing an abstract class representing a model.
 """
+import numpy as np
 from ..util import Savable
 
 # an error indicating everything which should be implemented by subclass
@@ -49,6 +50,20 @@ class Model(Savable):
         returns: array of size (num_channels,)
         """
         raise shouldnt_instantiate_model_error
+    
+    def curve_sample(self, distribution_set, ndraw):
+        """
+        Generates a curve sample from this model given a DistributionSet
+        object.
+        
+        distribution_set: an instance of distpy's DistributionSet class which
+                          describes a distribution for the parameters of this
+                          model
+        ndraw: positive integer number of curves to generate
+        """
+        draw = distribution_set.draw(ndraw)
+        draw = np.array([draw[parameter] for parameter in self.parameters]).T
+        return np.array([self(parameters) for parameters in draw])
     
     @property
     def gradient_computable(self):

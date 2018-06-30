@@ -12,4 +12,6 @@ from pylinex.loglikelihood.GaussianLoglikelihood import GaussianLoglikelihood
 from pylinex.loglikelihood.PoissonLoglikelihood import PoissonLoglikelihood
 from pylinex.loglikelihood.LoadLoglikelihood import\
     load_loglikelihood_from_hdf5_group
+from pylinex.loglikelihood.LikelihoodDistributionHarmonizer import\
+    LikelihoodDistributionHarmonizer
 

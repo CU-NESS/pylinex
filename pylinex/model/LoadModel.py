@@ -21,6 +21,7 @@ from .SinusoidalModel import SinusoidalModel
 from .TanhModel import TanhModel
 from .TransformedModel import TransformedModel
 from .SumModel import SumModel
+from .DirectSumModel import DirectSumModel
 from .ProductModel import ProductModel
 from .CompositeModel import CompositeModel
 from .ExpressionModel import ExpressionModel
@@ -46,7 +47,8 @@ meta_model_classes =\
 ]
 
 # Model classes which are wrappers around an arbitrary number of Model classes
-compound_model_classes = ['CompositeModel', 'SumModel', 'ProductModel']
+compound_model_classes =\
+    ['CompositeModel', 'SumModel', 'DirectSumModel', 'ProductModel']
 
 def load_model_from_hdf5_group(group):
     """
@@ -123,6 +125,8 @@ def load_model_from_hdf5_group(group):
                 imodel += 1
             if class_name == 'SumModel':
                 return SumModel(names, models)
+            elif class_name == 'DirectSumModel':
+                return DirectSumModel(names, models)
             elif class_name == 'ProductModel':
                 return ProductModel(names, models)
             elif class_name == 'CompositeModel':

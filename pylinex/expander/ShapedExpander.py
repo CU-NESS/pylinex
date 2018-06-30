@@ -163,9 +163,9 @@ class ShapedExpander(Expander):
         """
         reshaped_error = error.flatten()
         reshaped_data =\
-            np.reshape(data, data.shape[:-len(input_shape)] + (-1,))
+            np.reshape(data, data.shape[:-len(self.input_shape)] + (-1,))
         return np.reshape(self.expander.invert(reshaped_data, reshaped_error),\
-            input_shape)
+            self.input_shape)
     
     def is_compatible(self, original_space_size, expanded_space_size):
         """

@@ -46,22 +46,20 @@ print('reduced_chi_squared({0:d})={1:.4g}'.format(\
 
 solution = model(argmin)
 residual = input_data - solution
-correlation = autocorrelation(residual)
+(correlation, correlation_noise_level) = autocorrelation(residual)
 length = len(correlation)
 indices = np.arange(length)
-expected_correlation_mean = (indices == 0).astype(float)
-expected_correlation_standard_deviation_smallest =\
-    np.sqrt((1. / (length - indices)) + (2. / length))
-expected_correlation_standard_deviation_largest = 1 / np.sqrt(length - indices)
 
 fig = pl.figure()
 ax = fig.add_subplot(111)
 ax.scatter(indices[1:], np.abs(correlation[1:]), color='k',\
     label='Observed points')
-ax.fill_between(indices[1:],\
-    expected_correlation_standard_deviation_smallest[1:],\
-    expected_correlation_standard_deviation_largest[1:], color='r',\
-    alpha=0.5, linewidth=3, label='possible $1\sigma$ error')
+ax.fill_between(indices[1:], np.ones_like(indices[1:]) * 1e-4,\
+    correlation_noise_level[1:], color='r',\
+    alpha=0.2, linewidth=3, label='$1\sigma$ error')
+ax.fill_between(indices[1:], np.ones_like(indices[1:]) * 1e-4,\
+    2 * correlation_noise_level[1:], color='r',\
+    alpha=0.1, linewidth=3, label='$3\sigma$ error')
 ax.legend()
 ax.set_xscale('log')
 ax.set_yscale('log')

@@ -155,4 +155,24 @@ class ExpandedModel(Model):
                 (self.expander == other.expander))
         else:
             return False
+    
+    def quick_fit(self, data, error=None):
+        """
+        Performs a quick fit of this model to the given data with (or without)
+        a given noise level.
+        
+        data: 1D array to fit with this expanded model.
+        error: if None, the unweighted least square fit is given for
+                        parameter_mean and parameter_covariance will be
+                        nonsense
+               otherwise, error should a 1D array of same length as data
+        
+        returns: (parameter_mean, parameter_covariance) which are 1D and 2D
+                 arrays respectively
+        """
+        if error is None:
+            error = np.ones_like(data)
+        smaller_data = self.expander.invert(data, error)
+        smaller_error = self.expander.contract_error(error)
+        return self.model.quick_fit(smaller_data, error=smaller_error)
 

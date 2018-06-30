@@ -27,12 +27,13 @@ from pylinex.basis import Basis, PolynomialBasis, GramSchmidtBasis,\
 from pylinex.fitter import TrainingSetIterator, Fitter, MetaFitter, Extractor
 from pylinex.model import Model, LoadableModel, ConstantModel, BasisModel,\
     GaussianModel, LorentzianModel, SinusoidalModel, TanhModel, CompoundModel,\
-    SumModel, ProductModel, CompositeModel, ExpressionModel, ExpandedModel,\
-    TransformedModel, RenamedModel, RestrictedModel, SlicedModel,\
-    InterpolatedModel, TruncatedBasisHyperModel, load_model_from_hdf5_group,\
-    TrainingSetCreator
+    SumModel, DirectSumModel, ProductModel, CompositeModel, ExpressionModel,\
+    ExpandedModel, TransformedModel, RenamedModel, RestrictedModel,\
+    SlicedModel, InterpolatedModel, TruncatedBasisHyperModel,\
+    load_model_from_hdf5_group, TrainingSetCreator
 from pylinex.loglikelihood import Loglikelihood, GaussianLoglikelihood,\
-    PoissonLoglikelihood, load_loglikelihood_from_hdf5_group
+    PoissonLoglikelihood, load_loglikelihood_from_hdf5_group,\
+    LikelihoodDistributionHarmonizer
 from pylinex.nonlinear import Sampler, BurnRule, NLFitter, LeastSquareFitter,\
     InterpolatingLeastSquareFitter
 from pylinex.hdf5 import load_quantity_from_hdf5_file,\
