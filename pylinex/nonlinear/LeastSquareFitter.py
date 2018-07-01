@@ -279,7 +279,7 @@ class LeastSquareFitter(object):
         draw = self.prior_set.draw()
         return np.array([draw[parameter] for parameter in self.parameters])
     
-    def iteration(self, attempt_threshold=100):
+    def iteration(self, attempt_threshold=1):
         """
         Runs an iteration of this fitter. This entails drawing a random first
         guess at the parameters and using standard algorithms to maximize the
@@ -288,11 +288,15 @@ class LeastSquareFitter(object):
         attempt_threshold: the number of attempts to try drawing random first
                            guesses before giving up (the only reason multiple
                            attempts would be necessary is if loglikelihood
-                           returns -np.inf in some circumstances)
+                           returns -np.inf in some circumstances) default: 1
         """
         attempt = 0
         while True:
-            guess = self.generate_guess()
+            try:
+                guess = self.generate_guess()
+            except RuntimeError:
+                # if no more guesses can be generated, then don't throw error
+                return
             if np.isfinite(self.loglikelihood(guess)):
                 break
             elif attempt >= attempt_threshold:
@@ -334,14 +338,16 @@ class LeastSquareFitter(object):
         else:
             self.covariance_estimates.append(None)
     
-    def run(self, iterations=1):
+    def run(self, iterations=1, attempt_threshold=100):
         """
         Runs the given number of iterations of this fitter.
         
         iterations: must be a positive integer
+        attempt_threshold: number of times an iteration should recur before
+                           failing
         """
         for index in range(iterations):
-            self.iteration()
+            self.iteration(attempt_threshold=attempt_threshold)
     
     def plot_reconstructions(self, parameter_indices=slice(None), model=None,\
         only_best=False, scale_factor=1, ax=None, channels=None, label=None,\
@@ -374,43 +380,40 @@ class LeastSquareFitter(object):
         
         returns: None if show is True, Axes instance with plot otherwise
         """
-        if self.num_successes == 0:
-            raise RuntimeError("None of this LeastSquareFitter object's " +\
-                "iterations were successful, so plotting the endpoints " +\
-                "doesn't really make sense.")
         if ax is None:
             fig = pl.figure()
             ax = fig.add_subplot(111)
-        if model is None:
-            model = self.loglikelihood.model
-            parameter_indices = slice(None)
-        if only_best:
-            curve = model(self.argmin[parameter_indices])
-            if channels is None:
-                channels = np.arange(len(curve))
-            ax.plot(channels, curve * scale_factor, label=label, **plot_kwargs)
-        else:
-            curves = np.array([model(argmin[parameter_indices])\
-                for (success, argmin) in zip(self.successes, self.argmins)\
-                if success])
-            if channels is None:
-                channels = np.arange(curves.shape[1])
-            ax.plot(channels, curves[0] * scale_factor, label=label,\
-                **plot_kwargs)
-            if curves.shape[0] > 1:
-                ax.plot(channels, curves[1:].T * scale_factor,\
+        if self.num_successes != 0:
+            if model is None:
+                model = self.loglikelihood.model
+                parameter_indices = slice(None)
+            if only_best:
+                curve = model(self.argmin[parameter_indices])
+                if channels is None:
+                    channels = np.arange(len(curve))
+                ax.plot(channels, curve * scale_factor, label=label, **plot_kwargs)
+            else:
+                curves = np.array([model(argmin[parameter_indices])\
+                    for (success, argmin) in zip(self.successes, self.argmins)\
+                    if success])
+                if channels is None:
+                    channels = np.arange(curves.shape[1])
+                ax.plot(channels, curves[0] * scale_factor, label=label,\
                     **plot_kwargs)
-        if xlabel is not None:
-            ax.set_xlabel(xlabel, size=fontsize)
-        if ylabel is not None:
-            ax.set_ylabel(ylabel, size=fontsize)
-        if title is not None:
-            ax.set_title(title, size=fontsize)
-        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
-            which='major')
-        ax.tick_params(width=1.5, length=4.5, which='minor')
-        if label is not None:
-            ax.legend(fontsize=fontsize)
+                if curves.shape[0] > 1:
+                    ax.plot(channels, curves[1:].T * scale_factor,\
+                        **plot_kwargs)
+            if xlabel is not None:
+                ax.set_xlabel(xlabel, size=fontsize)
+            if ylabel is not None:
+                ax.set_ylabel(ylabel, size=fontsize)
+            if title is not None:
+                ax.set_title(title, size=fontsize)
+            ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+                which='major')
+            ax.tick_params(width=1.5, length=4.5, which='minor')
+            if label is not None:
+                ax.legend(fontsize=fontsize)
         if show:
             pl.show()
         else:
