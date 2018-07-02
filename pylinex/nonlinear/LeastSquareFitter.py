@@ -263,6 +263,17 @@ class LeastSquareFitter(object):
         return self.covariance_estimates[self.best_fit_index]
     
     @property
+    def distribution_estimate(self):
+        """
+        Property which returns an estimate of the parameter distribution if a
+        mean and covariance estimate has been found.
+        """
+        if self.covariance_estimate is None:
+            return None
+        else:
+            return GaussianDistribution(self.argmin, self.covariance_estimate)
+    
+    @property
     def reconstruction(self):
         """
         Property storing the maximum likelihood reconstruction of the modeled
@@ -292,11 +303,7 @@ class LeastSquareFitter(object):
         """
         attempt = 0
         while True:
-            try:
-                guess = self.generate_guess()
-            except RuntimeError:
-                # if no more guesses can be generated, then don't throw error
-                return
+            guess = self.generate_guess()
             if np.isfinite(self.loglikelihood(guess)):
                 break
             elif attempt >= attempt_threshold:
@@ -313,7 +320,7 @@ class LeastSquareFitter(object):
             optimize_result = minimize(self.loglikelihood, guess,\
                 args=(True,), method='Nelder-Mead')
         if np.isnan(optimize_result.fun):
-            return
+            raise ValueError("loglikelihood returned nan.")
         self.successes.append(optimize_result.success)
         self.mins.append(optimize_result.fun)
         argmin = optimize_result.x
