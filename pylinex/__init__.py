@@ -26,7 +26,7 @@ from pylinex.basis import Basis, PolynomialBasis, GramSchmidtBasis,\
     effective_training_set_rank
 from pylinex.fitter import TrainingSetIterator, Fitter, MetaFitter, Extractor
 from pylinex.model import Model, LoadableModel, ShiftedRescaledModel,\
-    ConstantModel, BasisModel, GaussianModel, LorentzianModel,\
+    ConstantModel, BasisModel, GaussianModel, SechModel, LorentzianModel,\
     SinusoidalModel, TanhModel, CompoundModel, SumModel, DirectSumModel,\
     ProductModel, CompositeModel, ExpressionModel, ExpandedModel,\
     TransformedModel, RenamedModel, RestrictedModel, SlicedModel,\

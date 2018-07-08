@@ -12,6 +12,7 @@ from pylinex.model.ShiftedRescaledModel import ShiftedRescaledModel
 from pylinex.model.ConstantModel import ConstantModel
 from pylinex.model.BasisModel import BasisModel
 from pylinex.model.GaussianModel import GaussianModel
+from pylinex.model.SechModel import SechModel
 from pylinex.model.LorentzianModel import LorentzianModel
 from pylinex.model.SinusoidalModel import SinusoidalModel
 from pylinex.model.TanhModel import TanhModel
