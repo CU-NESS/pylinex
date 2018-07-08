@@ -4,17 +4,16 @@ Author: Keith Tauscher
 Date: 15 Jan 2018
 
 Description: File containing a class representing a model which is a simple
-             Gaussian, with parameters
-             ['gaussian_A', 'gaussian_mu', 'gaussian_sigma'].
+             Gaussian, with parameters ['amplitude', 'center', 'scale'].
 """
 import numpy as np
 from ..util import create_hdf5_dataset, get_hdf5_value
-from .LoadableModel import LoadableModel
+from .ShiftedRescaledModel import ShiftedRescaledModel
 
-class GaussianModel(LoadableModel):
+class GaussianModel(ShiftedRescaledModel):
     """
     Class representing a model which is a simple Gaussian, with parameters
-    ['gaussian_A', 'gaussian_mu', 'gaussian_sigma'].
+    ['amplitude', 'center', 'scale'].
     """
     def __init__(self, x_values):
         """
@@ -25,130 +24,31 @@ class GaussianModel(LoadableModel):
         """
         self.x_values = x_values
     
-    @property
-    def x_values(self):
+    def base_function(self, scaled_x_values):
         """
-        Property storing the 1D numpy.ndarray of x_values at which the Gaussian
-        of this model should be evaluated.
-        """
-        if not hasattr(self, '_x_values'):
-            raise AttributeError("x_values referenced before it was set.")
-        return self._x_values
-    
-    @x_values.setter
-    def x_values(self, value):
-        """
-        Setter for the x_values at which the Gaussian of this model should be
-        evaluated.
+        This function calculates the base (standard) Gaussian at the given
+        pre-scaled x_values.
         
-        value: must be a 1D numpy.ndarray of numbers
+        scaled_x_values: array of pre-scaled x_values
         """
-        value = np.array(value)
-        if value.ndim == 1:
-            self._x_values = value
-        else:
-            raise ValueError("x_values was set to a non-array.")
+        return np.exp((-0.5) * (scaled_x_values ** 2))
     
-    @property
-    def num_channels(self):
+    def base_function_derivative(self, scaled_x_values):
         """
-        Property storing the number of channels in the output which is the same
-        as the number of x_values given.
-        """
-        if not hasattr(self, '_num_channels'):
-            self._num_channels = len(self.x_values)
-        return self._num_channels
-    
-    @property
-    def parameters(self):
-        """
-        Property storing the parameters describing this model:
-        ['amplitude', 'center', 'standard_deviation']
-        """
-        return ['amplitude', 'center', 'standard_deviation']
-    
-    def __call__(self, pars):
-        """
-        Evaluates this model at the given parameters.
+        Calculates the derivative of the base (standard) Gaussian.
         
-        pars: sequence yielding values of the three parameters
-        
-        returns: values of GaussianModel at its x_values in numpy.ndarray of
-                 shape (num_channels,)
+        scaled_x_values: array of pre-scaled x_values
         """
-        (amplitude, mean, stdv) = pars
-        return (amplitude *\
-            np.exp((((self.x_values - mean) / stdv) ** 2) / (-2.)))
+        return (-scaled_x_values) * np.exp((-0.5) * (scaled_x_values ** 2))
     
-    @property
-    def gradient_computable(self):
+    def base_function_second_derivative(self, scaled_x_values):
         """
-        Property returning whether the gradient is computable. Since this model
-        is essentially hardcoded, the gradient is computable.
-        """
-        return True
-    
-    def gradient(self, pars):
-        """
-        Function computing the gradient of the GaussianModel at the given
-        parameters.
+        Calculates the second derivative of the base (standard) Gaussian.
         
-        pars: 1D numpy.ndarray (of length 3) of parameters
-        
-        returns: numpy.ndarray of gradient values of shape
-                 (num_channels, num_parameters)
+        scaled_x_values: array of pre-scaled x_values
         """
-        (amplitude, mean, stdv) = pars
-        value = np.exp((((self.x_values - mean) / stdv) ** 2) / (-2.))
-        final = np.ndarray((self.num_channels, 3))
-        final[:,0] = value
-        weighted_deviance = (self.x_values - mean) / stdv
-        mean_part = (amplitude * value * (weighted_deviance / stdv))
-        final[:,1] = mean_part
-        final[:,2] = (mean_part * weighted_deviance)
-        return final
-    
-    @property
-    def hessian_computable(self):
-        """
-        Property returning whether the hessian is computable. Since this model
-        is essentially hardcoded, the hessian is computable.
-        """
-        return True
-    
-    def hessian(self, pars):
-        """
-        Function computing the hessian of the GaussianModel at the given
-        parameters.
-        
-        pars: 1D numpy.ndarray (of length 3) of parameters
-        
-        returns: numpy.ndarray of hessian values of shape
-                 (num_channels, num_parameters, num_parameters)
-        """
-        (amplitude, mean, stdv) = pars
-        value = self(pars)
-        final = np.ndarray((self.num_channels, 3, 3))
-        weighted_deviances = ((self.x_values - mean) / stdv)
-        weighted_deviances_squared = (weighted_deviances ** 2)
-        variance = (stdv ** 2)
-        value_over_variance = (value / variance)
-        final[:,0,0] = 0
-        final[:,1,1] = value_over_variance * (weighted_deviances_squared - 1)
-        final[:,2,2] = (value_over_variance * weighted_deviances_squared *\
-            (weighted_deviances_squared - 3))
-        amp_mean_part = ((value * weighted_deviances) / (amplitude * stdv))
-        final[:,0,1] = amp_mean_part
-        final[:,1,0] = amp_mean_part
-        amp_stdv_part =\
-            ((value * weighted_deviances_squared) / (amplitude * stdv))
-        final[:,0,2] = amp_stdv_part
-        final[:,2,0] = amp_stdv_part
-        mean_stdv_part =\
-            (value * weighted_deviances * (weighted_deviances - 2)) / variance
-        final[:,1,2] = mean_stdv_part
-        final[:,2,1] = mean_stdv_part
-        return final
+        return ((scaled_x_values ** 2) - 1) *\
+            np.exp((-0.5) * (scaled_x_values ** 2))
     
     def fill_hdf5_group(self, group):
         """

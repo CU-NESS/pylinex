@@ -7,8 +7,9 @@ Description: A basis model where the number of terms used is decided by a
              parameter instead of being fixed.
 """
 import numpy as np
-from ..util import int_types
+from ..util import int_types, numerical_types
 from ..basis import Basis
+from ..fitter import Fitter
 from .LoadableModel import LoadableModel
 from .BasisModel import BasisModel
 
@@ -51,6 +52,14 @@ class TruncatedBasisHyperModel(LoadableModel):
         else:
             raise TypeError("basis was set to something which was not a " +\
                 "Basis object.")
+    
+    @property
+    def expander(self):
+        """
+        Property which simply returns the expander property of the basis
+        underlying this model.
+        """
+        return self.basis.expander
     
     @property
     def min_terms(self):
@@ -249,4 +258,37 @@ class TruncatedBasisHyperModel(LoadableModel):
         max_terms = group.attrs['max_terms']
         return TruncatedBasisHyperModel(basis, min_terms=min_terms,\
             max_terms=max_terms)
+    
+    def quick_fit(self, data, error=None):
+        """
+        Performs a quick fit of this model to the given data with (or without)
+        a given noise level.
+        
+        data: 1D array to fit with this constant model
+        error: if None, the unweighted least square fit is given for
+                        parameter_mean and parameter_covariance will be
+                        nonsense
+               otherwise, error should either be a single number or a 1D array
+                          of same length as data
+        
+        returns: (parameter_mean, parameter_covariance) where parameter_mean is
+                 a length N (number of basis vectors) 1D array and
+                 parameter_covariance is a 2D array of shape (N,N). If no error
+                 is given, parameter_covariance doesn't really mean anything
+                 (especially if error is far from 1 in magnitude)
+        """
+        if error is None:
+            error = 1
+        if type(error) in numerical_types:
+            error = error * np.ones_like(data)
+        fitter = Fitter(self.basis, data, error=error)
+        mean = np.concatenate([fitter.parameter_mean, [self.max_terms]])
+        covariance = fitter.parameter_covariance
+        column_to_add = np.zeros((covariance.shape[0], 1))
+        covariance = np.concatenate([covariance, column_to_add], axis=-1)
+        row_to_add =\
+            (np.arange(covariance.shape[-1]) == (covariance.shape[-1] - 1))
+        covariance =\
+            np.concatenate([covariance, row_to_add[None,:]], axis=0)
+        return (mean, covariance)
 

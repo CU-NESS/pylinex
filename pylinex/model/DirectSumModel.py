@@ -11,6 +11,7 @@ import scipy.linalg as scila
 import matplotlib.pyplot as pl
 from ..expander import ExpanderSet
 from .BasisModel import BasisModel
+from .TruncatedBasisHyperModel import TruncatedBasisHyperModel
 from .ExpandedModel import ExpandedModel
 from .SumModel import SumModel
 
@@ -41,7 +42,8 @@ class DirectSumModel(SumModel):
             expanders = []
             for model in self.models:
                 if isinstance(model, BasisModel) or\
-                    isinstance(model, ExpandedModel):
+                    isinstance(model, ExpandedModel) or\
+                    isinstance(model, TruncatedBasisHyperModel):
                     expanders.append(model.expander)
                 else:
                     raise TypeError("At least one model was neither a " +\

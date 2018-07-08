@@ -1,10 +1,10 @@
 """
-File: examples/model/gaussian_model.py
+File: examples/model/lorentzian_model.py
 Author: Keith Tauscher
-Date: 24 Mar 2018
+Date: 7 Jul 2018
 
-Description: Example showing how to use the GaussianModel class, including how
-             to save and load them to and from hdf5 files.
+Description: Example showing how to use the LorentzianModel class, including
+             how to save and load them to and from hdf5 files.
 """
 import os
 import numpy as np
@@ -31,7 +31,7 @@ expected_gradient = np.stack([base_value,\
 assert(np.allclose(value, expected_value))
 assert(np.allclose(gradient, expected_gradient))
 
-file_name = 'test_TESTING_GAUSSIANMODEL_CLASS.hdf5'
+file_name = 'test_TESTING_LORENTZIANMODEL_CLASS.hdf5'
 model.save(file_name)
 model = load_model_from_hdf5_file(file_name)
 try:

@@ -11,8 +11,8 @@ import numpy as np
 import matplotlib.pyplot as pl
 from distpy import UniformDistribution, GaussianDistribution, DistributionSet,\
     GaussianJumpingDistribution, JumpingDistributionSet
-from pylinex import GaussianModel, TanhModel, GaussianLoglikelihood, BurnRule,\
-    Sampler, NLFitter
+from pylinex import GaussianModel, GaussianLoglikelihood, BurnRule, Sampler,\
+    NLFitter
 
 seed = 1234567890
 
@@ -29,8 +29,8 @@ model = GaussianModel(x_values)
 
 true_amplitude = 1
 true_center = 100
-true_standard_deviation = 0.1
-true = [true_amplitude, true_center, true_standard_deviation]
+true_scale = 0.1
+true = [true_amplitude, true_center, true_scale]
 input_curve = model(true)
 input_noise = np.random.normal(0, 1, size=num_channels) * error
 input_data = input_curve + input_noise
@@ -43,7 +43,7 @@ guess_distribution_set.add_distribution(\
 guess_distribution_set.add_distribution(\
     UniformDistribution(99.9, 100.1), 'center')
 guess_distribution_set.add_distribution(\
-    UniformDistribution(-1.25, -0.75), 'standard_deviation', 'log10')
+    UniformDistribution(-1.25, -0.75), 'scale', 'log10')
 
 jumping_distribution_set = JumpingDistributionSet()
 jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-4),\
@@ -51,7 +51,7 @@ jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-4),\
 jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-4),\
     'center')
 jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-2),\
-    'standard_deviation', 'log10')
+    'scale', 'log10')
 
 #nwalkers = 2 * loglikelihood.num_parameters
 np.random.seed(seed)
@@ -85,7 +85,7 @@ try:
     fitter = NLFitter(file_name)
     fitter.plot_acceptance_fraction(log_scale=True, ax=None, show=False)
     fitter.plot_chain(show=False, amplitude=true_amplitude,\
-        center=true_center, standard_deviation=true_standard_deviation)
+        center=true_center, scale=true_scale)
     fitter.close()
     burn_rule = BurnRule(min_checkpoints=10, desired_fraction=0.5)
     fitter = NLFitter(file_name, burn_rule)

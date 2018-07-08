@@ -37,7 +37,7 @@ prior_distribution_set.add_distribution(\
 prior_distribution_set.add_distribution(\
     UniformDistribution(-5, 5), 'center')
 prior_distribution_set.add_distribution(\
-    UniformDistribution(0, 10), 'standard_deviation')
+    UniformDistribution(0, 10), 'scale')
 
 guess_distribution_set = DistributionSet()
 guess_distribution_set.add_distribution(\
@@ -45,7 +45,7 @@ guess_distribution_set.add_distribution(\
 guess_distribution_set.add_distribution(\
     UniformDistribution(-0.1, 0.1), 'center')
 guess_distribution_set.add_distribution(\
-    UniformDistribution(0.9, 1.1), 'standard_deviation')
+    UniformDistribution(0.9, 1.1), 'scale')
 
 jumping_distribution_set = JumpingDistributionSet()
 jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1),\
@@ -53,7 +53,7 @@ jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1),\
 jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-4),\
     'center')
 jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-2),\
-    'standard_deviation', 'log10')
+    'scale', 'log10')
 
 np.random.seed(seed)
 

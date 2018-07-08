@@ -9,8 +9,8 @@ Description: Example showing how to use the LeastSquareFitter class to fit a
 import numpy as np
 import matplotlib.pyplot as pl
 from distpy import UniformDistribution, GaussianDistribution, DistributionSet
-from pylinex import GaussianModel, TanhModel, GaussianLoglikelihood,\
-    LeastSquareFitter, autocorrelation
+from pylinex import GaussianModel, GaussianLoglikelihood, LeastSquareFitter,\
+    autocorrelation
 
 seed = 1234
 np.random.seed(seed)
@@ -31,7 +31,7 @@ loglikelihood = GaussianLoglikelihood(input_data, error, model)
 prior_set = DistributionSet()
 prior_set.add_distribution(UniformDistribution(-10, 10), 'amplitude')
 prior_set.add_distribution(UniformDistribution(-1, 1), 'center')
-prior_set.add_distribution(UniformDistribution(0, 1), 'standard_deviation')
+prior_set.add_distribution(UniformDistribution(0, 1), 'scale')
 
 least_square_fitter = LeastSquareFitter(loglikelihood, prior_set)
 least_square_fitter.run(num_iterations)

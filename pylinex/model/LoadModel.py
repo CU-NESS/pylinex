@@ -36,7 +36,8 @@ from .SlicedModel import SlicedModel
 self_loadable_model_classes =\
 [\
     'BasisModel', 'ConstantModel', 'ExpressionModel', 'GaussianModel',\
-    'SinusoidalModel', 'TanhModel', 'TruncatedBasisHyperModel'\
+    'SinusoidalModel', 'TanhModel', 'TruncatedBasisHyperModel',\
+    'LorentzianModel'\
 ]
 
 # Model classes which are simple wrappers around exactly one other Model class

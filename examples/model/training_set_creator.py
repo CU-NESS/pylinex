@@ -9,10 +9,10 @@ model = GaussianModel(x_values)
 
 amplitude_distribution = GaussianDistribution(10, 9)
 center_distribution = GaussianDistribution(0, 0.01)
-standard_deviation_distribution = UniformDistribution(-2, 0)
+scale_deviation_distribution = UniformDistribution(-2, 0)
 distribution_tuples = [(amplitude_distribution, 'amplitude', None),\
     (center_distribution, 'center', None),\
-    (standard_deviation_distribution, 'standard_deviation', 'log10')]
+    (scale_distribution, 'scale', 'log10')]
 prior_set = DistributionSet(distribution_tuples=distribution_tuples)
 
 num_curves = 10
