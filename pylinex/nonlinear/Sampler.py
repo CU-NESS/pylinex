@@ -491,6 +491,11 @@ class Sampler(object):
             self.file['checkpoints/{!s}'.format(last_saved_chunk_string)]
         last_checkpoint_group =\
             last_checkpoint_group['{:d}'.format(self.checkpoint_index-1)]
+        last_checkpoint_likelihood =\
+            last_checkpoint_group['lnprobability'].value
+        last_checkpoint_likelihood =\
+            last_checkpoint_likelihood - np.mean(last_checkpoint_likelihood)
+        last_checkpoint_likelihood = np.exp(last_checkpoint_likelihood)
         last_checkpoint_chain = last_checkpoint_group['chain'].value
         last_checkpoint_chain_continuous =\
             last_checkpoint_chain[...,continuous_parameter_indices]
@@ -503,8 +508,9 @@ class Sampler(object):
             transform_list(last_checkpoint_chain_continuous, axis=-1)
         last_checkpoint_continuous_mean =\
             np.mean(last_checkpoint_chain_continuous, axis=0)
-        last_checkpoint_continuous_covariance =\
-            np.cov(last_checkpoint_chain_continuous, rowvar=False)
+        last_checkpoint_continuous_covariance = np.cov(\
+            last_checkpoint_chain_continuous, ddof=0, rowvar=False,\
+            aweights=last_checkpoint_likelihood)
         distribution = GaussianDistribution(last_checkpoint_continuous_mean,\
             last_checkpoint_continuous_covariance)
         new_guess_distribution_set = DistributionSet()
@@ -548,6 +554,11 @@ class Sampler(object):
             self.file['checkpoints/{!s}'.format(last_saved_chunk_string)]
         last_checkpoint_group =\
             last_checkpoint_group['{:d}'.format(self.checkpoint_index-1)]
+        last_checkpoint_likelihood =\
+            last_checkpoint_group['lnprobability'].value
+        last_checkpoint_likelihood =\
+            last_checkpoint_likelihood - np.mean(last_checkpoint_likelihood)
+        last_checkpoint_likelihood = np.exp(last_checkpoint_likelihood)
         last_checkpoint_chain = last_checkpoint_group['chain'].value
         last_checkpoint_chain_continuous =\
             last_checkpoint_chain[...,continuous_parameter_indices]
@@ -558,11 +569,11 @@ class Sampler(object):
             jumping_distribution_set.transform_set[continuous_params]
         last_checkpoint_chain_continuous =\
             transform_list(last_checkpoint_chain_continuous, axis=-1)
-        last_checkpoint_continuous_covariance =\
-            np.cov(last_checkpoint_chain_continuous, rowvar=False)
-        distribution = GaussianJumpingDistribution(\
-            last_checkpoint_continuous_covariance /\
-            self.proposal_covariance_reduction_factor)
+        last_checkpoint_continuous_covariance = np.cov(\
+            last_checkpoint_chain_continuous, rowvar=False, ddof=0,\
+            aweights=last_checkpoint_likelihood)
+        distribution =\
+            GaussianJumpingDistribution(last_checkpoint_continuous_covariance)
         new_jumping_distribution_set = JumpingDistributionSet()
         new_jumping_distribution_set.add_distribution(distribution,\
             continuous_params, transform_list)

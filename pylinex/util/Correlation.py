@@ -21,6 +21,7 @@ def autocorrelation(curves):
         degrees_of_freedom) for curve in curves])
     correlation = np.mean(correlation, axis=0)
     correlation = correlation / correlation[0]
-    noise_level = np.power(curves.shape[0] * degrees_of_freedom, -0.5)
+    noise_level = np.sqrt((1. / degrees_of_freedom) + (1. / curves.shape[-1]))
+    noise_level = noise_level * np.power(curves.shape[0], -0.5)
     return (correlation, noise_level)
 

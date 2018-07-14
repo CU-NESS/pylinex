@@ -80,7 +80,8 @@ class SlicedModel(Model):
                         if index not in indices])
                     parameter_template =\
                         np.ndarray((self.model.num_parameters,))
-                    parameter_template[self.indices_of_parameters] = np.nan
+                    if self.num_parameters != 0:
+                        parameter_template[self.indices_of_parameters] = np.nan
                     parameter_template[indices] = values
                     self._parameter_template = parameter_template
             else:
@@ -132,9 +133,12 @@ class SlicedModel(Model):
         
         returns: 1D array of length self.model.num_parameters
         """
-        filled_template = self.parameter_template.copy()
-        filled_template[self.indices_of_parameters] = parameters
-        return filled_template
+        if self.num_parameters == 0:
+            return self.parameter_template
+        else:
+            filled_template = self.parameter_template.copy()
+            filled_template[self.indices_of_parameters] = parameters
+            return filled_template
     
     def __call__(self, parameters):
         """
@@ -163,7 +167,10 @@ class SlicedModel(Model):
         returns: array of shape (num_channels, num_parameters)
         """
         gradient = self.model.gradient(self.form_parameters(parameters))
-        return gradient[:,self.indices_of_parameters]
+        if self.num_parameters == 0:
+            return np.zeros((gradient.shape[0], 0))
+        else:
+            return gradient[:,self.indices_of_parameters]
     
     @property
     def hessian_computable(self):
@@ -182,9 +189,12 @@ class SlicedModel(Model):
         returns: array of shape (num_channels, num_parameters, num_parameters)
         """
         hessian = self.model.hessian(self.form_parameters(parameters))
-        hessian = hessian[:,:,self.indices_of_parameters]
-        hessian = hessian[:,self.indices_of_parameters,:]
-        return hessian
+        if self.num_parameters == 0:
+            return np.zeros((hessian.shape[0], 0, 0))
+        else:
+            hessian = hessian[:,:,self.indices_of_parameters]
+            hessian = hessian[:,self.indices_of_parameters,:]
+            return hessian
     
     def fill_hdf5_group(self, group):
         """
