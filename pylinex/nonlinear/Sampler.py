@@ -495,7 +495,8 @@ class Sampler(object):
             last_checkpoint_group['lnprobability'].value
         last_checkpoint_likelihood =\
             last_checkpoint_likelihood - np.mean(last_checkpoint_likelihood)
-        last_checkpoint_likelihood = np.exp(last_checkpoint_likelihood)
+        last_checkpoint_likelihood =\
+            np.exp(last_checkpoint_likelihood).flatten()
         last_checkpoint_chain = last_checkpoint_group['chain'].value
         last_checkpoint_chain_continuous =\
             last_checkpoint_chain[...,continuous_parameter_indices]
@@ -558,7 +559,8 @@ class Sampler(object):
             last_checkpoint_group['lnprobability'].value
         last_checkpoint_likelihood =\
             last_checkpoint_likelihood - np.mean(last_checkpoint_likelihood)
-        last_checkpoint_likelihood = np.exp(last_checkpoint_likelihood)
+        last_checkpoint_likelihood =\
+            np.exp(last_checkpoint_likelihood).flatten()
         last_checkpoint_chain = last_checkpoint_group['chain'].value
         last_checkpoint_chain_continuous =\
             last_checkpoint_chain[...,continuous_parameter_indices]

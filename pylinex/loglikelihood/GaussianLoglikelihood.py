@@ -46,6 +46,8 @@ class GaussianLoglikelihood(Loglikelihood):
         value = np.array(value)
         if value.shape == self.data.shape:
             self._error = value
+        elif value.shape == (self.data.shape * 2):
+            self._error = value
         else:
             raise ValueError("error given was not the same shape as the data.")
     
@@ -83,6 +85,46 @@ class GaussianLoglikelihood(Loglikelihood):
         error = get_hdf5_value(group['error'])
         return GaussianLoglikelihood(data, error, model)
     
+    @property
+    def weighting_matrix(self):
+        """
+        Property storing the matrix to use for weighting if error is given as
+        2D array.
+        """
+        if not hasattr(self, '_weighting_matrix'):
+            if self.error.ndim == 1:
+                raise AttributeError("The weighting_matrix property only " +\
+                    "makes sense if the error given was a covariance matrix.")
+            else:
+                (eigenvalues, eigenvectors) = la.eigh(self.error)
+                eigenvalues = np.power(eigenvalues, -0.5)
+                self._weighting_matrix = np.dot(\
+                    eigenvectors * eigenvalues[np.newaxis,:], eigenvectors.T)
+        return self._weighting_matrix
+    
+    def weight(self, quantity):
+        """
+        Meant to generalize weighting by the inverse square root of the
+        covariance matrix so that it is efficient when the error is 1D
+        
+        quantity: quantity whose 0th axis is channel space which should be
+                  weighted
+        
+        returns: numpy.ndarray of same shape as quantity containing weighted
+                 quantity
+        """
+        if self.error.ndim == 1:
+            error_index =\
+                ((slice(None),) + ((np.newaxis,) * (quantity.ndim - 1)))
+            return quantity / self.error[error_index]
+        elif quantity.ndim in [1, 2]:
+            return np.dot(self.weighting_matrix, quantity)
+        else:
+            quantity_shape = quantity.shape
+            quantity = np.reshape(quantity, (quantity_shape[0], -1))
+            quantity = np.dot(self.weighting_matrix, quantity)
+            return np.reshape(quantity, quantity_shape)
+    
     def weighted_bias(self, pars):
         """
         Computes the weighted difference between the data and the model
@@ -92,7 +134,30 @@ class GaussianLoglikelihood(Loglikelihood):
         
         returns: 1D numpy array of biases (same shape as data and error arrays)
         """
-        return (self.data - self.model(pars)) / self.error
+        return self.weight(self.data - self.model(pars))
+    
+    def weighted_gradient(self, pars):
+        """
+        Computes the weighted version of the gradient of the model in this
+        likelihood.
+        
+        pars: array of parameter values at which to evaluate model gradient
+        
+        returns: 2D array of shape (num_channels, num_parameters)
+        """
+        return self.weight(self.model.gradient(pars))
+    
+    def weighted_hessian(self, pars):
+        """
+        Computes the weighted version of the hessian of the model in this
+        likelihood.
+        
+        pars: array of parameter values at which to evaluate model hessian
+        
+        returns: 2D array of shape
+                 (num_channels, num_parameters, num_parameters)
+        """
+        return self.weight(self.model.hessian(pars))
     
     def __call__(self, pars, return_negative=False):
         """
@@ -159,13 +224,11 @@ class GaussianLoglikelihood(Loglikelihood):
         """
         self.check_parameter_dimension(pars)
         try:
-            doubly_weighted_bias = self.weighted_bias(pars) / self.error
-            to_sum =\
-                doubly_weighted_bias[:,np.newaxis] * self.model.gradient(pars)
+            gradient_value = np.dot(\
+                self.weighted_gradient(pars).T, self.weighted_bias(pars))
         except:
             return np.nan * np.ones(self.num_parameters)
         else:
-            gradient_value = np.sum(to_sum, axis=0)
             if return_negative:
                 return -gradient_value
             else:
@@ -197,14 +260,16 @@ class GaussianLoglikelihood(Loglikelihood):
                  containing hessian of loglikelihood value
         """
         self.check_parameter_dimension(pars)
-        doubly_weighted_bias = self.weighted_bias(pars) / self.error
-        hessian_part = np.sum(doubly_weighted_bias[:,np.newaxis,np.newaxis] *\
-            self.model.hessian(pars), axis=0)
-        gradient = self.model.gradient(pars)
-        squared_gradient_part = np.sum(\
-            (gradient[:,:,np.newaxis] * gradient[:,np.newaxis,:]) /\
-            (self.error ** 2)[:,np.newaxis,np.newaxis], axis=0)
-        hessian_value = hessian_part - squared_gradient_part
+        try:
+            weighted_bias = self.weighted_bias(pars)
+            weighted_gradient = self.weighted_gradient(pars)
+            weighted_hessian = self.weighted_hessian(pars)
+            hessian_part = np.dot(weighted_hessian.T, weighted_bias)
+            squared_gradient_part =\
+                np.dot(weighted_gradient.T, weighted_gradient)
+            hessian_value = hessian_part - squared_gradient_part
+        except:
+            hessian_value = np.nan * np.ones((self.num_parameters,) * 2)
         if return_negative:
             return -hessian_value
         else:
