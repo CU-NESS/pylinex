@@ -9,7 +9,7 @@ model = GaussianModel(x_values)
 
 amplitude_distribution = GaussianDistribution(10, 9)
 center_distribution = GaussianDistribution(0, 0.01)
-scale_deviation_distribution = UniformDistribution(-2, 0)
+scale_distribution = UniformDistribution(-2, 0)
 distribution_tuples = [(amplitude_distribution, 'amplitude', None),\
     (center_distribution, 'center', None),\
     (scale_distribution, 'scale', 'log10')]

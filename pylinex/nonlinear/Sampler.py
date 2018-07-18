@@ -8,6 +8,7 @@ Description: File containing a class which wraps around the
 """
 import os, time, h5py
 import numpy as np
+import numpy.linalg as la
 from emcee import EnsembleSampler
 from distpy import GaussianDistribution, CustomDiscreteDistribution,\
     DistributionSet, GaussianJumpingDistribution, JumpingDistributionSet,\
@@ -469,7 +470,7 @@ class Sampler(object):
         self.checkpoint_index = 0
     
     def _generate_reinitialized_guess_distribution_set(self,\
-        guess_distribution_set, last_saved_chunk_string):
+        guess_distribution_set, last_saved_chunk_string, min_eigenvalue=1e-8):
         """
         Generates a new guess_distribution_set to use for a Sampler restarted
         with restart_mode=='reinitialize'.
@@ -491,12 +492,16 @@ class Sampler(object):
             self.file['checkpoints/{!s}'.format(last_saved_chunk_string)]
         last_checkpoint_group =\
             last_checkpoint_group['{:d}'.format(self.checkpoint_index-1)]
-        last_checkpoint_likelihood =\
+        last_checkpoint_loglikelihood =\
             last_checkpoint_group['lnprobability'].value
-        last_checkpoint_likelihood =\
-            last_checkpoint_likelihood - np.mean(last_checkpoint_likelihood)
-        last_checkpoint_likelihood =\
-            np.exp(last_checkpoint_likelihood).flatten()
+        walker_averaged_loglikelihood =\
+            np.mean(last_checkpoint_loglikelihood, axis=-1)
+        loglikelihood_cutoff = np.mean(walker_averaged_loglikelihood) -\
+            (3 * np.std(walker_averaged_loglikelihood))
+        likelihood_based_weights =\
+            (walker_averaged_loglikelihood >= loglikelihood_cutoff).astype(int)
+        likelihood_based_weights = (likelihood_based_weights[:,np.newaxis] *\
+            np.ones(last_checkpoint_loglikelihood.shape)).flatten()
         last_checkpoint_chain = last_checkpoint_group['chain'].value
         last_checkpoint_chain_continuous =\
             last_checkpoint_chain[...,continuous_parameter_indices]
@@ -508,10 +513,17 @@ class Sampler(object):
         last_checkpoint_chain_continuous =\
             transform_list(last_checkpoint_chain_continuous, axis=-1)
         last_checkpoint_continuous_mean =\
-            np.mean(last_checkpoint_chain_continuous, axis=0)
+            np.sum(last_checkpoint_chain_continuous *\
+            likelihood_based_weights[:,np.newaxis], axis=0) /\
+            np.sum(likelihood_based_weights)
         last_checkpoint_continuous_covariance = np.cov(\
             last_checkpoint_chain_continuous, ddof=0, rowvar=False,\
-            aweights=last_checkpoint_likelihood)
+            aweights=likelihood_based_weights)
+        (eigenvalues, eigenvectors) =\
+            la.eigh(last_checkpoint_continuous_covariance)
+        eigenvalues[eigenvalues < min_eigenvalue] = min_eigenvalue
+        last_checkpoint_continuous_covariance =\
+            np.dot(eigenvectors * eigenvalues[np.newaxis,:], eigenvectors.T)
         distribution = GaussianDistribution(last_checkpoint_continuous_mean,\
             last_checkpoint_continuous_covariance)
         new_guess_distribution_set = DistributionSet()
@@ -531,7 +543,8 @@ class Sampler(object):
         return new_guess_distribution_set
     
     def _generate_reinitialized_jumping_distribution_set(self,\
-        jumping_distribution_set, last_saved_chunk_string):
+        jumping_distribution_set, last_saved_chunk_string,\
+        min_eigenvalue=1e-8):
         """
         Generates a new jumping_distribution_set to use for a Sampler
         restarted with restart_mode=='reinitialize'.
@@ -555,12 +568,16 @@ class Sampler(object):
             self.file['checkpoints/{!s}'.format(last_saved_chunk_string)]
         last_checkpoint_group =\
             last_checkpoint_group['{:d}'.format(self.checkpoint_index-1)]
-        last_checkpoint_likelihood =\
+        last_checkpoint_loglikelihood =\
             last_checkpoint_group['lnprobability'].value
-        last_checkpoint_likelihood =\
-            last_checkpoint_likelihood - np.mean(last_checkpoint_likelihood)
-        last_checkpoint_likelihood =\
-            np.exp(last_checkpoint_likelihood).flatten()
+        walker_averaged_loglikelihood =\
+            np.mean(last_checkpoint_loglikelihood, axis=-1)
+        loglikelihood_cutoff = np.mean(walker_averaged_loglikelihood) -\
+            (3 * np.std(walker_averaged_loglikelihood))
+        likelihood_based_weights =\
+            (walker_averaged_loglikelihood >= loglikelihood_cutoff).astype(int)
+        likelihood_based_weights = (likelihood_based_weights[:,np.newaxis] *\
+            np.ones(last_checkpoint_loglikelihood.shape)).flatten()
         last_checkpoint_chain = last_checkpoint_group['chain'].value
         last_checkpoint_chain_continuous =\
             last_checkpoint_chain[...,continuous_parameter_indices]
@@ -573,7 +590,14 @@ class Sampler(object):
             transform_list(last_checkpoint_chain_continuous, axis=-1)
         last_checkpoint_continuous_covariance = np.cov(\
             last_checkpoint_chain_continuous, rowvar=False, ddof=0,\
-            aweights=last_checkpoint_likelihood)
+            aweights=likelihood_based_weights)
+        (eigenvalues, eigenvectors) =\
+            la.eigh(last_checkpoint_continuous_covariance)
+        eigenvalues[eigenvalues < min_eigenvalue] = min_eigenvalue
+        last_checkpoint_continuous_covariance =\
+            np.dot(eigenvectors * eigenvalues[np.newaxis,:], eigenvectors.T)
+        last_checkpoint_continuous_covariance /=\
+            self.proposal_covariance_reduction_factor
         distribution =\
             GaussianJumpingDistribution(last_checkpoint_continuous_covariance)
         new_jumping_distribution_set = JumpingDistributionSet()

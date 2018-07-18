@@ -218,6 +218,18 @@ class LeastSquareFitter(object):
                 "there have been no successful least square fits.")
     
     @property
+    def best_successful_fit_index(self):
+        """
+        Property storing the index of the maximum likelihood fit when only
+        least square fit successes are considered.
+        """
+        if self.successes:
+            return np.argmin(np.where(self.successes, self.mins, np.inf))
+        else:
+            raise NotImplementedError("There is no best fit index because " +\
+                "there have been no successful least square fits.")
+    
+    @property
     def argmin(self):
         """
         Property storing the parameter values of the point which was associated
@@ -225,6 +237,15 @@ class LeastSquareFitter(object):
         of this fitter.
         """
         return self.argmins[self.best_fit_index]
+    
+    @property
+    def successful_argmin(self):
+        """
+        Property storing the parameter values of the point which was associated
+        with the minimum negative Loglikelihood value found in all iterations
+        of this fitter which were successes.
+        """
+        return self.argmins[self.best_successful_fit_index]
     
     @property
     def reduced_chi_squared_statistic(self):

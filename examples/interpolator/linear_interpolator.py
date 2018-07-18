@@ -15,7 +15,7 @@ fontsize = 'xx-large'
 seed = 0
 npoints = 10000
 ndim = 3
-input_arrays = [np.linspace(0, 1, 20)] * ndim
+input_arrays = [np.linspace(0, 1, 30)] * ndim
 input_arrays = np.meshgrid(*input_arrays)
 input_arrays = [input_array.flatten() for input_array in input_arrays]
 inputs = np.stack(input_arrays, axis=1)

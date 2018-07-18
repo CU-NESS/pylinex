@@ -51,11 +51,11 @@ class LeastSquareFitGenerator(object):
         Sets the error array this object will use to generate LeastSquareFitter
         objects.
         
-        value: 1D numpy.ndarray
+        value: 1D or 2D numpy.ndarray
         """
         if type(value) in sequence_types:
             value = np.array(value)
-            if value.ndim == 1:
+            if value.ndim in [1, 2]:
                 self._error = value
             else:
                 raise ValueError("error was set to a non-1D array.")

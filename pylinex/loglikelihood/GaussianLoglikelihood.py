@@ -7,6 +7,7 @@ Description: File containing a class which evaluates a likelihood which is
              Gaussian in the data.
 """
 import numpy as np
+import numpy.linalg as la
 from ..util import create_hdf5_dataset, get_hdf5_value
 from .Loglikelihood import Loglikelihood
 
