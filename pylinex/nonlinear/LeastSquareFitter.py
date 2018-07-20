@@ -21,7 +21,7 @@ class LeastSquareFitter(object):
     optimization algorithms are used).
     """
     def __init__(self, loglikelihood, prior_set, transform_list=None,\
-        bounds=None):
+        **bounds):
         """
         Initializes a LeastSquareFitter with a Loglikelihood to maximize and a
         prior_set with which to initialize guesses.
@@ -34,9 +34,10 @@ class LeastSquareFitter(object):
                         TransformList object) describing how to find
                         transformed_argmin and covariance estimate in the
                         transform space
-        bounds: if None, bounds are taken from model
-                otherwise, a dictionary with bounded parameters as keys and
-                           tuples of the form (min, max) as values
+        bounds: extra bounds to apply in the form of keyword arguments of the
+                form (min, max). Any parameters not included will be bounded by
+                their Model's bounds parameter. If none is given, all Model's
+                bounds are used
         """
         self.loglikelihood = loglikelihood
         self.prior_set = prior_set
@@ -333,30 +334,27 @@ class LeastSquareFitter(object):
         """
         Setter for the bounds property.
         
-        value: if None or empty dictionary, no bounds are used
-               otherwise, a dictionary containing 2-tuples of (min, max) where
-                          min and max are either numbers or None indexed by
-                          parameter name.
+        value: a dictionary containing 2-tuples of (min, max) where min and max
+               are either numbers or None indexed by parameter name. Parameters
+               which are not in value are bounded by their own Model's bounds
+               property.
         """
-        if value is None:
-            value = self.loglikelihood.model.bounds
         if isinstance(value, dict):
             for name in value:
                 if name not in self.parameters:
                     raise ValueError(("There was at least one key " +\
                         "({!s}) of the given bounds dictionary which " +\
-                        "was not one of this fitters.").format(name))
+                        "was not one of this fitter's.").format(name))
             self._bounds = []
             for name in self.parameters:
                 if name in value:
                     self._bounds.append(value[name])
                 else:
-                    self._bounds.append((None, None))
+                    self._bounds.append(self.loglikelihood.model.bounds[name])
         else:
-            raise TypeError("bounds was set to neither None, nor a " +\
-                "dictionary.")
+            raise TypeError("bounds was set to a non-dictionary.")
     
-    def iteration(self, attempt_threshold=1):
+    def iteration(self, attempt_threshold=1, **kwargs):
         """
         Runs an iteration of this fitter. This entails drawing a random first
         guess at the parameters and using standard algorithms to maximize the
@@ -366,6 +364,14 @@ class LeastSquareFitter(object):
                            guesses before giving up (the only reason multiple
                            attempts would be necessary is if loglikelihood
                            returns -np.inf in some circumstances) default: 1
+        kwargs: Keyword arguments to pass on as options to
+                scipy.optimize.minimize(method='SLSQP'). They can include:
+                    ftol : float, precision goal for the loglikelihood in the
+                           stopping criterion.
+                    eps : float, step size used for numerical approximation of
+                          the gradient.
+                    disp : bool, set to True to print convergence messages.
+                    maxiter : int, maximum number of iterations.
         """
         attempt = 0
         while True:
@@ -382,10 +388,11 @@ class LeastSquareFitter(object):
         if self.loglikelihood.gradient_computable:
             optimize_result = minimize(self.loglikelihood, guess,\
                 args=(True,), jac=self.loglikelihood.gradient, method='SLSQP',\
-                bounds=self.bounds)
+                bounds=self.bounds, options=kwargs)
         else:
             optimize_result = minimize(self.loglikelihood, guess,\
-                args=(True,), method='SLSQP', bounds=self.bounds)
+                args=(True,), method='SLSQP', bounds=self.bounds,\
+                options=kwargs)
         if np.isnan(optimize_result.fun):
             raise ValueError("loglikelihood returned nan.")
         self.successes.append(optimize_result.success)
@@ -412,16 +419,24 @@ class LeastSquareFitter(object):
         else:
             self.covariance_estimates.append(None)
     
-    def run(self, iterations=1, attempt_threshold=100):
+    def run(self, iterations=1, attempt_threshold=100, **kwargs):
         """
         Runs the given number of iterations of this fitter.
         
         iterations: must be a positive integer
         attempt_threshold: number of times an iteration should recur before
                            failing
+        kwargs: Keyword arguments to pass on as options to
+                scipy.optimize.minimize(method='SLSQP'). They can include:
+                    ftol : float, precision goal for the loglikelihood in the
+                           stopping criterion.
+                    eps : float, step size used for numerical approximation of
+                          the gradient.
+                    disp : bool, set to True to print convergence messages.
+                    maxiter : int, maximum number of iterations.
         """
         for index in range(iterations):
-            self.iteration(attempt_threshold=attempt_threshold)
+            self.iteration(attempt_threshold=attempt_threshold, **kwargs)
     
     def plot_reconstructions(self, parameter_indices=slice(None), model=None,\
         only_best=False, scale_factor=1, ax=None, channels=None, label=None,\
