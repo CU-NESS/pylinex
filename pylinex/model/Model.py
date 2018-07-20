@@ -177,6 +177,6 @@ class Model(Savable):
         that subclass will give no bounds.
         """
         if not hasattr(self, '_bounds'):
-            return {parameter: None for parameter in self.parameters}
+            return {parameter: (None, None) for parameter in self.parameters}
         return self._bounds
 
