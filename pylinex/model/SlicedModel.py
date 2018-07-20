@@ -237,6 +237,6 @@ class SlicedModel(Model):
         if not hasattr(self, '_bounds'):
             self._bounds = {}
             for name in self.model.parameters:
-                self._bounds[name] = self.model.bounds[parameter]
+                self._bounds[name] = self.model.bounds[name]
         return self._bounds
 
