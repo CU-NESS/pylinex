@@ -168,4 +168,15 @@ class Model(Savable):
         returns: False if other is equal to this model, True otherwise
         """
         return (not self.__eq__(other))
+    
+    @property
+    def bounds(self):
+        """
+        Property storing natural bounds for this Model. Since many models
+        have no constraints, unless this property is overridden in a subclass,
+        that subclass will give no bounds.
+        """
+        if not hasattr(self, '_bounds'):
+            return {parameter: None for parameter in self.parameters}
+        return self._bounds
 

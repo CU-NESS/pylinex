@@ -16,16 +16,18 @@ class RestrictedModel(Model):
     Class representing a Model which is the same as an underlying model except
     the values of its parameters are restricted to within given values.
     """
-    def __init__(self, model, bounds):
+    def __init__(self, model, array_bounds):
         """
-        Initializes a new RestrictedModel with the given model and bounds.
+        Initializes a new RestrictedModel with the given model and
+        array_bounds.
         
         model: Model object
-        bounds: sequence of 2-tuples of form (low, high) whether either can be
-                None, indicating that there is no boundary on that side
+        array_bounds: sequence of 2-tuples of form (low, high) where either can
+                      be None, indicating that there is no boundary on that
+                      side
         """
         self.model = model
-        self.bounds = bounds
+        self.array_bounds = array_bounds
     
     @property
     def model(self):
@@ -49,19 +51,20 @@ class RestrictedModel(Model):
             raise TypeError("model was set to a non-Model.")
     
     @property
-    def bounds(self):
+    def array_bounds(self):
         """
-        Property storing the bounds of this model in a tuple (low, high) where
-        low and high are numpy arrays of lower (upper) boundaries to impose.
+        Property storing the array_bounds of this model in a tuple (low, high)
+        where low and high are numpy arrays of lower (upper) boundaries to
+        impose.
         """
-        if not hasattr(self, '_bounds'):
-            raise AttributeError("bounds referenced before it was set.")
-        return self._bounds
+        if not hasattr(self, '_array_bounds'):
+            raise AttributeError("array_bounds referenced before it was set.")
+        return self._array_bounds
     
-    @bounds.setter
-    def bounds(self, value):
+    @array_bounds.setter
+    def array_bounds(self, value):
         """
-        Setter for the bounds at which to impose restrictions.
+        Setter for the array_bounds at which to impose restrictions.
         
         value: sequence of 2-tuples of form (low, high) where either can be
                None or a number. If both are numbers, high must be greater than
@@ -83,18 +86,20 @@ class RestrictedModel(Model):
                                 maxima.append(np.inf)
                             else:
                                 maxima.append(maximum)
-                        self._bounds = (np.array(minima), np.array(maxima))
+                        self._array_bounds =\
+                            (np.array(minima), np.array(maxima))
                     else:
                         raise ValueError("Not all sequence elements of " +\
-                            "bounds sequence have length 2.")
+                            "array_bounds sequence have length 2.")
                 else:
-                    raise TypeError("Not all elements of bounds sequence " +\
-                        "were sequences.")
+                    raise TypeError("Not all elements of array_bounds " +\
+                        "sequence were sequences.")
             else:
-                raise ValueError("The length of the bounds sequence was " +\
-                    "not the same as the number of parameters in the model.")
+                raise ValueError("The length of the array_bounds sequence " +\
+                    "was not the same as the number of parameters in the " +\
+                    "model.")
         else:
-            raise TypeError("bounds was set to a non-sequence.")
+            raise TypeError("array_bounds was set to a non-sequence.")
     
     def check_parameter_bounds(self, parameters):
         """
@@ -104,7 +109,7 @@ class RestrictedModel(Model):
         
         parameters: array of parameter values of length model.num_parameters
         """
-        (minima, maxima) = self.bounds
+        (minima, maxima) = self.array_bounds
         if np.any(np.logical_or(parameters < minima, parameters > maxima)):
             raise ValueError("parameters aren't within boundaries imposed " +\
                 "by this Model.")
@@ -180,7 +185,7 @@ class RestrictedModel(Model):
             self.model.fill_hdf5_group(group.create_group('model'))
         else:
             group['model'] = model_link
-        (minima, maxima) = self.bounds
+        (minima, maxima) = self.array_bounds
         create_hdf5_dataset(group, 'minima', data=minima)
         create_hdf5_dataset(group, 'maxima', data=maxima)
     
@@ -194,7 +199,23 @@ class RestrictedModel(Model):
         """
         if isinstance(other, RestrictedModel):
             if self.model == other.model:
-                ((smin, smax), (omin, omax)) = (self.bounds, other.bounds)
+                ((smin, smax), (omin, omax)) =\
+                    (self.array_bounds, other.array_bounds)
                 return np.all((smin == omin) & (smax == omax))
         return False
+    
+    @property
+    def bounds(self):
+        """
+        Property storing the bounds in a dictionary format instead of an array
+        format. The keys of the dictionary are parameter names and the values
+        are tuples of the form (min, max) where either can be None.
+        """
+        if not hasattr(self, '_bounds'):
+            (minima, maxima) = self.array_bounds
+            self._bounds = {}
+            for (name, minimum, maximum) in\
+                zip(self.parameters, minima, maxima):
+                self._bounds[name] = (minimum, maximum)
+        return self._bounds
 

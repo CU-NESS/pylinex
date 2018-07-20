@@ -145,4 +145,17 @@ class RenamedModel(Model):
                 (self.parameters == other.parameters)
         else:
             return False
+    
+    @property
+    def bounds(self):
+        """
+        Property storing the bounds of parameters of this model in a
+        dictionary.
+        """
+        if not hasattr(self, '_bounds'):
+            self._bounds = {}
+            for (old_name, new_name) in\
+                zip(self.model.parameters, self.parameters):
+                self._bounds[new_name] = self.model.bounds[old_name]
+        return self._bounds
 

@@ -207,4 +207,15 @@ class ShiftedRescaledModel(LoadableModel):
         returns: a Model of the Model subclass for which this is called
         """
         raise cannot_instantiate_shifted_rescaled_model_error
+    
+    @property
+    def bounds(self):
+        """
+        Property storing natural bounds for this Model. They are taken from the
+        submodels.
+        """
+        if not hasattr(self, '_bounds'):
+            self._bounds = {'amplitude': (None, None), 'center': (None, None),\
+                'scale': (0, None)}
+        return self._bounds
 

@@ -20,7 +20,8 @@ class LeastSquareFitter(object):
     maximize the likelihood (if the gradient is computable; otherwise, other
     optimization algorithms are used).
     """
-    def __init__(self, loglikelihood, prior_set, transform_list=None):
+    def __init__(self, loglikelihood, prior_set, transform_list=None,\
+        bounds=None):
         """
         Initializes a LeastSquareFitter with a Loglikelihood to maximize and a
         prior_set with which to initialize guesses.
@@ -29,11 +30,18 @@ class LeastSquareFitter(object):
         prior_set: a DistributionSet object with the same parameters as the
                    model in the loglikelihood describing how to draw reasonable
                    random guesses of their values
-        
+        transform_list: TransformList (or something which can be cast to a
+                        TransformList object) describing how to find
+                        transformed_argmin and covariance estimate in the
+                        transform space
+        bounds: if None, bounds are taken from model
+                otherwise, a dictionary with bounded parameters as keys and
+                           tuples of the form (min, max) as values
         """
         self.loglikelihood = loglikelihood
         self.prior_set = prior_set
         self.transform_list = transform_list
+        self.bounds = bounds
     
     @property
     def transform_list(self):
@@ -311,6 +319,43 @@ class LeastSquareFitter(object):
         draw = self.prior_set.draw()
         return np.array([draw[parameter] for parameter in self.parameters])
     
+    @property
+    def bounds(self):
+        """
+        Property storing the sequence of bounds for each parameter.
+        """
+        if not hasattr(self, '_bounds'):
+            raise AttributeError("bounds was referenced before it was set.")
+        return self._bounds
+    
+    @bounds.setter
+    def bounds(self, value):
+        """
+        Setter for the bounds property.
+        
+        value: if None or empty dictionary, no bounds are used
+               otherwise, a dictionary containing 2-tuples of (min, max) where
+                          min and max are either numbers or None indexed by
+                          parameter name.
+        """
+        if value is None:
+            value = self.loglikelihood.model.bounds
+        elif isinstance(value, dict):
+            for name in value:
+                if name not in self.parameters:
+                    raise ValueError(("There was at least one key " +\
+                        "({!s}) of the given bounds dictionary which " +\
+                        "was not one of this fitters.").format(name))
+            self._bounds = []
+            for name in self.parameters:
+                if name in value:
+                    self._bounds.append(value[name])
+                else:
+                    self._bounds.append((None, None))
+        else:
+            raise TypeError("bounds was set to neither None, nor a " +\
+                "dictionary.")
+    
     def iteration(self, attempt_threshold=1):
         """
         Runs an iteration of this fitter. This entails drawing a random first
@@ -336,10 +381,11 @@ class LeastSquareFitter(object):
                 attempt += 1
         if self.loglikelihood.gradient_computable:
             optimize_result = minimize(self.loglikelihood, guess,\
-                args=(True,), jac=self.loglikelihood.gradient, method='BFGS')
+                args=(True,), jac=self.loglikelihood.gradient, method='SLSQP',\
+                bounds=self.bounds)
         else:
             optimize_result = minimize(self.loglikelihood, guess,\
-                args=(True,), method='Nelder-Mead')
+                args=(True,), method='SLSQP', bounds=self.bounds)
         if np.isnan(optimize_result.fun):
             raise ValueError("loglikelihood returned nan.")
         self.successes.append(optimize_result.success)

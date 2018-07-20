@@ -175,4 +175,13 @@ class ExpandedModel(Model):
         smaller_data = self.expander.invert(data, error)
         smaller_error = self.expander.contract_error(error)
         return self.model.quick_fit(smaller_data, error=smaller_error)
+    
+    @property
+    def bounds(self):
+        """
+        Property storing the natural bounds of the parameters of this model.
+        Since this is just a rebranding of he underlying model, the bounds are
+        passed through with no changes.
+        """
+        return self.model.bounds
 

@@ -164,4 +164,16 @@ class SinusoidalModel(LoadableModel):
         returns: a SinusoidalModel
         """
         return SinusoidalModel(get_hdf5_value(group['x_values']))
+    
+    @property
+    def bounds(self):
+        """
+        Property storing the natural bounds of this model. The angular
+        frequency is restricted to positive values and the phase is restricted
+        to the range [0, 2*np.pi].
+        """
+        if not hasattr(self, '_bounds'):
+            self._bounds = {'amplitude': (None, None),\
+                'angular_frequency': (0, None), 'phase': (0, 2 * np.pi)}
+        return self._bounds
 

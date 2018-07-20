@@ -494,4 +494,20 @@ class InterpolatedModel(Model):
         # TODO
         raise NotImplementedError("__eq__ not finished yet for the " +\
             "InterpolatedModel class!")
+    
+    @property
+    def bounds(self):
+        """
+        Property storing the natural bounds of the parameters of this model.
+        Since this is just a rebranding of he underlying model, the bounds are
+        passed through with no changes.
+        """
+        if not hasattr(self, '_bounds'):
+            self._bounds = {}
+            minima = np.min(self.training_inputs, axis=0)
+            maxima = np.max(self.training_inputs, axis=0)
+            for (name, minimum, maximum) in\
+                zip(self.parameters, minima, maxima):
+                self._bounds[name] = (minimum, maximum)
+        return self._bounds
 

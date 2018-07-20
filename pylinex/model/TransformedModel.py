@@ -161,4 +161,13 @@ class TransformedModel(Model):
                 (self.transform == other.transform)
         else:
             return False
+    
+    @property
+    def bounds(self):
+        """
+        Property storing the natural bounds of the parameters of this model.
+        Since this is just a rebranding of he underlying model, the bounds are
+        passed through with no changes.
+        """
+        return self.model.bounds
 

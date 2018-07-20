@@ -18,7 +18,8 @@ np.random.seed(seed)
 num_channels = 1000
 num_iterations = 100
 x_values = np.linspace(-1, 1, num_channels)
-error = np.ones_like(x_values) * 1e0
+noise_level = 1e-2
+error = np.ones_like(x_values) * noise_level
 model = GaussianModel(x_values)
 
 true = [1, 0, 0.1]
@@ -33,7 +34,10 @@ prior_set.add_distribution(UniformDistribution(-10, 10), 'amplitude')
 prior_set.add_distribution(UniformDistribution(-1, 1), 'center')
 prior_set.add_distribution(UniformDistribution(0, 1), 'scale')
 
-least_square_fitter = LeastSquareFitter(loglikelihood, prior_set)
+bounds = {'amplitude': (-10, 10), 'center': (-1, 1), 'scale': (0, 1)}
+
+least_square_fitter =\
+    LeastSquareFitter(loglikelihood, prior_set, bounds=bounds)
 least_square_fitter.run(num_iterations)
 
 argmin = least_square_fitter.argmin

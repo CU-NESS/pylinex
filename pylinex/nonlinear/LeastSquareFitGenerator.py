@@ -21,7 +21,7 @@ class LeastSquareFitGenerator(object):
     Basically, the class is a wrapper around an error curve and a model. Given
     data curves, it produces and runs LeastSquareFitter objects.
     """
-    def __init__(self, error, model, prior_set):
+    def __init__(self, error, model, prior_set, **bounds):
         """
         Initializes a LeastSquareFitGenerator object with the given error
         array, Model object, and a prior DistributionSet object.
@@ -30,10 +30,14 @@ class LeastSquareFitGenerator(object):
         model: Model object with which to fit each data curve
         prior_set: DistributionSet object which describes distribution of
                    parameters of model
+        **bounds: keyword arguments are interpreted as parameter bounds. The
+                  keywords are the parameter names and the values should be
+                  2-tuples of the form (min, max) where either can be None.
         """
         self.error = error
         self.model = model
         self.prior_set = prior_set
+        self.bounds = bounds
     
     @property
     def error(self):
@@ -130,6 +134,29 @@ class LeastSquareFitGenerator(object):
             raise TypeError("prior_set was set to a non-DistributionSet " +\
                 "object.")
     
+    @property
+    def bounds(self):
+        """
+        Property storing the bounds dictionary which will be passed on to any
+        LeastSquareFitter object's this object creates.
+        """
+        if not hasattr(self, '_bounds'):
+            raise AttributeError("bounds was referenced before it was set.")
+        return self._bounds
+    
+    @bounds.setter
+    def bounds(self, value):
+        """
+        Setter for the bounds dictionary.
+        
+        value: a dictionary to pass on to each LeastSquareFitter object this
+               object creates
+        """
+        if isinstance(value, dict):
+            self._bounds = value
+        else:
+            raise TypeError("bounds was set to a non-dict.")
+    
     def fit(self, data, iterations=1):
         """
         Generates a LeastSquareFitter to fit the given data and runs it for the
@@ -143,7 +170,8 @@ class LeastSquareFitGenerator(object):
                  number of iterations
         """
         loglikelihood = GaussianLoglikelihood(data, self.error, self.model)
-        least_square_fitter = LeastSquareFitter(loglikelihood, self.prior_set)
+        least_square_fitter =\
+            LeastSquareFitter(loglikelihood, self.prior_set, **self.bounds)
         least_square_fitter.run(iterations=iterations)
         return least_square_fitter
 

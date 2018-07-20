@@ -228,4 +228,15 @@ class SlicedModel(Model):
             if self.constant_parameters[key] != other.constant_parameters[key]:
                 return False
         return True
+    
+    @property
+    def bounds(self):
+        """
+        Property storing natural bounds for this Model.
+        """
+        if not hasattr(self, '_bounds'):
+            self._bounds = {}
+            for name in self.model.parameters:
+                self._bounds[name] = self.model.bounds[parameter]
+        return self._bounds
 

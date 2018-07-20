@@ -202,4 +202,19 @@ class CompoundModel(Model):
                  to pass on to each model
         """
         return [parameters[partition] for partition in self.partition_slices]
+    
+    @property
+    def bounds(self):
+        """
+        Property storing natural bounds for this Model. They are taken from the
+        submodels.
+        """
+        if not hasattr(self, '_bounds'):
+            self._bounds = {}
+            for (model_name, model) in zip(self.names, self.models):
+                for parameter_name in model.parameters:
+                    full_name =\
+                        '{0!s}_{1!s}'.format(model_name, parameter_name)
+                    self._bounds[full_name] = model.bounds[parameter_name]
+        return self._bounds
 
