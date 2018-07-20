@@ -340,7 +340,7 @@ class LeastSquareFitter(object):
         """
         if value is None:
             value = self.loglikelihood.model.bounds
-        elif isinstance(value, dict):
+        if isinstance(value, dict):
             for name in value:
                 if name not in self.parameters:
                     raise ValueError(("There was at least one key " +\
