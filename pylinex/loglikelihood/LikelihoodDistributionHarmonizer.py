@@ -25,30 +25,35 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
         incomplete_guess_distribution_set: DistributionSet(s) describing
                                            parameters not to be solved for
         gaussian_loglikelihood: GaussianLoglikelihood object whose model is a
-                                SumModel
+                                SumModel or ProductModel
         unknown_name: name of the single submodel which has a quick_fit
                       function which will be solved for to generate samples
                       from this LikelihoodDistributionHarmonizer
         ndraw: positive integer number of desired samples
         """
         if isinstance(gaussian_loglikelihood, GaussianLoglikelihood):
-            sum_model = gaussian_loglikelihood.model
-            if not isinstance(sum_model, SumModel):
+            model = gaussian_loglikelihood.model
+            is_sum_model = isinstance(model, SumModel)
+            is_product_model = isinstance(model, ProductModel)
+            if not (is_sum_model or is_product_model):
                 raise TypeError("gaussian_loglikelihood's model was not a " +\
-                    "SumModel, so solving for things will have to be more " +\
-                    "customized. You should probably implement a distpy " +\
-                    "DistributionHarmonizer manually.")
+                    "SumModel or ProductModel, so solving for things will " +\
+                    "have to be more customized. You should probably " +\
+                    "implement a distpy DistributionHarmonizer manually.")
         else:
             raise TypeError("gaussian_loglikelihood was not a " +\
                 "GaussianLoglikelihood object.")
         known_names =\
-            [name for name in sum_model.names if (name != unknown_name)]
-        known_submodels = [sum_model[name] for name in known_names]
-        unknown_submodel = sum_model[unknown_name]
+            [name for name in model.names if (name != unknown_name)]
+        known_submodels = [model[name] for name in known_names]
+        unknown_submodel = model[unknown_name]
         unknown_parameter_names =\
             ['{0!s}_{1!s}'.format(unknown_name, parameter)\
             for parameter in unknown_submodel.parameters]
-        known_sum_model = SumModel(known_names, known_submodels)
+        if is_sum_model:
+            known_model = SumModel(known_names, known_submodels)
+        else:
+            known_model = ProductModel(known_names, known_submodels
         def remaining_parameter_solver(incomplete_parameters):
             #
             # Solves for the unknown_parameters by using the drawn values of
@@ -63,9 +68,13 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
             #          parameters whose distribution is not known
             #
             parameter_array = np.array([incomplete_parameters[parameter]\
-                for parameter in known_sum_model.parameters])
-            data_to_fit =\
-                gaussian_loglikelihood.data - known_sum_model(parameter_array)
+                for parameter in known_model.parameters])
+            if is_sum_model:
+                data_to_fit =\
+                    gaussian_loglikelihood.data - known_model(parameter_array)
+            else:
+                data_to_fit =\
+                    gaussian_loglikelihood.data / known_model(parameter_array)
             error_to_fit = gaussian_loglikelihood.error
             try:
                 solved_for_parameters =\
