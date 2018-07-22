@@ -53,7 +53,7 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
         if is_sum_model:
             known_model = SumModel(known_names, known_submodels)
         else:
-            known_model = ProductModel(known_names, known_submodels
+            known_model = ProductModel(known_names, known_submodels)
         def remaining_parameter_solver(incomplete_parameters):
             #
             # Solves for the unknown_parameters by using the drawn values of
