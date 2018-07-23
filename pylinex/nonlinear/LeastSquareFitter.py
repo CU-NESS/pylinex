@@ -344,7 +344,8 @@ class LeastSquareFitter(object):
                 if name not in self.parameters:
                     raise ValueError(("There was at least one key " +\
                         "({!s}) of the given bounds dictionary which " +\
-                        "was not one of this fitter's.").format(name))
+                        "was not one of this fitter's parameters.").format(\
+                        name))
             self._bounds = []
             for name in self.parameters:
                 if name in value:

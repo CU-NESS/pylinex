@@ -25,13 +25,13 @@ from pylinex.basis import Basis, PolynomialBasis, GramSchmidtBasis,\
     FourierBasis, LegendreBasis, TrainedBasis, BasisSet, BasisSum,\
     effective_training_set_rank
 from pylinex.fitter import TrainingSetIterator, Fitter, MetaFitter, Extractor
-from pylinex.model import Model, LoadableModel, ShiftedRescaledModel,\
-    ConstantModel, BasisModel, GaussianModel, SechModel, LorentzianModel,\
-    SinusoidalModel, TanhModel, CompoundModel, SumModel, DirectSumModel,\
-    ProductModel, CompositeModel, ExpressionModel, ExpandedModel,\
-    TransformedModel, ProjectedModel, RenamedModel, RestrictedModel,\
-    SlicedModel, InterpolatedModel, TruncatedBasisHyperModel,\
-    load_model_from_hdf5_group, TrainingSetCreator
+from pylinex.model import Model, LoadableModel, FixedModel,\
+    ShiftedRescaledModel, ConstantModel, BasisModel, GaussianModel, SechModel,\
+    LorentzianModel, SinusoidalModel, TanhModel, CompoundModel, SumModel,\
+    DirectSumModel, ProductModel, CompositeModel, ExpressionModel,\
+    ExpandedModel, TransformedModel, ProjectedModel, RenamedModel,\
+    RestrictedModel, SlicedModel, InterpolatedModel,\
+    TruncatedBasisHyperModel, load_model_from_hdf5_group, TrainingSetCreator
 from pylinex.loglikelihood import Loglikelihood, GaussianLoglikelihood,\
     PoissonLoglikelihood, load_loglikelihood_from_hdf5_group,\
     LikelihoodDistributionHarmonizer

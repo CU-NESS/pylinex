@@ -1,3 +1,11 @@
+"""
+File: examples/model/fixed_model.py
+Author: Keith Tauscher
+Date: 21 Jul 2018
+
+Description: Example showing how to use the FixedModel class, which has no
+             parameters and returns a fixed curve no matter what.
+"""
 import numpy as np
 from pylinex import FixedModel
 

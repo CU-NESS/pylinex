@@ -9,8 +9,15 @@ Description: File containing class which implements distpy's
 """
 import numpy as np
 from distpy import DistributionHarmonizer
-from ..model import SumModel
+from ..model import SumModel, DirectSumModel, ProductModel
 from .GaussianLoglikelihood import GaussianLoglikelihood
+
+try:
+    # this runs with no issues in python 2 but raises error in python 3
+    basestring
+except:
+    # this try/except allows for python 2/3 compatible string type checking
+    basestring = str
 
 class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
     """
@@ -18,7 +25,7 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
     likelihood.
     """
     def __init__(self, incomplete_guess_distribution_set,\
-        gaussian_loglikelihood, unknown_name, ndraw):
+        gaussian_loglikelihood, unknown_name_chain, ndraw):
         """
         Creates a new LikelihoodDistributionHarmonizer from the loglikelihood.
         
@@ -26,34 +33,45 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
                                            parameters not to be solved for
         gaussian_loglikelihood: GaussianLoglikelihood object whose model is a
                                 SumModel or ProductModel
-        unknown_name: name of the single submodel which has a quick_fit
-                      function which will be solved for to generate samples
-                      from this LikelihoodDistributionHarmonizer
+        unknown_name_chain: name (or chain of names) of the single submodel
+                            which has a quick_fit function which will be solved
+                            for to generate samples from this
+                            LikelihoodDistributionHarmonizer
         ndraw: positive integer number of desired samples
         """
-        if isinstance(gaussian_loglikelihood, GaussianLoglikelihood):
-            model = gaussian_loglikelihood.model
-            is_sum_model = isinstance(model, SumModel)
-            is_product_model = isinstance(model, ProductModel)
-            if not (is_sum_model or is_product_model):
-                raise TypeError("gaussian_loglikelihood's model was not a " +\
-                    "SumModel or ProductModel, so solving for things will " +\
-                    "have to be more customized. You should probably " +\
-                    "implement a distpy DistributionHarmonizer manually.")
-        else:
+        if not isinstance(gaussian_loglikelihood, GaussianLoglikelihood):
             raise TypeError("gaussian_loglikelihood was not a " +\
                 "GaussianLoglikelihood object.")
-        known_names =\
-            [name for name in model.names if (name != unknown_name)]
-        known_submodels = [model[name] for name in known_names]
-        unknown_submodel = model[unknown_name]
+        model = gaussian_loglikelihood.model
+        if isinstance(unknown_name_chain, basestring):
+            unknown_name_chain = [unknown_name_chain]
+        unknown_submodel = model
+        known_model_chain = []
+        is_sum_chain = []
+        for unknown_name in unknown_name_chain:
+            known_names = [name\
+                for name in unknown_submodel.names if (name != unknown_name)]
+            known_models = [unknown_submodel[name] for name in known_names]
+            if isinstance(unknown_submodel, DirectSumModel):
+                known_model_chain.append(\
+                    DirectSumModel(known_names, known_models))
+                is_sum_chain.append(True)
+            elif isinstance(unknown_submodel, SumModel):
+                known_model_chain.append(SumModel(known_names, known_models))
+                is_sum_chain.append(True)
+            elif isinstance(unknown_submodel, ProductModel):
+                known_model_chain.append(\
+                    ProductModel(known_names, known_models))
+                is_sum_chain.append(False)
+            else:
+                raise ValueError("The unknown_name_chain given to this " +\
+                    "LikelihoodDistributionHarmonizer doesn't seem to " +\
+                    "match up with the structure of the model in the given " +\
+                    "Loglikelihood.")
+            unknown_submodel = unknown_submodel[unknown_name]
         unknown_parameter_names =\
-            ['{0!s}_{1!s}'.format(unknown_name, parameter)\
+            ['{0!s}_{1!s}'.format('_'.join(unknown_name_chain), parameter)\
             for parameter in unknown_submodel.parameters]
-        if is_sum_model:
-            known_model = SumModel(known_names, known_submodels)
-        else:
-            known_model = ProductModel(known_names, known_submodels)
         def remaining_parameter_solver(incomplete_parameters):
             #
             # Solves for the unknown_parameters by using the drawn values of
@@ -67,15 +85,24 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
             #          except the keys and values are associated with the
             #          parameters whose distribution is not known
             #
-            parameter_array = np.array([incomplete_parameters[parameter]\
-                for parameter in known_model.parameters])
-            if is_sum_model:
-                data_to_fit =\
-                    gaussian_loglikelihood.data - known_model(parameter_array)
-            else:
-                data_to_fit =\
-                    gaussian_loglikelihood.data / known_model(parameter_array)
+            data_to_fit = gaussian_loglikelihood.data
             error_to_fit = gaussian_loglikelihood.error
+            for index in range(len(unknown_name_chain)):
+                if index == 0:
+                    parameter_prefix = ''
+                else:
+                    parameter_prefix =\
+                        '{!s}_'.format('_'.join(unknown_name_chain[:index]))
+                known_model = known_model_chain[index]
+                parameter_array = np.array([incomplete_parameters[\
+                    '{0!s}{1!s}'.format(parameter_prefix, parameter)]\
+                    for parameter in known_model.parameters])
+                known_model_value = known_model(parameter_array)
+                if is_sum_chain[index]:
+                    data_to_fit = data_to_fit - known_model_value
+                else:
+                    data_to_fit = data_to_fit / known_model_value
+                    error_to_fit = error_to_fit / np.abs(known_model_value)
             try:
                 solved_for_parameters =\
                     unknown_submodel.quick_fit(data_to_fit, error_to_fit)[0]

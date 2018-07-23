@@ -8,6 +8,7 @@ Description: Imports for the pylinex.model module. See individual files for
 """
 from pylinex.model.Model import Model
 from pylinex.model.LoadableModel import LoadableModel
+from pylinex.model.FixedModel import FixedModel
 from pylinex.model.ShiftedRescaledModel import ShiftedRescaledModel
 from pylinex.model.ConstantModel import ConstantModel
 from pylinex.model.BasisModel import BasisModel

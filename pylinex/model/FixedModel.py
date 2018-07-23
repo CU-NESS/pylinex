@@ -7,6 +7,7 @@ Description: File containing a simple Model which always yields a fixed curve.
              The model has no parameters
 """
 import numpy as np
+from ..util import sequence_types
 from .LoadableModel import LoadableModel
 
 class FixedModel(LoadableModel):
