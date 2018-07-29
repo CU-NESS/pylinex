@@ -344,6 +344,38 @@ class Sampler(object):
         else:
             raise TypeError("chunk_index was not a non-negative integer.")
     
+    @staticmethod
+    def clear_last_saved_chunk(file_name):
+        """
+        Clears the last saved chunk from the Sampler stored in the given file.
+        This is useful if an error occurred in the last chunk
+        
+        file_name: string location of file storing the Sampler under
+                   consideration
+        """
+        hdf5_file = h5py.File(file_name, 'r+')
+        try:
+            chunk_index_to_delete = hdf5_file.attrs['max_chunk_index']
+            if chunk_index_to_delete == 0:
+                raise ValueError("The index of the chunk to delete was 0, " +\
+                    "so you might as well simply delete the hdf5 file " +\
+                    "storing this Sampler object.")
+            else:
+                chunk_string_to_delete =\
+                    'chunk{:d}'.format(chunk_index_to_delete)
+                names_to_check = ['checkpoints', 'guess_distribution_sets',\
+                    'jumping_distribution_sets', 'prior_distribution_sets']
+                for name in names_to_check:
+                    group = hdf5_file[name]
+                    if chunk_string_to_delete in group:
+                        del group[chunk_string_to_delete]
+                hdf5_file.attrs['max_chunk_index'] = chunk_index_to_delete - 1
+        except:
+            hdf5_file.close()
+            raise
+        else:
+            hdf5_file.close()
+    
     def _setup_restart_continue(self, pos, lnprob, guess_distribution_set,\
         prior_distribution_set, jumping_distribution_set):
         """
@@ -453,13 +485,6 @@ class Sampler(object):
             subgroup = group.create_group(new_chunk_string)
             self.prior_distribution_set.fill_hdf5_group(\
                 subgroup)
-        if self.guess_distribution_set is None:
-            self.guess_distribution_set =\
-                self._generate_reinitialized_guess_distribution_set(\
-                guess_distribution_set, last_saved_chunk_string)
-        group = self.file['guess_distribution_sets']
-        subgroup = group.create_group(new_chunk_string)
-        self.guess_distribution_set.fill_hdf5_group(subgroup)
         if self.jumping_distribution_set is None:
             self.jumping_distribution_set =\
                 self._generate_reinitialized_jumping_distribution_set(\
@@ -467,6 +492,13 @@ class Sampler(object):
         group = self.file['jumping_distribution_sets']
         subgroup = group.create_group(new_chunk_string)
         self.jumping_distribution_set.fill_hdf5_group(subgroup)
+        if self.guess_distribution_set is None:
+            self.guess_distribution_set =\
+                self._generate_reinitialized_guess_distribution_set(\
+                guess_distribution_set, last_saved_chunk_string)
+        group = self.file['guess_distribution_sets']
+        subgroup = group.create_group(new_chunk_string)
+        self.guess_distribution_set.fill_hdf5_group(subgroup)
         self.checkpoint_index = 0
     
     def _generate_reinitialized_guess_distribution_set(self,\
@@ -485,7 +517,7 @@ class Sampler(object):
         returns: a DistributionSet object to use to initialize walkers for the
                  next chunk of this sampler.
         """
-        continuous_params = guess_distribution_set.continuous_params
+        continuous_params = self.jumping_distribution_set.continuous_params
         continuous_parameter_indices =\
             np.array([self.parameters.index(par) for par in continuous_params])
         last_checkpoint_group =\
@@ -529,7 +561,7 @@ class Sampler(object):
         new_guess_distribution_set = DistributionSet()
         new_guess_distribution_set.add_distribution(distribution,\
             continuous_params, transform_list)
-        discrete_params = guess_distribution_set.discrete_params
+        discrete_params = self.jumping_distribution_set.discrete_params
         for param in discrete_params:
             parameter_index = self.parameters.index(param)
             this_last_checkpoint_chain =\

@@ -1369,8 +1369,10 @@ class NLFitter(object):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         x_values = np.arange(self.num_parameters) + 1
-        ax.scatter(x_values, self.rescaling_factors, color='k')
-        ax.plot(x_values, np.ones_like(x_values), color='k')
+        ax.scatter(x_values, self.rescaling_factors, color='b')
+        x_ones = np.ones(self.num_parameters)
+        ax.plot(x_values, x_ones, color='r')
+        ax.plot(x_values, x_ones * 1.1, color='r', linestyle='--')
         if log_scale:
             ax.set_yscale('log')
         ax.set_title('Rescaling factors')
