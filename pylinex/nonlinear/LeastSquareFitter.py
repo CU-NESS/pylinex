@@ -7,12 +7,21 @@ Description: File containing class representing a least square fitter which
              uses gradient ascent to maximize the likelihood (if the gradient
              is computable; otherwise, other optimization algorithms are used).
 """
+import os, h5py
 import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as pl
 from scipy.optimize import minimize
-from distpy import cast_to_transform_list, DistributionSet
-from ..loglikelihood import Loglikelihood, GaussianLoglikelihood
+from distpy import TransformList, cast_to_transform_list, DistributionSet
+from ..loglikelihood import Loglikelihood, GaussianLoglikelihood,\
+    load_loglikelihood_from_hdf5_group
+
+try:
+    # this runs with no issues in python 2 but raises error in python 3
+    basestring
+except:
+    # this try/except allows for python 2/3 compatible string type checking
+    basestring = str
 
 class LeastSquareFitter(object):
     """
@@ -20,29 +29,161 @@ class LeastSquareFitter(object):
     maximize the likelihood (if the gradient is computable; otherwise, other
     optimization algorithms are used).
     """
-    def __init__(self, loglikelihood, prior_set, transform_list=None,\
-        **bounds):
+    def __init__(self, loglikelihood=None, prior_set=None, transform_list=None,\
+        file_name=None, **bounds):
         """
         Initializes a LeastSquareFitter with a Loglikelihood to maximize and a
         prior_set with which to initialize guesses.
         
-        loglikelihood: the Loglikelihood object to maximize with this fitter
+        loglikelihood: the Loglikelihood object to maximize with this fitter.
+                       Must be supplied unless file_name is not None and it
+                       already exists.
         prior_set: a DistributionSet object with the same parameters as the
                    model in the loglikelihood describing how to draw reasonable
-                   random guesses of their values
+                   random guesses of their values. Must be supplied unless
+                   file_name is not None and it already exists.
         transform_list: TransformList (or something which can be cast to a
                         TransformList object) describing how to find
                         transformed_argmin and covariance estimate in the
                         transform space
+        save: if True, saves endpoints and other information about this
+              LeastSquareFitter to an hdf5 file
         bounds: extra bounds to apply in the form of keyword arguments of the
                 form (min, max). Any parameters not included will be bounded by
                 their Model's bounds parameter. If none is given, all Model's
                 bounds are used
         """
-        self.loglikelihood = loglikelihood
-        self.prior_set = prior_set
-        self.transform_list = transform_list
+        self.file_name = file_name
+        if (self.file_name is not None) and os.path.exists(self.file_name):
+            self.load_setup_and_iterations()
+        else:
+            self.loglikelihood = loglikelihood
+            self.prior_set = prior_set
+            self.transform_list = transform_list
+            self.bounds = bounds
+            if self.file_name is not None:
+                self.save_setup()
+    
+    def load_setup_and_iterations(self):
+        """
+        Loads the setup of this fitter in an hdf5 file
+        """
+        hdf5_file = h5py.File(self.file_name, 'r')
+        self.loglikelihood =\
+            load_loglikelihood_from_hdf5_group(hdf5_file['loglikelihood'])
+        self.prior_set =\
+            DistributionSet.load_from_hdf5_group(hdf5_file['prior_set'])
+        self.transform_list =\
+            TransformList.load_from_hdf5_group(hdf5_file['transform_list'])
+        group = hdf5_file['bounds']
+        bounds = {}
+        for name in self.parameters:
+            subgroup = group[name]
+            if 'lower' in subgroup.attrs:
+                lower_bound = subgroup.attrs['lower']
+            else:
+                lower_bound = None
+            if 'upper' in subgroup.attrs:
+                upper_bound = subgroup.attrs['upper']
+            else:
+                upper_bound = None
+            bounds[name] = (lower_bound, upper_bound)
         self.bounds = bounds
+        group = hdf5_file['iterations']
+        self._num_iterations = group.attrs['num_iterations']
+        (successes, mins, argmins, transformed_argmins) = ([], [], [], [])
+        covariance_estimates = []
+        if isinstance(self.loglikelihood, GaussianLoglikelihood):
+            reduced_chi_squared_statistics = []
+        for iteration in range(self.num_iterations):
+            subgroup = group['{:d}'.format(iteration)]
+            successes.append(subgroup.attrs['success'])
+            min_value = subgroup.attrs['min_value']
+            mins.append(min_value)
+            argmin = subgroup['argmin'].value
+            argmins.append(argmin)
+            transformed_argmins.append(self.transform_list.apply(argmin))
+            if 'covariance_estimate' in subgroup:
+                covariance_estimates.append(\
+                    subgroup['covariance_estimate'].value)
+            else:
+                covariance_estimates.append(None)
+            reduced_chi_squared_statistics.append((2 * min_value) /\
+                self.loglikelihood.degrees_of_freedom)
+        self._successes = successes
+        self._mins = mins
+        self._argmins = argmins
+        self._transformed_argmins = transformed_argmins
+        self._covariance_estimates = covariance_estimates
+        self._reduced_chi_squared_statistics = reduced_chi_squared_statistics
+        try:
+            hdf5_file.close()
+        except:
+            pass # for some reason, closing the file here sometimes causes an
+                 # error. However, since the file is opened in read mode, this
+                 # shouldn't cause corruption. Revisit this if an error related
+                 # to hdf5 file references is seen.
+    
+    def save_setup(self):
+        """
+        Saves the setup of this fitter in an hdf5 file.
+        """
+        hdf5_file = h5py.File(self.file_name, 'w')
+        self.loglikelihood.fill_hdf5_group(\
+            hdf5_file.create_group('loglikelihood'))
+        self.prior_set.fill_hdf5_group(hdf5_file.create_group('prior_set'))
+        self.transform_list.fill_hdf5_group(\
+            hdf5_file.create_group('transform_list'))
+        group = hdf5_file.create_group('bounds')
+        for (iparameter, parameter) in enumerate(self.parameters):
+            subgroup = group.create_group(parameter)
+            (lower_bound, upper_bound) = self.bounds[iparameter]
+            if lower_bound is not None:
+                subgroup.attrs['lower'] = lower_bound
+            if upper_bound is not None:
+                subgroup.attrs['upper'] = upper_bound
+        group = hdf5_file.create_group('iterations')
+        group.attrs['num_iterations'] = self.num_iterations
+        hdf5_file.close()
+    
+    @property
+    def num_iterations(self):
+        """
+        Property storing the index of the next iteration to save (which is the
+        same as the number of iterations).
+        """
+        if not hasattr(self, '_num_iterations'):
+            self._num_iterations = 0
+        return self._num_iterations
+    
+    def increment_index(self):
+        """
+        Increments the index of the next iteration to save.
+        """
+        self._num_iterations = self.num_iterations + 1
+    
+    @property
+    def file_name(self):
+        """
+        Property storing the filesystem location of the file in which to save
+        this fitter, if it exists (this property is None in this case).
+        """
+        if not hasattr(self, '_file_name'):
+            raise AttributeError("file_name was referenced before it was set.")
+        return self._file_name
+    
+    @file_name.setter
+    def file_name(self, value):
+        """
+        Sets the file in which to save this fitter, if it exists.
+        
+        value: either None or the filesystem location at which to place an hdf5
+               file
+        """
+        if (value is None) or isinstance(value, basestring):
+            self._file_name = value
+        else:
+            raise TypeError("file_name was set to neither None nor a string.")
     
     @property
     def transform_list(self):
@@ -419,6 +560,25 @@ class LeastSquareFitter(object):
             self.covariance_estimates.append(covariance_estimate)
         else:
             self.covariance_estimates.append(None)
+        if self.file_name is not None:
+            self.save_iteration()
+    
+    def save_iteration(self):
+        """
+        Saves the last iteration of this LeastSquareFitter to the file 
+        """
+        hdf5_file = h5py.File(self.file_name, 'r+')
+        group = hdf5_file['iterations']
+        subgroup = group.create_group('{:d}'.format(self.num_iterations))
+        subgroup.attrs['success'] = self.successes[-1]
+        subgroup.attrs['min_value'] = self.mins[-1]
+        subgroup.create_dataset('argmin', data=self.argmins[-1])
+        if self.covariance_estimates[-1] is not None:
+            subgroup.create_dataset('covariance_estimate',\
+                data=self.covariance_estimates[-1])
+        self.increment_index()
+        group.attrs['num_iterations'] = self.num_iterations
+        hdf5_file.close()
     
     def run(self, iterations=1, attempt_threshold=100, **kwargs):
         """

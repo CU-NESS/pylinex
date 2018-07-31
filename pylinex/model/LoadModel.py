@@ -12,6 +12,7 @@ from distpy import load_transform_from_hdf5_group
 from ..util import get_hdf5_value, Expression
 from ..expander import load_expander_from_hdf5_group
 from ..basis import Basis
+from .FixedModel import FixedModel
 from .ConstantModel import ConstantModel
 from .BasisModel import BasisModel
 from .TruncatedBasisHyperModel import TruncatedBasisHyperModel
@@ -38,7 +39,7 @@ self_loadable_model_classes =\
 [\
     'BasisModel', 'ConstantModel', 'ExpressionModel', 'GaussianModel',\
     'SinusoidalModel', 'TanhModel', 'TruncatedBasisHyperModel',\
-    'LorentzianModel'\
+    'LorentzianModel', 'FixedModel'\
 ]
 
 # Model classes which are simple wrappers around exactly one other Model class
@@ -165,5 +166,6 @@ def load_model_from_hdf5_group(group):
                     "model loading function missing from LoadModel.py?")
         else:
             raise ValueError("The given hdf5 group does not appear to " +\
-                "point to a Model object.")
+                "point to a Model object. Its class name appears to be " +\
+                "{!s}.".format(class_name))
 

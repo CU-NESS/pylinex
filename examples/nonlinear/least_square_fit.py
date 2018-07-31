@@ -6,13 +6,16 @@ Date: 24 Mar 2018
 Description: Example showing how to use the LeastSquareFitter class to fit a
              model.
 """
+import os
 import numpy as np
 import matplotlib.pyplot as pl
 from distpy import UniformDistribution, GaussianDistribution, DistributionSet
 from pylinex import GaussianModel, GaussianLoglikelihood, LeastSquareFitter,\
     autocorrelation
 
-seed = 1234
+file_name = 'TESTING_LEAST_SQUARE_FITTER_DELETE_THIS.hdf5'
+
+seed = 123456789
 np.random.seed(seed)
 
 num_channels = 1000
@@ -30,15 +33,27 @@ input_data = input_curve + input_noise
 loglikelihood = GaussianLoglikelihood(input_data, error, model)
 
 prior_set = DistributionSet()
-prior_set.add_distribution(UniformDistribution(-10, 10), 'amplitude')
+prior_set.add_distribution(UniformDistribution(-2, 2), 'amplitude')
 prior_set.add_distribution(UniformDistribution(-1, 1), 'center')
 prior_set.add_distribution(UniformDistribution(0, 1), 'scale')
 
 bounds = {'amplitude': (-10, 10), 'center': (-1, 1), 'scale': (0, 1)}
 
-least_square_fitter =\
-    LeastSquareFitter(loglikelihood, prior_set, bounds=bounds)
-least_square_fitter.run(num_iterations)
+try:
+    least_square_fitter = LeastSquareFitter(loglikelihood=loglikelihood,\
+        prior_set=prior_set, file_name=file_name, **bounds)
+    assert(least_square_fitter.num_iterations == 0)
+    least_square_fitter.run(num_iterations // 2)
+    assert(least_square_fitter.num_iterations == num_iterations // 2)
+    least_square_fitter = LeastSquareFitter(file_name=file_name)
+    assert(least_square_fitter.num_iterations == num_iterations // 2)
+    least_square_fitter.run(num_iterations // 2)
+    assert(least_square_fitter.num_iterations == (num_iterations // 2) * 2)
+except:
+    os.remove(file_name)
+    raise
+else:
+    os.remove(file_name)
 
 argmin = least_square_fitter.argmin
 print('true={}'.format(true))

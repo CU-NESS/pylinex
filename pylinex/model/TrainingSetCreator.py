@@ -254,9 +254,8 @@ class TrainingSetCreator(object):
                 self.file.attrs['next_index'] = completed
                 self.close()
                 if self.verbose:
-                    print(("Finished convolution #{0:d}/{1:d} at " +\
-                        "{2!s}.").format(completed, self.num_curves,\
-                        time.ctime()))
+                    print("Finished curve #{0:d}/{1:d} at {2!s}.".format(\
+                        completed, self.num_curves, time.ctime()))
         except KeyboardInterrupt:
             if self.verbose:
                 print(("Stopping curve generation due to " +\
