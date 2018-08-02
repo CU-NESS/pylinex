@@ -165,7 +165,6 @@ def load_model_from_hdf5_group(group):
                 raise RuntimeError("This should never happen. Is there a " +\
                     "model loading function missing from LoadModel.py?")
         else:
-            raise ValueError("The given hdf5 group does not appear to " +\
-                "point to a Model object. Its class name appears to be " +\
-                "{!s}.".format(class_name))
+            print("Got the following error with a {!s}:".format(class_name))
+            raise
 

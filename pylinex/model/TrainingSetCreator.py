@@ -349,7 +349,10 @@ class TrainingSetCreator(object):
                 DistributionSet.load_from_hdf5_group(hdf5_file['prior_set'])
             return_value = return_value + [prior_set]
         hdf5_file.close()
-        return training_set
+        if len(return_value) == 1:
+            return return_value[0]
+        else:
+            return return_value
     
     def close(self):
         """

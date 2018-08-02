@@ -41,13 +41,11 @@ class DirectSumModel(SumModel):
         if not hasattr(self, '_expanders'):
             expanders = []
             for model in self.models:
-                if isinstance(model, BasisModel) or\
-                    isinstance(model, ExpandedModel) or\
-                    isinstance(model, TruncatedBasisHyperModel):
+                try:
                     expanders.append(model.expander)
-                else:
-                    raise TypeError("At least one model was neither a " +\
-                        "BasisModel object nor an ExpandedModel object.")
+                except:
+                    raise TypeError(("At least one model (type: {!s}) did " +\
+                        "not have an expander property.").format(type(model)))
             self._expanders = expanders
         return self._expanders
     
