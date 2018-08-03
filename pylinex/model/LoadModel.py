@@ -30,6 +30,7 @@ from .ExpressionModel import ExpressionModel
 from .RenamedModel import RenamedModel
 from .RestrictedModel import RestrictedModel
 from .ExpandedModel import ExpandedModel
+from .ScaledModel import ScaledModel
 from .SlicedModel import SlicedModel
 
 # These are the model classes where it's valid to load the model using
@@ -46,7 +47,7 @@ self_loadable_model_classes =\
 meta_model_classes =\
 [\
     'ExpandedModel', 'RenamedModel', 'RestrictedModel', 'TransformedModel',\
-    'ProjectedModel', 'SlicedModel'\
+    'ProjectedModel', 'SlicedModel', 'ScaledModel'\
 ]
 
 # Model classes which are wrappers around an arbitrary number of Model classes
@@ -96,6 +97,9 @@ def load_model_from_hdf5_group(group):
                 basis = Basis.load_from_hdf5_group(group['basis'])
                 error = group['error'].value
                 return ProjectedModel(model, basis, error=error)
+            elif class_name == 'ScaledModel':
+                scale_factor = group.attrs['scale_factor']
+                return ScaledModel(model, scale_factor)
             elif class_name == 'ExpandedModel':
                 expander = load_expander_from_hdf5_group(group['expander'])
                 return ExpandedModel(model, expander)
