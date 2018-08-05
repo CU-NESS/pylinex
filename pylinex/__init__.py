@@ -29,9 +29,10 @@ from pylinex.model import Model, LoadableModel, FixedModel,\
     ShiftedRescaledModel, ConstantModel, BasisModel, GaussianModel, SechModel,\
     LorentzianModel, SinusoidalModel, TanhModel, CompoundModel, SumModel,\
     DirectSumModel, ProductModel, CompositeModel, ExpressionModel,\
-    ExpandedModel, ScaledModel, TransformedModel, ProjectedModel,\
-    RenamedModel, RestrictedModel, SlicedModel, InterpolatedModel,\
-    TruncatedBasisHyperModel, load_model_from_hdf5_group, TrainingSetCreator
+    ExpandedModel, ScaledModel, TransformedModel, DistortedModel,\
+    ProjectedModel, RenamedModel, RestrictedModel, SlicedModel,\
+    InterpolatedModel, TruncatedBasisHyperModel, load_model_from_hdf5_group,\
+    TrainingSetCreator
 from pylinex.loglikelihood import Loglikelihood, GaussianLoglikelihood,\
     PoissonLoglikelihood, load_loglikelihood_from_hdf5_group,\
     LikelihoodDistributionHarmonizer

@@ -67,7 +67,7 @@ class TransformedModel(Model):
         
         value: either a Transform object or an object which can be cast to a
                Transform object (such as a string e.g. 'log10', 'exp', 'arcsin'
-               or None.
+               or None).
         """
         if castable_to_transform(value):
             self._transform = cast_to_transform(value)
@@ -162,11 +162,28 @@ class TransformedModel(Model):
         else:
             return False
     
+    def quick_fit(self, data, error=None):
+        """
+        Performs a quick fit to the given data.
+        
+        data: curve to fit with the model
+        error: noise level in the data
+        
+        returns: (parameter_mean, parameter_covariance)
+        """
+        data_to_fit = self.transform.apply_inverse(data)
+        if error is None:
+            error_to_fit = np.ones_like(data)
+        else:
+            error_to_fit =\
+                error / np.abs(self.transform.derivative(data_to_fit))
+        return self.model.quick_fit(data_to_fit, error=error_to_fit)
+    
     @property
     def bounds(self):
         """
         Property storing the natural bounds of the parameters of this model.
-        Since this is just a rebranding of he underlying model, the bounds are
+        Since this is just a rebranding of the underlying model, the bounds are
         passed through with no changes.
         """
         return self.model.bounds

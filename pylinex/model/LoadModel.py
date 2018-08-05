@@ -21,6 +21,7 @@ from .LorentzianModel import LorentzianModel
 from .SinusoidalModel import SinusoidalModel
 from .TanhModel import TanhModel
 from .TransformedModel import TransformedModel
+from .DistortedModel import DistortedModel
 from .ProjectedModel import ProjectedModel
 from .SumModel import SumModel
 from .DirectSumModel import DirectSumModel
@@ -47,7 +48,7 @@ self_loadable_model_classes =\
 meta_model_classes =\
 [\
     'ExpandedModel', 'RenamedModel', 'RestrictedModel', 'TransformedModel',\
-    'ProjectedModel', 'SlicedModel', 'ScaledModel'\
+    'DistortedModel', 'ProjectedModel', 'SlicedModel', 'ScaledModel'\
 ]
 
 # Model classes which are wrappers around an arbitrary number of Model classes
@@ -93,6 +94,10 @@ def load_model_from_hdf5_group(group):
             if class_name == 'TransformedModel':
                 transform = load_transform_from_hdf5_group(group['transform'])
                 return TransformedModel(model, transform)
+            elif class_name == 'DistortedModel':
+                transform_list =\
+                    TransformList.load_from_hdf5_group(group['transform_list'])
+                return DistortedModel(model, transform_list)
             elif class_name == 'ProjectedModel':
                 basis = Basis.load_from_hdf5_group(group['basis'])
                 error = group['error'].value

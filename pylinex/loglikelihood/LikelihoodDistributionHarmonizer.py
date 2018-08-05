@@ -25,7 +25,7 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
     likelihood.
     """
     def __init__(self, incomplete_guess_distribution_set,\
-        gaussian_loglikelihood, unknown_name_chain, ndraw):
+        gaussian_loglikelihood, unknown_name_chain, ndraw, **transforms):
         """
         Creates a new LikelihoodDistributionHarmonizer from the loglikelihood.
         
@@ -38,6 +38,8 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
                             for to generate samples from this
                             LikelihoodDistributionHarmonizer
         ndraw: positive integer number of desired samples
+        transforms: transforms indexed by parameter. parameters not given are
+                    assumed to remain untransformed throughout
         """
         if not isinstance(gaussian_loglikelihood, GaussianLoglikelihood):
             raise TypeError("gaussian_loglikelihood was not a " +\
@@ -116,5 +118,5 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
                 zip(unknown_parameter_names, solved_for_parameters)}
         DistributionHarmonizer.__init__(self,\
             incomplete_guess_distribution_set, remaining_parameter_solver,\
-            ndraw)
+            ndraw, **transforms)
 

@@ -146,6 +146,18 @@ class RenamedModel(Model):
         else:
             return False
     
+    def quick_fit(self, data, error=None):
+        """
+        Fits the given data (with error given possibly).
+        
+        data: the data to fit with this model
+        error: the error on the data given. If not given, all points assumed
+               identical and returned parameter covariance is meaningless
+        
+        returns: (parameter_mean, parameter_covariance)
+        """
+        return self.model.quick_fit(data, error=error)
+    
     @property
     def bounds(self):
         """

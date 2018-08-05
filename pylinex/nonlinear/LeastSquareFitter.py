@@ -641,7 +641,8 @@ class LeastSquareFitter(object):
                 curve = model(self.argmin[parameter_indices])
                 if channels is None:
                     channels = np.arange(len(curve))
-                ax.plot(channels, curve * scale_factor, label=label, **plot_kwargs)
+                ax.plot(channels, curve * scale_factor, label=label,\
+                    **plot_kwargs)
             else:
                 curves = np.array([model(argmin[parameter_indices])\
                     for (success, argmin) in zip(self.successes, self.argmins)\
@@ -653,6 +654,7 @@ class LeastSquareFitter(object):
                 if curves.shape[0] > 1:
                     ax.plot(channels, curves[1:].T * scale_factor,\
                         **plot_kwargs)
+            ax.set_xlim((channels[0], channels[-1]))
             if xlabel is not None:
                 ax.set_xlabel(xlabel, size=fontsize)
             if ylabel is not None:
