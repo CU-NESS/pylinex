@@ -268,6 +268,7 @@ class TrainingSetCreator(object):
                 del self.file[parameters_string]
             if curves_string in self.file:
                 del self.file[curves_string]
+            self.file.close()
             if self.verbose:
                 print(("Stopping curve generation due to " +\
                     "KeyboardInterrupt at {!s}.").format(time.ctime()))
