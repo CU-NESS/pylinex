@@ -257,6 +257,17 @@ class TrainingSetCreator(object):
                     print("Finished curve #{0:d}/{1:d} at {2!s}.".format(\
                         completed, self.num_curves, time.ctime()))
         except KeyboardInterrupt:
+            completed_according_to_file = self.file.attrs['next_index']
+            curve_string_to_delete_if_present =\
+                'curve_{:d}'.format(completed_according_to_file)
+            parameters_string =\
+                'parameters/{!s}'.format(curve_string_to_delete_if_present)
+            curves_string =\
+                'curves/{!s}'.format(curve_string_to_delete_if_present)
+            if parameters_string in self.file:
+                del self.file[parameters_string]
+            if curves_string in self.file:
+                del self.file[curves_string]
             if self.verbose:
                 print(("Stopping curve generation due to " +\
                     "KeyboardInterrupt at {!s}.").format(time.ctime()))

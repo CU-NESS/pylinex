@@ -175,7 +175,7 @@ class GaussianLoglikelihood(Loglikelihood):
         self.check_parameter_dimension(pars)
         try:
             logL_value = np.sum(self.weighted_bias(pars) ** 2) / (-2.)
-        except ValueError:
+        except (ValueError, ZeroDivisionError):
             logL_value = -np.inf
         if np.isnan(logL_value):
             logL_value = -np.inf
