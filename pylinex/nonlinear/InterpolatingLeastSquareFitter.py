@@ -30,7 +30,8 @@ class InterpolatingLeastSquareFitter(object):
     def __init__(self, error, parameter_names, training_inputs,\
         training_outputs, ntrain=None, should_compress=False,\
         transform_list=None, scale_to_cube=False, num_basis_vectors=None,\
-        expander=None, interpolation_method='linear'):
+        expander=None, interpolation_method='linear',\
+        loglikelihood_callable=None):
         """
         Initializes this fitter with the error it should use in its likelihood,
         the names of its parameters and its training set inputs and outputs.
@@ -64,6 +65,9 @@ class InterpolatingLeastSquareFitter(object):
                   transformation from the former space to the latter can be
                   supplied. If None, the two spaces are identical.
         interpolation_method: either 'linear' or 'quadratic'
+        loglikelihood_callable: a function which, when passed a
+                                GaussianLoglikelihood made out of an
+                                InterpolatedModel and a data and error vector
         """
         self.error = error
         self.expander = expander
@@ -76,6 +80,7 @@ class InterpolatingLeastSquareFitter(object):
         self.training_outputs = training_outputs
         self.ntrain = ntrain
         self.interpolation_method = interpolation_method
+        self.loglikelihood_callable = loglikelihood_callable
     
     @property
     def interpolation_method(self):
@@ -383,6 +388,32 @@ class InterpolatingLeastSquareFitter(object):
         self._transform_list =\
             cast_to_transform_list(value, num_transforms=len(self.parameters))
     
+    @property
+    def loglikelihood_callable(self):
+        """
+        Property storing the function to apply to loglikelihoods before passing
+        them to LeastSquareFitter initializer when performing individual fits
+        (or None if none exists).
+        """
+        if not hasattr(self, '_loglikelihood_callable'):
+            raise AttributeError("loglikelihood_callable was referenced " +\
+                "before it was set.")
+        return self._loglikelihood_callable
+    
+    @loglikelihood_callable.setter
+    def loglikelihood_callable(self, value):
+        """
+        Setter for the loglikelihood_callable.
+        
+        value: callable to call on loglikelihood before it is passed to a
+               LeastSquareFitter. Can be None if no such function exists
+        """
+        if (value is None) or callable(value):
+            self._loglikelihood_callable = value
+        else:
+            raise TypeError("loglikelihood_callable was neither None nor a " +\
+                "callable.")
+    
     def fit(self, data, iterations=1):
         """
         Fits the given data curve with an InterpolatedModel created using
@@ -415,6 +446,8 @@ class InterpolatingLeastSquareFitter(object):
             error=self.error, interpolation_method=self.interpolation_method)
         loglikelihood =\
             GaussianLoglikelihood(data, self.error, interpolated_model)
+        if self.loglikelihood_callable is not None:
+            loglikelihood = self.loglikelihood_callable(loglikelihood)
         least_square_fitter = LeastSquareFitter(loglikelihood,\
             interpolated_model.prior_set, transform_list=self.transform_list)
         least_square_fitter.run(iterations=iterations)
