@@ -11,4 +11,4 @@ from distpy import int_types, float_types, real_numerical_types,\
     Savable, Loadable, HDF5Link, create_hdf5_dataset, get_hdf5_value
 from pylinex.util.VariableGrid import VariableGrid
 from pylinex.util.Expression import Expression
-from pylinex.util.Correlation import autocorrelation
+from pylinex.util.Correlation import autocorrelation, chi_squared, psi_squared

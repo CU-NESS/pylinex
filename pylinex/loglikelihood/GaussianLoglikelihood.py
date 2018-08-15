@@ -8,6 +8,8 @@ Description: File containing a class which evaluates a likelihood which is
 """
 import numpy as np
 import numpy.linalg as la
+from distpy import cast_to_transform_list, GaussianDistribution,\
+    DistributionSet
 from ..util import create_hdf5_dataset, get_hdf5_value
 from .Loglikelihood import Loglikelihood
 
@@ -198,6 +200,129 @@ class GaussianLoglikelihood(Loglikelihood):
         """
         return ((-2.) * self(parameters, return_negative=False)) /\
             self.degrees_of_freedom
+    
+    def fisher_information(self, maximum_likelihood_parameters,\
+        differences=1e-6, transform_list=None):
+        """
+        Calculates the Fisher information matrix of this likelihood assuming
+        that the argument associated with the maximum of this likelihood is
+        reasonably approximated by the given parameters.
+        
+        maximum_likelihood_parameters: the maximum likelihood  parameter vector
+                                       (or some approximation of it)
+        differences: either single number of 1D array of numbers to use as the
+                     numerical difference in each parameter. Default: 10^(-6)
+                     Only necessary if this likelihood's model does not have an
+                     analytically implemented gradient
+        transform_list: TransformList object (or something which can be cast to
+                        one) defining the transforms to apply to the parameters
+                        before computing the gradient. Default: None, parameter
+                        space is not transformed. No matter what,
+                        maximum_likelihood_parameters should be the parameters
+                        that maximize the likelihood when plugged into the
+                        model of this likelihood untransformed.
+        
+        returns: numpy.ndarray of shape (num_parameters, num_parameters)
+                 containing the Fisher information matrix
+        """
+        if self.gradient_computable:
+            gradient = self.model.gradient(maximum_likelihood_parameters)
+            transform_list = cast_to_transform_list(transform_list,\
+                num_transforms=self.num_parameters)
+            gradient = transform_list.transform_gradient(gradient,\
+                maximum_likelihood_parameters)
+        else:
+            gradient = self.model.numerical_gradient(\
+                maximum_likelihood_parameters, differences=differences,\
+                transform_list=transform_list)
+        weighted_gradient = self.weight(gradient)
+        return np.dot(weighted_gradient.T, weighted_gradient)
+    
+    def parameter_covariance_fisher_formalism(self,\
+        maximum_likelihood_parameters, differences=1e-6, transform_list=None,\
+        max_standard_deviations=np.inf):
+        """
+        Finds the parameter covariance assuming maximum_likelihood_parameters
+        contains a reasonable approximation of the true maximum likelihood
+        parameter vector.
+        
+        maximum_likelihood_parameters: the maximum likelihood  parameter vector
+                                       (or some approximation of it)
+        differences: either single number of 1D array of numbers to use as the
+                     numerical difference in each parameter. Default: 10^(-6)
+                     Only necessary if this likelihood's model does not have an
+                     analytically implemented gradient
+        transform_list: TransformList object (or something which can be cast to
+                        one) defining the transforms to apply to the parameters
+                        before computing the gradient. Default: None, parameter
+                        space is not transformed. No matter what,
+                        maximum_likelihood_parameters should be the parameters
+                        that maximize the likelihood when plugged into the
+                        model of this likelihood untransformed.
+        max_standard_deviations: single value or array of values containing the
+                                 maximum allowable standard deviations of each
+                                 parameter. This will stop the covariance from
+                                 producing extremely wide results in the case
+                                 of an unconstrained parameter. The default
+                                 value is numpy.inf, which causes this
+                                 correction to be unimportant in all cases.
+        
+        returns: numpy.ndarray of shape (num_parameters, num_parameters)
+                 containing the inverse Fisher information matrix
+        """
+        inverse_covariance = self.fisher_information(\
+            maximum_likelihood_parameters, differences=differences,\
+            transform_list=transform_list)
+        if np.any(max_standard_deviations == 0):
+            raise ValueError("")
+        max_standard_deviations =\
+            max_standard_deviations * np.ones(self.num_parameters)
+        inverse_covariance = inverse_covariance +\
+            np.diag(np.power(max_standard_deviations, -2))
+        return la.inv(inverse_covariance)
+    
+    def parameter_distribution_fisher_formalism(self,\
+        maximum_likelihood_parameters, differences=1e-6, transform_list=None,\
+        max_standard_deviations=np.inf):
+        """
+        Finds the parameter distribution assuming maximum_likelihood_parameters
+        contains a reasonable approximation of the true maximum likelihood
+        parameter vector.
+        
+        maximum_likelihood_parameters: the maximum likelihood  parameter vector
+                                       (or some approximation of it)
+        differences: either single number of 1D array of numbers to use as the
+                     numerical difference in each parameter. Default: 10^(-6)
+                     Only necessary if this likelihood's model does not have an
+                     analytically implemented gradient
+        transform_list: TransformList object (or something which can be cast to
+                        one) defining the transforms to apply to the parameters
+                        before computing the gradient. Default: None, parameter
+                        space is not transformed. No matter what,
+                        maximum_likelihood_parameters should be the parameters
+                        that maximize the likelihood when plugged into the
+                        model of this likelihood untransformed.
+        max_standard_deviations: single value or array of values containing the
+                                 maximum allowable standard deviations of each
+                                 parameter. This will stop the covariance from
+                                 producing extremely wide results in the case
+                                 of an unconstrained parameter. The default
+                                 value is numpy.inf, which causes this
+                                 correction to be unimportant in all cases.
+        
+        returns: DistributionSet object containing GaussianDistribution object
+                 approximating distribution in transformed space
+        """
+        transform_list = cast_to_transform_list(transform_list,\
+            num_transforms=self.num_parameters)
+        mean = transform_list(maximum_likelihood_parameters)
+        covariance = self.parameter_covariance_fisher_formalism(\
+            maximum_likelihood_parameters, differences=differences,\
+            transform_list=transform_list,\
+            max_standard_deviations=max_standard_deviations)
+        distribution = GaussianDistribution(mean, covariance)
+        return\
+            DistributionSet([(distribution, self.parameters, transform_list)])
     
     @property
     def gradient_computable(self):

@@ -6,6 +6,7 @@ Date: 12 Nov 2017
 Description: File containing an abstract class representing a model.
 """
 import numpy as np
+from distpy import cast_to_transform_list
 from ..util import Savable
 
 # an error indicating everything which should be implemented by subclass
@@ -82,6 +83,35 @@ class Model(Savable):
         returns: array of shape (num_channels, num_parameters)
         """
         raise shouldnt_instantiate_model_error
+    
+    def numerical_gradient(self, parameters, differences=1e-6,\
+        transform_list=None):
+        """
+        Numerically approximates the gradient of this model. parameters should
+        not be within differences of any bounds.
+        
+        parameters: the 1D parameter vector at which to approximate the
+                    gradient it shouldn't be in the neighborhood of any bounds
+        differences: either single number of 1D array of numbers to use as the
+                     numerical difference in parameter. Default: 10^(-6)
+        transform_list: TransformList object (or something which can be cast to
+                        one) defining the transforms to apply to the parameters
+                        before computing the gradient. Default: None, parameter
+                        space is not transformed
+        
+        returns: array of shape (num_channels, num_parameters) containing
+                 gradient values
+        """
+        differences = differences * np.ones(self.num_parameters)
+        center_model_value = self(parameters)
+        transform_list = cast_to_transform_list(transform_list,\
+            num_transforms=self.num_parameters)
+        vectors = transform_list.I(transform_list(parameters)[np.newaxis,:] +\
+            np.diag(differences))
+        outer_model_values =\
+            np.stack([self(vector) for vector in vectors], axis=-1)
+        return (outer_model_values - center_model_value[:,np.newaxis]) /\
+            differences[np.newaxis,:]
     
     @property
     def hessian_computable(self):

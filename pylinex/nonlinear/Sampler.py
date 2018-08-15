@@ -1063,9 +1063,10 @@ class Sampler(object):
                     np.isfinite(self.prior_distribution_set.log_value(draw)):
                     self._pos.append(\
                         [draw[param] for param in self.parameters])
-                if (iterations >= 100 * self.nwalkers):
-                    raise RuntimeError("100*nwalkers positions have been " +\
-                        "drawn but not enough have had finite likelihood.")
+                if iterations > (100 * self.nwalkers):
+                    raise RuntimeError(("100*nwalkers positions have been " +\
+                        "drawn but not enough have had finite likelihood. " +\
+                        "The last draw which failed was: {}.").format(draw))
                 iterations += 1
             self._pos = np.array(self._pos)
         return self._pos
