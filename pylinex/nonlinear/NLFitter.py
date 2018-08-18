@@ -6,6 +6,7 @@ Date: 14 Jan 2018
 Description: File containing class which analyzes MCMC chains in order to infer
              things about the parameter distributions they describe.
 """
+from __future__ import division
 import re, h5py
 import numpy as np
 import matplotlib.pyplot as pl
@@ -1066,13 +1067,26 @@ class NLFitter(object):
             pl.show()
     
     def triangle_plot(self, parameters=None, walkers=None, thin=1,\
-        figsize=(8, 8), show=False, hist_kwargs={}, hist2d_kwargs={},\
-        fontsize=28, nbins=100, **reference_values):
+        figsize=(8, 8), show=False, kwargs_1D={}, kwargs_2D={}, fontsize=28,\
+        nbins=100, plot_type='contour', parameter_renamer=None,\
+        **reference_values):
         """
         fontsize: the size of the label fonts
+        plot_type: 'contourf', 'contour', or 'histogram'
         """
         fig = pl.figure(figsize=figsize)
         parameter_indices = self.get_parameter_indices(parameters=parameters)
+        if plot_type == 'contour':
+            matplotlib_function_1D = 'plot'
+            matplotlib_function_2D = 'contour'
+        elif plot_type == 'contourf':
+            matplotlib_function_1D = 'fill_between'
+            matplotlib_function_2D = 'contourf'
+        elif plot_type == 'histogram':
+            matplotlib_function_1D = 'bar'
+            matplotlib_function_2D = 'imshow'
+        else:
+            raise ValueError("plot_type not recognized.")
         ticks = []
         bins = []
         for iparameter in parameter_indices:
@@ -1091,9 +1105,13 @@ class NLFitter(object):
             ticks.append(np.linspace(middle - (width / 2.5),\
                 middle + (width / 2.5), 3))
         num_parameters = len(parameter_indices)
-        tick_label_formatter = StrMethodFormatter('{x:.2g}')
+        tick_label_formatter = StrMethodFormatter('{x:.3g}')
+        if parameter_renamer is not None:
+            renamed_parameters = list(map(parameter_renamer, self.parameters))
+        else:
+            renamed_parameters = [parameter for parameter in self.parameters]
         for (column, iparameter_x) in enumerate(parameter_indices):
-            parameter_x = self.parameters[iparameter_x]
+            parameter_x = renamed_parameters[iparameter_x]
             if parameter_x in reference_values:
                 reference_value_x = reference_values[parameter_x]
             else:
@@ -1101,7 +1119,7 @@ class NLFitter(object):
             for (row, iparameter_y) in enumerate(parameter_indices):
                 if row < column:
                     continue
-                parameter_y = self.parameters[iparameter_y]
+                parameter_y = renamed_parameters[iparameter_y]
                 plot_number = ((num_parameters * row) + column + 1)
                 ax = fig.add_subplot(num_parameters, num_parameters,\
                     plot_number)
@@ -1109,7 +1127,9 @@ class NLFitter(object):
                     self.plot_univariate_histogram(iparameter_x,\
                         walkers=walkers, thin=thin, ax=ax, show=False,\
                         reference_value=reference_value_x, fontsize=fontsize,\
-                        bins=bins[column], **hist_kwargs)
+                        bins=bins[column],\
+                        matplotlib_function=matplotlib_function_1D,\
+                        **kwargs_1D)
                 else:
                     if parameter_y in reference_values:
                         reference_value_y = reference_values[parameter_y]
@@ -1119,7 +1139,9 @@ class NLFitter(object):
                         walkers=walkers, thin=thin, ax=ax, show=False,\
                         reference_value1=reference_value_x,\
                         reference_value2=reference_value_y, fontsize=fontsize,\
-                        bins=(bins[column], bins[row]), **hist2d_kwargs)
+                        bins=(bins[column], bins[row]),\
+                        matplotlib_function=matplotlib_function_2D,\
+                        **kwargs_2D)
                 ax.set_xticks(ticks[column])
                 if row != column:
                     ax.set_yticks(ticks[row])
@@ -1129,9 +1151,7 @@ class NLFitter(object):
                     labelleft='off', labelright='off', labeltop='off',\
                     labelbottom='off', direction='inout')
                 if (row == column):
-                    ax.tick_params(top='off', right='off')
-                    if row != 0:
-                        ax.tick_params(axis='y', direction='in')
+                    ax.tick_params(left='off', top='off', right='off')
                 elif (row == (column + 1)):
                     ax.tick_params(left='off')
                     ax.tick_params(axis='y', direction='in')
@@ -1140,11 +1160,13 @@ class NLFitter(object):
                     ax.set_xlabel(parameter_x, size=fontsize, rotation=15)
                     ax.tick_params(labelbottom='on')
                     #ax.tick_params(axis='x', labelrotation=45)
-                if (column == 0):
-                    if (row != 0):
+                if column == 0:
+                    if row == 0:
+                        ax.tick_params(labelleft='off')
+                    else:
                         ax.set_ylabel(parameter_y, size=fontsize, rotation=60,\
                             labelpad=30)
-                    ax.tick_params(labelleft='on')
+                        ax.tick_params(labelleft='on')
         fig.subplots_adjust(wspace=0, hspace=0)
         if show:
             pl.show()
@@ -1172,7 +1194,9 @@ class NLFitter(object):
                 "parameter or a valid index of a parameter.")
     
     def plot_univariate_histogram(self, parameter_index, walkers=None, thin=1,\
-        ax=None, show=False, reference_value=None, fontsize=28, **hist_kwargs):
+        ax=None, show=False, reference_value=None, fontsize=28,\
+        matplotlib_function='fill_between', show_intervals=False, bins=None,\
+        **kwargs):
         """
         Plots a 1D histogram of the given parameter.
         
@@ -1188,7 +1212,10 @@ class NLFitter(object):
                        returns
         reference_value: a point at which to plot a dashed reference line
         fontsize: the size of the tick label font
-        hist_kwargs: keyword arguments to pass on to matplotlib.Axes.hist
+        matplotlib_function: either 'fill_between' or 'plot'
+        bins: bins to pass to numpy.histogram: default, None
+        kwargs: keyword arguments to pass on to matplotlib.Axes.plot or
+                matplotlib.Axes.fill_between
         
         returns: None if show is True, otherwise Axes instance with plot
         """
@@ -1203,9 +1230,52 @@ class NLFitter(object):
         if ax is None:
             fig = pl.figure()
             ax = fig.add_subplot(111)
-        (nums, bins, patches) = ax.hist(sample, **hist_kwargs)
+        (nums, bins) = np.histogram(sample, bins=bins)
+        bin_centers = (bins[1:] + bins[:-1]) / 2
+        num_bins = len(bin_centers)
+        ylim = (0, 1.1 * np.max(nums))
+        if 'color' in kwargs:
+            color = kwargs['color']
+            del kwargs['color']
+        else:
+            # 95% interval color
+            color = 'C0'
+        cumulative = np.cumsum(nums)
+        cumulative = cumulative / cumulative[-1]
+        cumulative_is_less_than_025 = np.argmax(cumulative > 0.025)
+        cumulative_is_more_than_975 = np.argmax(cumulative > 0.975) + 1
+        interval_95p =\
+            (cumulative_is_less_than_025, cumulative_is_more_than_975 + 1)
+        if matplotlib_function in ['bar', 'plot']:
+            if matplotlib_function == 'bar':
+                ax.bar(bin_centers, nums,\
+                    width=(bins[-1] - bins[0]) / num_bins, **kwargs)
+            else:
+                ax.plot(bin_centers, nums, **kwargs)
+            if show_intervals:
+                ax.plot([bins[interval_95p[0]]]*2, ylim, color=color,\
+                    linestyle='--')
+                ax.plot([bins[interval_95p[1]]]*2, ylim, color=color,\
+                    linestyle='--')
+        elif matplotlib_function == 'fill_between':
+            if show_intervals:
+                ax.plot(bin_centers, nums, color='k', linewidth=1)
+                half_bins = np.linspace(bins[0], bins[-1], (2 * len(bins)) - 1)
+                interpolated_nums = np.interp(half_bins, bin_centers, nums)
+                ax.fill_between(\
+                    half_bins[2*interval_95p[0]:2*interval_95p[1]],\
+                    np.zeros((2 * (interval_95p[1] - interval_95p[0]),)),\
+                    interpolated_nums[2*interval_95p[0]:2*interval_95p[1]],\
+                    color=color)
+                ax.fill_between(bin_centers, nums,\
+                    np.ones_like(nums) * 1.5 * np.max(nums), color='w')
+            else:
+                ax.fill_between(bin_centers, np.zeros_like(nums), nums,\
+                    **kwargs)
+        else:
+            raise ValueError("matplotlib_function not recognized.")
+        ax.set_ylim(ylim)
         if reference_value is not None:
-            ylim = ax.get_ylim()
             ax.plot([reference_value] * 2, ylim, color='r', linewidth=1,\
                 linestyle='--')
             ax.set_ylim(ylim)
@@ -1218,7 +1288,8 @@ class NLFitter(object):
     
     def plot_bivariate_histogram(self, parameter_index1, parameter_index2,\
         walkers=None, thin=1, ax=None, show=False, reference_value1=None,\
-        reference_value2=None, fontsize=28, **hist_kwargs):
+        reference_value2=None, fontsize=28, bins=None,\
+        matplotlib_function='imshow', **kwargs):
         """
         Plots a 2D histogram of the given parameters.
         
@@ -1239,7 +1310,12 @@ class NLFitter(object):
         reference_value2: a point at which to plot a dashed reference line for
                           the y axis
         fontsize: the size of the tick label font
-        hist_kwargs: keyword arguments to pass on to matplotlib.Axes.hist2d
+        bins: bins to pass to numpy.histogram2d, default: None
+        matplotlib_function: function to use in plotting. One of ['imshow',
+                             'contour', 'contourf']. default: 'imshow'
+        kwargs: keyword arguments to pass on to matplotlib.Axes.imshow (any but
+                'origin', 'extent', or 'aspect') or matplotlib.Axes.contour or
+                matplotlib.Axes.contourf (any)
         
         returns: None if show is True, otherwise Axes instance with plot
         """
@@ -1258,18 +1334,36 @@ class NLFitter(object):
         if ax is None:
             fig = pl.figure()
             ax = fig.add_subplot(111)
-        (nums, xbins, ybins, img) = ax.hist2d(xsample, ysample, **hist_kwargs)
+        (nums, xbins, ybins) = np.histogram2d(xsample, ysample, bins=bins)
         xlim = (xbins[0], xbins[-1])
         ylim = (ybins[0], ybins[-1])
+        xbin_centers = (xbins[1:] + xbins[:-1]) / 2
+        ybin_centers = (ybins[1:] + ybins[:-1]) / 2
+        if matplotlib_function == 'imshow':
+            ax.imshow(nums.T, origin='lower',\
+                extent=[xlim[0], xlim[1], ylim[0], ylim[1]], aspect='auto',\
+                **kwargs)
+        else:
+            pdf_max = np.max(nums)
+            if matplotlib_function == 'contour':
+                levels = (pdf_max * np.array([0.1353]))
+                ax.contour(xbin_centers, ybin_centers, nums.T, levels,\
+                    **kwargs)
+            elif matplotlib_function == 'contourf':
+                levels = (pdf_max * np.array([0.1353, 1]))
+                ax.contourf(xbin_centers, ybin_centers, nums.T, levels,\
+                    **kwargs)
+            else:
+                raise ValueError("matplotlib_function not recognized.")
         if reference_value1 is not None:
             ax.plot([reference_value1] * 2, ylim, color='r', linewidth=1,\
                 linestyle='--')
-            ax.set_ylim(ylim)
         if reference_value2 is not None:
             ax.plot(xlim, [reference_value2] * 2, color='r', linewidth=1,\
                 linestyle='--')
-            ax.set_xlim(xlim)
         ax.tick_params(width=2, length=6, labelsize=fontsize)
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
         if show:
             pl.show()
         else:
