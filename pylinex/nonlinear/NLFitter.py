@@ -10,11 +10,12 @@ from __future__ import division
 import re, h5py
 import numpy as np
 import matplotlib.pyplot as pl
-from matplotlib.ticker import StrMethodFormatter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from ..util import sequence_types, real_numerical_types, bool_types, int_types
+from ..util import sequence_types, real_numerical_types, bool_types,\
+    int_types, univariate_histogram, bivariate_histogram, triangle_plot
 from ..model import CompoundModel
-from ..loglikelihood import load_loglikelihood_from_hdf5_group
+from ..loglikelihood import load_loglikelihood_from_hdf5_group,\
+    GaussianLoglikelihood
 from .BurnRule import BurnRule
 
 try:
@@ -1066,111 +1067,6 @@ class NLFitter(object):
         if show:
             pl.show()
     
-    def triangle_plot(self, parameters=None, walkers=None, thin=1,\
-        figsize=(8, 8), show=False, kwargs_1D={}, kwargs_2D={}, fontsize=28,\
-        nbins=100, plot_type='contour', parameter_renamer=None,\
-        **reference_values):
-        """
-        fontsize: the size of the label fonts
-        plot_type: 'contourf', 'contour', or 'histogram'
-        """
-        fig = pl.figure(figsize=figsize)
-        parameter_indices = self.get_parameter_indices(parameters=parameters)
-        if plot_type == 'contour':
-            matplotlib_function_1D = 'plot'
-            matplotlib_function_2D = 'contour'
-        elif plot_type == 'contourf':
-            matplotlib_function_1D = 'fill_between'
-            matplotlib_function_2D = 'contourf'
-        elif plot_type == 'histogram':
-            matplotlib_function_1D = 'bar'
-            matplotlib_function_2D = 'imshow'
-        else:
-            raise ValueError("plot_type not recognized.")
-        ticks = []
-        bins = []
-        for iparameter in parameter_indices:
-            parameter = self.parameters[iparameter]
-            min_to_include = np.min(self.chain[:,:,iparameter])
-            max_to_include = np.max(self.chain[:,:,iparameter])
-            if parameter in reference_values:
-                min_to_include =\
-                    min(min_to_include, reference_values[parameter])
-                max_to_include =\
-                    max(max_to_include, reference_values[parameter])
-            middle = (max_to_include + min_to_include) / 2
-            width = max_to_include - min_to_include
-            bins.append(np.linspace(min_to_include - (width / 10),\
-                max_to_include + (width / 10), nbins + 1))
-            ticks.append(np.linspace(middle - (width / 2.5),\
-                middle + (width / 2.5), 3))
-        num_parameters = len(parameter_indices)
-        tick_label_formatter = StrMethodFormatter('{x:.3g}')
-        if parameter_renamer is not None:
-            renamed_parameters = list(map(parameter_renamer, self.parameters))
-        else:
-            renamed_parameters = [parameter for parameter in self.parameters]
-        for (column, iparameter_x) in enumerate(parameter_indices):
-            parameter_x = renamed_parameters[iparameter_x]
-            if parameter_x in reference_values:
-                reference_value_x = reference_values[parameter_x]
-            else:
-                reference_value_x = None
-            for (row, iparameter_y) in enumerate(parameter_indices):
-                if row < column:
-                    continue
-                parameter_y = renamed_parameters[iparameter_y]
-                plot_number = ((num_parameters * row) + column + 1)
-                ax = fig.add_subplot(num_parameters, num_parameters,\
-                    plot_number)
-                if row == column:
-                    self.plot_univariate_histogram(iparameter_x,\
-                        walkers=walkers, thin=thin, ax=ax, show=False,\
-                        reference_value=reference_value_x, fontsize=fontsize,\
-                        bins=bins[column],\
-                        matplotlib_function=matplotlib_function_1D,\
-                        **kwargs_1D)
-                else:
-                    if parameter_y in reference_values:
-                        reference_value_y = reference_values[parameter_y]
-                    else:
-                        reference_value_y = None
-                    self.plot_bivariate_histogram(iparameter_x, iparameter_y,\
-                        walkers=walkers, thin=thin, ax=ax, show=False,\
-                        reference_value1=reference_value_x,\
-                        reference_value2=reference_value_y, fontsize=fontsize,\
-                        bins=(bins[column], bins[row]),\
-                        matplotlib_function=matplotlib_function_2D,\
-                        **kwargs_2D)
-                ax.set_xticks(ticks[column])
-                if row != column:
-                    ax.set_yticks(ticks[row])
-                ax.xaxis.set_major_formatter(tick_label_formatter)
-                ax.yaxis.set_major_formatter(tick_label_formatter)
-                ax.tick_params(left='on', right='on', top='on', bottom='on',\
-                    labelleft='off', labelright='off', labeltop='off',\
-                    labelbottom='off', direction='inout')
-                if (row == column):
-                    ax.tick_params(left='off', top='off', right='off')
-                elif (row == (column + 1)):
-                    ax.tick_params(left='off')
-                    ax.tick_params(axis='y', direction='in')
-                    ax.tick_params(left='on')
-                if (row + 1) == num_parameters:
-                    ax.set_xlabel(parameter_x, size=fontsize, rotation=15)
-                    ax.tick_params(labelbottom='on')
-                    #ax.tick_params(axis='x', labelrotation=45)
-                if column == 0:
-                    if row == 0:
-                        ax.tick_params(labelleft='off')
-                    else:
-                        ax.set_ylabel(parameter_y, size=fontsize, rotation=60,\
-                            labelpad=30)
-                        ax.tick_params(labelleft='on')
-        fig.subplots_adjust(wspace=0, hspace=0)
-        if show:
-            pl.show()
-    
     def get_parameter_index(self, parameter):
         """
         Gets the integer index associated with the given parameter or index.
@@ -1193,10 +1089,76 @@ class NLFitter(object):
             raise TypeError("parameter must be a string name of a " +\
                 "parameter or a valid index of a parameter.")
     
+    def triangle_plot(self, parameters=None, walkers=None, thin=1,\
+        figsize=(8, 8), show=False, kwargs_1D={}, kwargs_2D={}, fontsize=28,\
+        nbins=100, plot_type='contour', parameter_renamer=None,\
+        reference_value_mean=None, reference_value_covariance=None):
+        """
+        Makes a triangle plot.
+        
+        parameters: key describing parameters to appear in subplots
+        walkers: either None or indices of walkers to include chain samples
+        thin: integer stride with which to thin chain samples
+        figsize: size of figure on which the triangle plot will be placed
+        show: if True, matplotlib.pyplot.show is called before this function
+              returns
+        kwargs_1D: kwargs to pass on to univariate_histogram function
+        kwargs_2D: kwargs to pass on to bivariate_histogram function
+        fontsize: the size of the label/tick fonts
+        nbins: the number of bins in all dimensions in all subplots
+        plot_type: 'contourf', 'contour', or 'histogram'
+        parameter_renamer: function to apply to each parameter name to
+                           determine the label which will correspond to it
+        reference_value_mean: either None or a 1D array containing reference
+                              values
+        reference_value_covariance: either None, a 2D array of rank
+                                    num_parameters, or a tuple of length
+                                    greater than 1 of the form (model, error)
+                                    or (model, error, fisher_kwargs) to use for
+                                    estimating the covariance matrix under the
+                                    Fisher matrix formalism. This covariance
+                                    will be used to plot ellipses
+        """
+        parameter_indices = self.get_parameter_indices(parameters=parameters)
+        labels = [self.parameters[parameter_index]\
+            for parameter_index in parameter_indices]
+        if parameter_renamer is not None:
+            labels = [parameter_renamer(label) for label in labels]
+        samples = [\
+            self.chain[:,:,parameter_index][walkers,:][:,::thin].flatten()\
+            for parameter_index in parameter_indices]
+        num_samples = len(samples)
+        if reference_value_covariance is not None:
+            if isinstance(reference_value_covariance, np.ndarray):
+                if reference_value_covariance.shape != ((num_samples,) * 2):
+                    raise ValueError("reference_value_covariance was a " +\
+                        "numpy.ndarray but it was not square with rank " +\
+                        "given by the number of parameters in the triangle " +\
+                        "plot.")
+            else:
+                (model, error, fisher_kwargs) =\
+                    (reference_value_covariance[0],\
+                    reference_value_covariance[1],\
+                    reference_value_covariance[2:])
+                if len(fisher_kwargs) == 0:
+                    fisher_kwargs = {}
+                else:
+                    fisher_kwargs = fisher_kwargs[0]
+                likelihood =\
+                    GaussianLoglikelihood(np.zeros(len(error)), error, model)
+                reference_value_covariance =\
+                    likelihood.parameter_covariance_fisher_formalism(\
+                    reference_value_mean, **fisher_kwargs)
+        triangle_plot(samples, labels, figsize=figsize, show=show,\
+            kwargs_1D=kwargs_1D, kwargs_2D=kwargs_2D, fontsize=fontsize,\
+            nbins=nbins, plot_type=plot_type,\
+            reference_value_mean=reference_value_mean,\
+            reference_value_covariance=reference_value_covariance)
+    
     def plot_univariate_histogram(self, parameter_index, walkers=None, thin=1,\
         ax=None, show=False, reference_value=None, fontsize=28,\
         matplotlib_function='fill_between', show_intervals=False, bins=None,\
-        **kwargs):
+        xlabel='', ylabel='', title='', **kwargs):
         """
         Plots a 1D histogram of the given parameter.
         
@@ -1214,6 +1176,9 @@ class NLFitter(object):
         fontsize: the size of the tick label font
         matplotlib_function: either 'fill_between' or 'plot'
         bins: bins to pass to numpy.histogram: default, None
+        xlabel: string for labeling x axis
+        ylabel: string for labeling y axis
+        title: string for top of plot
         kwargs: keyword arguments to pass on to matplotlib.Axes.plot or
                 matplotlib.Axes.fill_between
         
@@ -1227,69 +1192,16 @@ class NLFitter(object):
         elif type(walkers) in int_types:
             walkers = np.arange(walkers)
         sample = self.chain[:,:,parameter_index][walkers,:][:,::thin].flatten()
-        if ax is None:
-            fig = pl.figure()
-            ax = fig.add_subplot(111)
-        (nums, bins) = np.histogram(sample, bins=bins)
-        bin_centers = (bins[1:] + bins[:-1]) / 2
-        num_bins = len(bin_centers)
-        ylim = (0, 1.1 * np.max(nums))
-        if 'color' in kwargs:
-            color = kwargs['color']
-            del kwargs['color']
-        else:
-            # 95% interval color
-            color = 'C0'
-        cumulative = np.cumsum(nums)
-        cumulative = cumulative / cumulative[-1]
-        cumulative_is_less_than_025 = np.argmax(cumulative > 0.025)
-        cumulative_is_more_than_975 = np.argmax(cumulative > 0.975) + 1
-        interval_95p =\
-            (cumulative_is_less_than_025, cumulative_is_more_than_975 + 1)
-        if matplotlib_function in ['bar', 'plot']:
-            if matplotlib_function == 'bar':
-                ax.bar(bin_centers, nums,\
-                    width=(bins[-1] - bins[0]) / num_bins, **kwargs)
-            else:
-                ax.plot(bin_centers, nums, **kwargs)
-            if show_intervals:
-                ax.plot([bins[interval_95p[0]]]*2, ylim, color=color,\
-                    linestyle='--')
-                ax.plot([bins[interval_95p[1]]]*2, ylim, color=color,\
-                    linestyle='--')
-        elif matplotlib_function == 'fill_between':
-            if show_intervals:
-                ax.plot(bin_centers, nums, color='k', linewidth=1)
-                half_bins = np.linspace(bins[0], bins[-1], (2 * len(bins)) - 1)
-                interpolated_nums = np.interp(half_bins, bin_centers, nums)
-                ax.fill_between(\
-                    half_bins[2*interval_95p[0]:2*interval_95p[1]],\
-                    np.zeros((2 * (interval_95p[1] - interval_95p[0]),)),\
-                    interpolated_nums[2*interval_95p[0]:2*interval_95p[1]],\
-                    color=color)
-                ax.fill_between(bin_centers, nums,\
-                    np.ones_like(nums) * 1.5 * np.max(nums), color='w')
-            else:
-                ax.fill_between(bin_centers, np.zeros_like(nums), nums,\
-                    **kwargs)
-        else:
-            raise ValueError("matplotlib_function not recognized.")
-        ax.set_ylim(ylim)
-        if reference_value is not None:
-            ax.plot([reference_value] * 2, ylim, color='r', linewidth=1,\
-                linestyle='--')
-            ax.set_ylim(ylim)
-        ax.set_xlim((bins[0], bins[-1]))
-        ax.tick_params(width=2, length=6, labelsize=fontsize)
-        if show:
-            pl.show()
-        else:
-            return ax
+        univariate_histogram(sample, reference_value=reference_value,\
+            bins=bins, matplotlib_function=matplotlib_function,\
+            show_intervals=show_intervals, xlabel=xlabel, ylabel=ylabel,\
+            title=title, fontsize=fontsize, ax=ax, show=show, **kwargs)
     
     def plot_bivariate_histogram(self, parameter_index1, parameter_index2,\
-        walkers=None, thin=1, ax=None, show=False, reference_value1=None,\
-        reference_value2=None, fontsize=28, bins=None,\
-        matplotlib_function='imshow', **kwargs):
+        walkers=None, thin=1, ax=None, show=False, reference_value_mean=None,\
+        reference_value_covariance=None, fontsize=28, bins=None,\
+        matplotlib_function='imshow', xlabel='', ylabel='', title='',\
+        **kwargs):
         """
         Plots a 2D histogram of the given parameters.
         
@@ -1305,12 +1217,14 @@ class NLFitter(object):
             otherwise, this Axes object is plotted on
         show: if True, matplotlib.pyplot.show is called before this function
                        returns
-        reference_value1: a point at which to plot a dashed reference line for
-                          the x axis
-        reference_value2: a point at which to plot a dashed reference line for
-                          the y axis
+        reference_value_mean: point at which to plot a dashed reference lines
+                              for the axes
+        reference_value_covariance: if not None, used to plot reference ellipse
         fontsize: the size of the tick label font
         bins: bins to pass to numpy.histogram2d, default: None
+        xlabel: string for labeling x axis
+        ylabel: string for labeling y axis
+        title: string for top of plot
         matplotlib_function: function to use in plotting. One of ['imshow',
                              'contour', 'contourf']. default: 'imshow'
         kwargs: keyword arguments to pass on to matplotlib.Axes.imshow (any but
@@ -1331,43 +1245,12 @@ class NLFitter(object):
             self.chain[:,:,parameter_index1][walkers,:][:,::thin].flatten()
         ysample =\
             self.chain[:,:,parameter_index2][walkers,:][:,::thin].flatten()
-        if ax is None:
-            fig = pl.figure()
-            ax = fig.add_subplot(111)
-        (nums, xbins, ybins) = np.histogram2d(xsample, ysample, bins=bins)
-        xlim = (xbins[0], xbins[-1])
-        ylim = (ybins[0], ybins[-1])
-        xbin_centers = (xbins[1:] + xbins[:-1]) / 2
-        ybin_centers = (ybins[1:] + ybins[:-1]) / 2
-        if matplotlib_function == 'imshow':
-            ax.imshow(nums.T, origin='lower',\
-                extent=[xlim[0], xlim[1], ylim[0], ylim[1]], aspect='auto',\
-                **kwargs)
-        else:
-            pdf_max = np.max(nums)
-            if matplotlib_function == 'contour':
-                levels = (pdf_max * np.array([0.1353]))
-                ax.contour(xbin_centers, ybin_centers, nums.T, levels,\
-                    **kwargs)
-            elif matplotlib_function == 'contourf':
-                levels = (pdf_max * np.array([0.1353, 1]))
-                ax.contourf(xbin_centers, ybin_centers, nums.T, levels,\
-                    **kwargs)
-            else:
-                raise ValueError("matplotlib_function not recognized.")
-        if reference_value1 is not None:
-            ax.plot([reference_value1] * 2, ylim, color='r', linewidth=1,\
-                linestyle='--')
-        if reference_value2 is not None:
-            ax.plot(xlim, [reference_value2] * 2, color='r', linewidth=1,\
-                linestyle='--')
-        ax.tick_params(width=2, length=6, labelsize=fontsize)
-        ax.set_xlim(xlim)
-        ax.set_ylim(ylim)
-        if show:
-            pl.show()
-        else:
-            return ax
+        bivariate_histogram(xsample, ysample,\
+            reference_value_mean=reference_value_mean,\
+            reference_value_covariance=reference_value_covariance, bins=bins,\
+            matplotlib_function=matplotlib_function, xlabel=xlabel,\
+            ylabel=ylabel, title=title, fontsize=fontsize, ax=ax, show=show,\
+            **kwargs)
     
     def plot_lnprobability(self, walkers=None, log_scale=False,\
         title='Log probability', ax=None, show=False):
