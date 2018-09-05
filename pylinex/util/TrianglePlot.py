@@ -1,3 +1,12 @@
+"""
+File: pylinex/util/TrianglePlot.py
+Author: Keith Tauscher
+Date: 18 Aug 2018
+
+Description: File containing functions which plot univariate histograms,
+             bivariate histograms, and triangle plots (which are really just
+             combinations of the previous two types).
+"""
 import numpy as np
 import scipy.linalg as scila
 import matplotlib.pyplot as pl
@@ -214,7 +223,8 @@ def triangle_plot(samples, labels, figsize=(8, 8), show=False,\
     for (isample, sample) in enumerate(samples):
         min_to_include = np.min(sample)
         max_to_include = np.max(sample)
-        if reference_value_mean is not None:
+        if (reference_value_mean is not None) and\
+            (reference_value_mean[isample] is not None):
             min_to_include =\
                 min(min_to_include, reference_value_mean[isample])
             max_to_include =\
