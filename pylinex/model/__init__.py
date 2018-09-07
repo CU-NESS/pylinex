@@ -22,6 +22,7 @@ from pylinex.model.ScaledModel import ScaledModel
 from pylinex.model.TruncatedBasisHyperModel import TruncatedBasisHyperModel
 from pylinex.model.CompoundModel import CompoundModel
 from pylinex.model.SumModel import SumModel
+from pylinex.model.TiedModel import TiedModel
 from pylinex.model.DirectSumModel import DirectSumModel
 from pylinex.model.ProductModel import ProductModel
 from pylinex.model.CompositeModel import CompositeModel

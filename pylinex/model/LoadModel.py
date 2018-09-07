@@ -24,6 +24,7 @@ from .TransformedModel import TransformedModel
 from .DistortedModel import DistortedModel
 from .ProjectedModel import ProjectedModel
 from .SumModel import SumModel
+from .TiedModel import TiedModel
 from .DirectSumModel import DirectSumModel
 from .ProductModel import ProductModel
 from .CompositeModel import CompositeModel
@@ -53,7 +54,10 @@ meta_model_classes =\
 
 # Model classes which are wrappers around an arbitrary number of Model classes
 compound_model_classes =\
-    ['CompositeModel', 'SumModel', 'DirectSumModel', 'ProductModel']
+[\
+    'CompositeModel', 'SumModel', 'DirectSumModel', 'ProductModel',\
+    'TiedModel'\
+]
 
 def load_model_from_hdf5_group(group):
     """
@@ -143,10 +147,16 @@ def load_model_from_hdf5_group(group):
                 return SumModel(names, models)
             elif class_name == 'DirectSumModel':
                 return DirectSumModel(names, models)
+            elif class_name == 'TiedModel':
+                shared_name = group.attrs['shared_name']
+                tied_parameters =\
+                    [element for element in group['tied_parameters'].value]
+                return TiedModel(names, models, shared_name, *tied_parameters)
             elif class_name == 'ProductModel':
                 return ProductModel(names, models)
             elif class_name == 'CompositeModel':
-                expression = Expression.load_from_hdf5_group(group['expression'])
+                expression =\
+                    Expression.load_from_hdf5_group(group['expression'])
                 if 'gradient_expressions' in group:
                     subgroup = group['gradient_expressions']
                     gradient_expressions = np.ndarray((len(names),), dtype=object)

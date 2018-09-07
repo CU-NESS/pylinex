@@ -28,7 +28,7 @@ from pylinex.fitter import TrainingSetIterator, Fitter, MetaFitter, Extractor
 from pylinex.model import Model, LoadableModel, FixedModel,\
     ShiftedRescaledModel, ConstantModel, BasisModel, GaussianModel, SechModel,\
     LorentzianModel, SinusoidalModel, TanhModel, CompoundModel, SumModel,\
-    DirectSumModel, ProductModel, CompositeModel, ExpressionModel,\
+    TiedModel, DirectSumModel, ProductModel, CompositeModel, ExpressionModel,\
     ExpandedModel, ScaledModel, TransformedModel, DistortedModel,\
     ProjectedModel, RenamedModel, RestrictedModel, SlicedModel,\
     InterpolatedModel, TruncatedBasisHyperModel, load_model_from_hdf5_group,\

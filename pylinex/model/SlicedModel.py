@@ -3,7 +3,7 @@ File: pylinex/model/SlicedModel.py
 Author: Keith Tauscher
 Date: 9 Apr 2018
 
-Description: File containing a class represening a model which has one or more
+Description: File containing a class representing a model which has one or more
              of its parameters fixed.
 """
 import numpy as np
@@ -11,12 +11,17 @@ from .Model import Model
 
 class SlicedModel(Model):
     """
-    Class represening a model which has one or more of its parameters fixed.
+    Class representing a model which has one or more of its parameters fixed.
     """
     def __init__(self, model, **constant_parameters):
         """
-        Since the Model class should not be directly instantiated, an error is
-        thrown if its initializer is called.
+        Initializes a new SlicedModel given its base model and the parameters
+        (with values) which should be fixed.
+        
+        model: a Model to underlie this one
+        constant_parameters: dictionary with keys given by parameter names and
+                             values given by the numbers to which those
+                             parameters should be fixed
         """
         self.model = model
         self.constant_parameters = constant_parameters
@@ -57,7 +62,8 @@ class SlicedModel(Model):
         """
         Setter for the dictionary of parameters which are held constant.
         
-        value: dictionary where every key is a 
+        value: dictionary with keys given by parameter names and values given
+               by the numbers to which those parameters should be fixed
         """
         if isinstance(value, dict):
             if all([(key in self.model.parameters) for key in value]):
