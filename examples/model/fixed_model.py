@@ -6,13 +6,15 @@ Date: 21 Jul 2018
 Description: Example showing how to use the FixedModel class, which has no
              parameters and returns a fixed curve no matter what.
 """
+import os
 import numpy as np
-from pylinex import FixedModel
+from pylinex import FixedModel, load_model_from_hdf5_file
 
 curve = np.arange(100)
 model = FixedModel(curve)
 
 file_name = 'TESTING_FIXEDMODEL_CLASS_DELETE_THIS_IF_YOU_SEE_IT.hdf5'
+model.save(file_name)
 try:
     assert(model == FixedModel.load(file_name))
     assert(model == load_model_from_hdf5_file(file_name))
