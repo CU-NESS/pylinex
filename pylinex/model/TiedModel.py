@@ -235,6 +235,9 @@ class TiedModel(Model):
         returns: 1D array of length
                  sum([model.num_parameters for model in self.models])
         """
+        if len(parameters) != self.num_parameters:
+            raise ValueError("parameters given to TiedModel did not have a " +\
+                "length given by the number of this model's parameters.")
         processed_parameters = np.ndarray((\
             sum([model.num_parameters for model in self.models]),))
         for (parameter, indices) in zip(parameters, self.parameter_indices):
