@@ -6,6 +6,7 @@ Date: 20 Jun 2018
 Description: File containing class which creates sets of curves given models
              and prior distributions.
 """
+from __future__ import division
 import os, time, h5py
 import numpy as np
 from ..util import bool_types, int_types
@@ -256,6 +257,14 @@ class TrainingSetCreator(object):
                 if self.verbose:
                     print("Finished curve #{0:d}/{1:d} at {2!s}.".format(\
                         completed, self.num_curves, time.ctime()))
+                low_floor =\
+                    int(np.floor(((100 * completed) - 50) / self.num_curves))
+                high_floor =\
+                    int(np.floor(((100 * completed) + 50) / self.num_curves))
+                if (low_floor != high_floor) and\
+                    (completed != self.num_curves):
+                    print("Done with {0:d}% of {1:d} curves at {2!s}.".format(\
+                        high_floor, self.num_curves, time.ctime()))
         except KeyboardInterrupt:
             completed_according_to_file = self.file.attrs['next_index']
             curve_string_to_delete_if_present =\
@@ -269,9 +278,8 @@ class TrainingSetCreator(object):
             if curves_string in self.file:
                 del self.file[curves_string]
             self.file.close()
-            if self.verbose:
-                print(("Stopping curve generation due to " +\
-                    "KeyboardInterrupt at {!s}.").format(time.ctime()))
+            print(("Stopping curve generation due to KeyboardInterrupt at " +\
+                "{!s}.").format(time.ctime()))
     
     def get_training_set(self, return_parameters=False, return_model=False,\
         return_prior_set=False):
