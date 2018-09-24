@@ -28,6 +28,7 @@ from pylinex.model.ProductModel import ProductModel
 from pylinex.model.CompositeModel import CompositeModel
 from pylinex.model.ExpressionModel import ExpressionModel
 from pylinex.model.InterpolatedModel import InterpolatedModel
+from pylinex.model.BinnedModel import BinnedModel
 from pylinex.model.TransformedModel import TransformedModel
 from pylinex.model.DistortedModel import DistortedModel
 from pylinex.model.ProjectedModel import ProjectedModel

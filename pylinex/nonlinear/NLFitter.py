@@ -11,6 +11,7 @@ import re, h5py
 import numpy as np
 import matplotlib.pyplot as pl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from distpy import JumpingDistributionSet
 from ..util import sequence_types, real_numerical_types, bool_types,\
     int_types, univariate_histogram, bivariate_histogram, triangle_plot
 from ..model import CompoundModel
@@ -275,11 +276,24 @@ class NLFitter(object):
                 acceptance_fraction_chunks.append(\
                     np.stack(acceptance_fraction_chunk, axis=1))
                 del chain_chunk, lnprobability_chunk, acceptance_fraction_chunk
+        self._jumping_distribution_set =\
+            JumpingDistributionSet.load_from_hdf5_group(\
+            self.file['jumping_distribution_sets/chunk{:d}'.format(ichunk)])
         self._chain = np.concatenate(chain_chunks, axis=1)
         self._lnprobability = np.concatenate(lnprobability_chunks, axis=1)
         self._acceptance_fraction =\
             np.concatenate(acceptance_fraction_chunks, axis=1)
         del chain_chunks, lnprobability_chunks, acceptance_fraction_chunks
+    
+    @property
+    def jumping_distribution_set(self):
+        """
+        Property storing the JumpingDistributionSet used in the final chunk
+        included in the chain loaded by this Fitter.
+        """
+        if not hasattr(self, '_jumping_distribution_set'):
+            self._load_checkpoints()
+        return self._jumping_distribution_set
     
     @property
     def chain(self):
@@ -361,6 +375,17 @@ class NLFitter(object):
                 iparameter += 1
             self._parameters = parameters
         return self._parameters
+    
+    @property
+    def transform_list(self):
+        """
+        Property storing the list of Transforms used in the last loaded chunk's
+        JumpingDistributionSet.
+        """
+        if not hasattr(self, '_transform_list'):
+            self._transform_list =\
+                self.jumping_distribution_set.transform_set[self.parameters]
+        return self._transform_list
     
     @property
     def num_parameters(self):
@@ -830,7 +855,8 @@ class NLFitter(object):
         numbers_to_exclude_from_right =\
             (numbers_to_exclude - numbers_to_exclude_from_left)
         left_bands = sorted_channel_values[numbers_to_exclude_from_left,:]
-        right_bands = sorted_channel_values[-numbers_to_exclude_from_right,:]
+        right_bands =\
+            sorted_channel_values[number-1-numbers_to_exclude_from_right,:]
         if single_input:
             return (left_bands[0], right_bands[0])
         else:
@@ -1018,8 +1044,8 @@ class NLFitter(object):
         else:
             return ax
     
-    def plot_chain(self, parameters=None, walkers=None, thin=1,\
-        figsize=(8, 8), show=False, **reference_values):
+    def plot_chain(self, parameters=None, apply_transforms=True,\
+        walkers=None, thin=1, figsize=(8, 8), show=False, **reference_values):
         """
         Plots the chain of this MCMC.
         
@@ -1047,8 +1073,10 @@ class NLFitter(object):
             walkers = np.arange(self.nwalkers)
         elif type(walkers) in int_types:
             walkers = np.arange(walkers)
-        trimmed_chain =\
-            self.chain[walkers,:,:][:,::thin,:][:,:,parameter_indices]
+        trimmed_chain = self.chain[walkers,:,:]
+        if apply_transforms:
+            trimmed_chain = self.transform_list(trimmed_chain)
+        trimmed_chain = trimmed_chain[:,::thin,:][:,:,parameter_indices]
         steps = np.arange(0, self.nsteps, thin)
         axes_per_side = int(np.ceil(np.sqrt(num_parameter_plots)))
         fig = pl.figure(figsize=figsize)
@@ -1057,8 +1085,11 @@ class NLFitter(object):
             ax = fig.add_subplot(axes_per_side, axes_per_side, index + 1)
             ax.plot(steps, trimmed_chain[:,:,index].T, linewidth=1)
             if parameter_name in reference_values:
-                ax.plot(steps,\
-                    reference_values[parameter_name] * np.ones_like(steps),\
+                to_plot = reference_values[parameter_name]
+                if apply_transforms:
+                    to_plot =\
+                        self.transform_list[parameter_indices[index]](to_plot)
+                ax.plot(steps, to_plot * np.ones_like(steps),\
                     linewidth=2, color='k', linestyle='--')
             ax.set_title(parameter_name)
             ax.set_xlim((steps[0], steps[-1]))
@@ -1092,7 +1123,8 @@ class NLFitter(object):
     def triangle_plot(self, parameters=None, walkers=None, thin=1,\
         figsize=(8, 8), show=False, kwargs_1D={}, kwargs_2D={}, fontsize=28,\
         nbins=100, plot_type='contour', parameter_renamer=None,\
-        reference_value_mean=None, reference_value_covariance=None):
+        reference_value_mean=None, reference_value_covariance=None,\
+        apply_transforms=True):
         """
         Makes a triangle plot.
         
@@ -1110,23 +1142,33 @@ class NLFitter(object):
         parameter_renamer: function to apply to each parameter name to
                            determine the label which will correspond to it
         reference_value_mean: either None or a 1D array containing reference
-                              values
+                              values. (Should be given in untransformed space
+                              regardless of the value of apply_transforms.)
         reference_value_covariance: either None, a 2D array of rank
                                     num_parameters, or a tuple of length
                                     greater than 1 of the form (model, error)
                                     or (model, error, fisher_kwargs) to use for
                                     estimating the covariance matrix under the
                                     Fisher matrix formalism. This covariance
-                                    will be used to plot ellipses
+                                    will be used to plot ellipses. (Should be
+                                    given in untransformed space regardless of
+                                    the value of apply_transforms.)
+        apply_transforms: if True (default), transforms are applied before
+                                             histogram-ing
         """
         parameter_indices = self.get_parameter_indices(parameters=parameters)
         labels = [self.parameters[parameter_index]\
             for parameter_index in parameter_indices]
         if parameter_renamer is not None:
             labels = [parameter_renamer(label) for label in labels]
-        samples = [\
-            self.chain[:,:,parameter_index][walkers,:][:,::thin].flatten()\
-            for parameter_index in parameter_indices]
+        if apply_transforms:
+            samples = [self.transform_list[parameter_index](\
+                self.chain[:,:,parameter_index])[walkers,:][:,::thin].flatten(\
+                ) for parameter_index in parameter_indices]
+        else:
+            samples = [\
+                self.chain[:,:,parameter_index][walkers,:][:,::thin].flatten()\
+                for parameter_index in parameter_indices]
         num_samples = len(samples)
         if reference_value_covariance is not None:
             if isinstance(reference_value_covariance, np.ndarray):
@@ -1135,6 +1177,11 @@ class NLFitter(object):
                         "numpy.ndarray but it was not square with rank " +\
                         "given by the number of parameters in the triangle " +\
                         "plot.")
+                else:
+                    reference_value_covariance =\
+                        self.transform_list.transform_covariance(\
+                        reference_value_covariance, reference_value_mean,\
+                        axis=(0, 1))
             else:
                 (model, error, fisher_kwargs) =\
                     (reference_value_covariance[0],\
@@ -1144,11 +1191,18 @@ class NLFitter(object):
                     fisher_kwargs = {}
                 else:
                     fisher_kwargs = fisher_kwargs[0]
+                if apply_transforms:
+                    fisher_kwargs['transform_list'] = self.transform_list
                 likelihood =\
                     GaussianLoglikelihood(np.zeros(len(error)), error, model)
                 reference_value_covariance =\
                     likelihood.parameter_covariance_fisher_formalism(\
                     reference_value_mean, **fisher_kwargs)
+        if (reference_value_mean is not None) and apply_transforms:
+            reference_value_mean =\
+                [(None if (reference is None) else transform(reference))\
+                for (transform, reference) in\
+                zip(self.transform_list, reference_value_mean)]
         triangle_plot(samples, labels, figsize=figsize, show=show,\
             kwargs_1D=kwargs_1D, kwargs_2D=kwargs_2D, fontsize=fontsize,\
             nbins=nbins, plot_type=plot_type,\
@@ -1156,9 +1210,9 @@ class NLFitter(object):
             reference_value_covariance=reference_value_covariance)
     
     def plot_univariate_histogram(self, parameter_index, walkers=None, thin=1,\
-        ax=None, show=False, reference_value=None, fontsize=28,\
-        matplotlib_function='fill_between', show_intervals=False, bins=None,\
-        xlabel='', ylabel='', title='', **kwargs):
+        ax=None, show=False, reference_value=None, apply_transforms=True,\
+        fontsize=28, matplotlib_function='fill_between', show_intervals=False,\
+        bins=None, xlabel='', ylabel='', title='', **kwargs):
         """
         Plots a 1D histogram of the given parameter.
         
@@ -1173,6 +1227,9 @@ class NLFitter(object):
         show: if True, matplotlib.pyplot.show is called before this function
                        returns
         reference_value: a point at which to plot a dashed reference line
+                         (Should always be given in untransformed_space,
+                         regardless of the value of apply_transforms.)
+        apply_transforms: if True, plots are made in transformed space
         fontsize: the size of the tick label font
         matplotlib_function: either 'fill_between' or 'plot'
         bins: bins to pass to numpy.histogram: default, None
@@ -1191,7 +1248,15 @@ class NLFitter(object):
             walkers = np.arange(self.nwalkers)
         elif type(walkers) in int_types:
             walkers = np.arange(walkers)
-        sample = self.chain[:,:,parameter_index][walkers,:][:,::thin].flatten()
+        if apply_transforms:
+            sample = self.transform_list[parameter_index](\
+                self.chain[:,:,parameter_index])[walkers,:][:,::thin].flatten()
+            if reference_value is not None:
+                reference_value =\
+                    self.transform_list[parameter_index](reference_value)
+        else:
+            sample =\
+                self.chain[:,:,parameter_index][walkers,:][:,::thin].flatten()
         univariate_histogram(sample, reference_value=reference_value,\
             bins=bins, matplotlib_function=matplotlib_function,\
             show_intervals=show_intervals, xlabel=xlabel, ylabel=ylabel,\
@@ -1199,9 +1264,9 @@ class NLFitter(object):
     
     def plot_bivariate_histogram(self, parameter_index1, parameter_index2,\
         walkers=None, thin=1, ax=None, show=False, reference_value_mean=None,\
-        reference_value_covariance=None, fontsize=28, bins=None,\
-        matplotlib_function='imshow', xlabel='', ylabel='', title='',\
-        **kwargs):
+        reference_value_covariance=None, apply_transforms=True, fontsize=28,\
+        bins=None, matplotlib_function='imshow', xlabel='', ylabel='',\
+        title='', **kwargs):
         """
         Plots a 2D histogram of the given parameters.
         
@@ -1217,9 +1282,14 @@ class NLFitter(object):
             otherwise, this Axes object is plotted on
         show: if True, matplotlib.pyplot.show is called before this function
                        returns
-        reference_value_mean: point at which to plot a dashed reference lines
-                              for the axes
+        reference_value: a point at which to plot a dashed reference line
+                         (Should always be given in untransformed_space,
+                         regardless of the value of apply_transforms.)
         reference_value_covariance: if not None, used to plot reference ellipse
+                                    (Should always be given in untransformed
+                                    space, regardless of the value of
+                                    apply_transforms.)
+        apply_transforms: if True, plots are made in transformed space
         fontsize: the size of the tick label font
         bins: bins to pass to numpy.histogram2d, default: None
         xlabel: string for labeling x axis
@@ -1241,10 +1311,28 @@ class NLFitter(object):
             walkers = np.arange(self.nwalkers)
         elif type(walkers) in int_types:
             walkers = np.arange(walkers)
-        xsample =\
-            self.chain[:,:,parameter_index1][walkers,:][:,::thin].flatten()
-        ysample =\
-            self.chain[:,:,parameter_index2][walkers,:][:,::thin].flatten()
+        if apply_transforms:
+            xsample = self.transform_list[parameter_index1](\
+                self.chain[:,:,parameter_index1])[walkers,:][:,::thin].flatten()
+            ysample = self.transform_list[parameter_index2](\
+                self.chain[:,:,parameter_index2])[walkers,:][:,::thin].flatten()
+            transform_list = TransformList(\
+                self.transform_list[parameter_index1],\
+                self.transform_list[parameter_index2])
+            if reference_value_covariance is not None:
+                reference_value_covariance =\
+                    transform_list.transform_covariance(\
+                    reference_value_covariance, reference_value_mean,\
+                    axis=(0, 1))
+            if reference_value_mean is not None:
+                reference_value_mean = [None if (reference is None)\
+                    else transform(reference) for (transform, reference) in\
+                    zip(transform_list, reference_value_mean)]
+        else:
+            xsample =\
+                self.chain[:,:,parameter_index1][walkers,:][:,::thin].flatten()
+            ysample =\
+                self.chain[:,:,parameter_index2][walkers,:][:,::thin].flatten()
         bivariate_histogram(xsample, ysample,\
             reference_value_mean=reference_value_mean,\
             reference_value_covariance=reference_value_covariance, bins=bins,\

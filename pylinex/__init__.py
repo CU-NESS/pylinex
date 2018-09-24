@@ -12,7 +12,8 @@ Description: Imports the most important elements from all submodules. The
 from pylinex.util import int_types, float_types, real_numerical_types,\
     complex_numerical_types, numerical_types, bool_types, sequence_types,\
     Savable, Loadable, HDF5Link, create_hdf5_dataset, get_hdf5_value,\
-    VariableGrid, Expression, autocorrelation, chi_squared, psi_squared
+    VariableGrid, Expression, autocorrelation, chi_squared, psi_squared,\
+    RectangularBinner, rect_bin
 from pylinex.interpolator import Interpolator, LinearInterpolator,\
     QuadraticInterpolator
 from pylinex.quantity import Quantity, ConstantQuantity, AttributeQuantity,\
@@ -29,7 +30,7 @@ from pylinex.model import Model, LoadableModel, FixedModel,\
     ShiftedRescaledModel, ConstantModel, BasisModel, GaussianModel, SechModel,\
     LorentzianModel, SinusoidalModel, TanhModel, CompoundModel, SumModel,\
     TiedModel, DirectSumModel, ProductModel, CompositeModel, ExpressionModel,\
-    ExpandedModel, ScaledModel, TransformedModel, DistortedModel,\
+    ExpandedModel, ScaledModel, TransformedModel, DistortedModel, BinnedModel,\
     ProjectedModel, RenamedModel, RestrictedModel, SlicedModel,\
     InterpolatedModel, TruncatedBasisHyperModel, load_model_from_hdf5_group,\
     TrainingSetCreator

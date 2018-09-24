@@ -6,6 +6,7 @@ Date: 15 Jan 2018
 Description: File containing a class which wraps around the
              MetropolisHastingsSampler defined in the distpy package.
 """
+from __future__ import division
 import os, time, h5py
 import numpy as np
 import numpy.linalg as la
@@ -66,7 +67,7 @@ class Sampler(object):
                                 last checkpoint and the discrete parameters are
                                 each individually described by 1D
                                 CustomDiscreteDistribution objects approximated
-                                by the last checkpoint
+                                by the last checkpoint.
         prior_distribution_set: optional extra DistributionSet object with
                                 priors to include in the posterior to explore.
                                 If None and this is a restart, priors are
@@ -76,6 +77,22 @@ class Sampler(object):
                               the hdf5 file. (if None, it is set to 100)
         verbose: if True, the time is printed after the completion of each
                           checkpoint (and before the first checkpoint)
+        restart_mode: if None, no restarts are supported
+                      if 'continue', runs old Sampler as if nothing stopped
+                      if 'update', walkers are not moved but proposal
+                                   covariance is updated based on walker
+                                   positions/distributions
+                      if 'trimmed_update', same as 'update' but walkers which
+                                           stay more than 3 sigma from the mean
+                                           lnprobability value will be ignored
+                      if 'reinitialize', walkers position distribution and
+                                         proposal distribution are reset using
+                                         the walker positions/distributions
+                      if 'trimmed_reinitialize', same as 'reinitialize' but
+                                                 walkers which stay more than 3
+                                                 sigma from the mean
+                                                 lnprobability value will be
+                                                 ignored
         nthreads: the number of threads to use in log likelihood calculations
                   for walkers. Default: 1, 1 is best unless loglikelihood is
                   very slow
@@ -199,7 +216,8 @@ class Sampler(object):
                if 'continue', the Sampler will continue exactly as it left off
                if 'reinitialize', the Sampler uses the previous 
         """
-        allowed_modes = ['continue', 'update', 'reinitialize']
+        allowed_modes = ['continue', 'update', 'trimmed_update',\
+            'reinitialize', 'trimmed_reinitialize']
         if (value is None) or (value in allowed_modes):
             self._restart_mode = value
         else:
@@ -407,7 +425,7 @@ class Sampler(object):
     
     def _setup_restart_update(self, pos, lnprob, guess_distribution_set,\
         prior_distribution_set, jumping_distribution_set,\
-        last_saved_chunk_string):
+        last_saved_chunk_string, trim_tails=False):
         """
         Sets up a restarted run which is begun with an update to the
         JumpingDistributionSet but with no other update.
@@ -424,6 +442,10 @@ class Sampler(object):
         last_saved_chunk_string: string of form 'chunk{}'.format(chunk_index)
                                  where chunk index is the index of the last
                                  saved chunk
+        trim_tails: if True, only walkers with logL values within 3sigma of the
+                             mean logL value are retained for distribution
+                             purposes
+                    if False (default), all walkers are retained
         """
         self.chunk_index = self.chunk_index + 1
         self.file.attrs['max_chunk_index'] = self.chunk_index
@@ -447,7 +469,8 @@ class Sampler(object):
         if self.jumping_distribution_set is None:
             self.jumping_distribution_set =\
                 self._generate_reinitialized_jumping_distribution_set(\
-                jumping_distribution_set, last_saved_chunk_string)
+                jumping_distribution_set, last_saved_chunk_string,\
+                trim_tails=trim_tails)
         group = self.file['jumping_distribution_sets']
         subgroup = group.create_group(new_chunk_string)
         self.jumping_distribution_set.fill_hdf5_group(subgroup)
@@ -455,7 +478,7 @@ class Sampler(object):
     
     def _setup_restart_reinitialize(self, guess_distribution_set,\
         prior_distribution_set, jumping_distribution_set,\
-        last_saved_chunk_string):
+        last_saved_chunk_string, trim_tails=False):
         """
         Sets up a restart with restart_mode == 'reinitialize'.
         
@@ -469,6 +492,10 @@ class Sampler(object):
         last_saved_chunk_string: string of form 'chunk{}'.format(chunk_index)
                                  where chunk index is the index of the last
                                  saved chunk
+        trim_tails: if True, only walkers with logL values within 3sigma of the
+                             mean logL value are retained for distribution
+                             purposes
+                    if False (default), all walkers are retained
         """
         self.chunk_index = self.chunk_index + 1
         self.file.attrs['max_chunk_index'] = self.chunk_index
@@ -488,21 +515,24 @@ class Sampler(object):
         if self.jumping_distribution_set is None:
             self.jumping_distribution_set =\
                 self._generate_reinitialized_jumping_distribution_set(\
-                jumping_distribution_set, last_saved_chunk_string)
+                jumping_distribution_set, last_saved_chunk_string,\
+                trim_tails=trim_tails)
         group = self.file['jumping_distribution_sets']
         subgroup = group.create_group(new_chunk_string)
         self.jumping_distribution_set.fill_hdf5_group(subgroup)
         if self.guess_distribution_set is None:
             self.guess_distribution_set =\
                 self._generate_reinitialized_guess_distribution_set(\
-                guess_distribution_set, last_saved_chunk_string)
+                guess_distribution_set, last_saved_chunk_string,\
+                trim_tails=trim_tails)
         group = self.file['guess_distribution_sets']
         subgroup = group.create_group(new_chunk_string)
         self.guess_distribution_set.fill_hdf5_group(subgroup)
         self.checkpoint_index = 0
     
     def _generate_reinitialized_guess_distribution_set(self,\
-        guess_distribution_set, last_saved_chunk_string, min_eigenvalue=1e-8):
+        guess_distribution_set, last_saved_chunk_string, trim_tails=False,\
+        min_eigenvalue=1e-8):
         """
         Generates a new guess_distribution_set to use for a Sampler restarted
         with restart_mode=='reinitialize'.
@@ -513,6 +543,10 @@ class Sampler(object):
                                  'chunk{:d}'.format(chunk_index) where
                                  chunk_index is the index of the last saved
                                  chunk
+        trim_tails: if True, only walkers with logL values within 3sigma of the
+                             mean logL value are retained for distribution
+                             purposes
+                    if False (default), all walkers are retained
         
         returns: a DistributionSet object to use to initialize walkers for the
                  next chunk of this sampler.
@@ -528,10 +562,14 @@ class Sampler(object):
             last_checkpoint_group['lnprobability'].value
         walker_averaged_loglikelihood =\
             np.mean(last_checkpoint_loglikelihood, axis=-1)
-        loglikelihood_cutoff = np.mean(walker_averaged_loglikelihood) -\
-            (3 * np.std(walker_averaged_loglikelihood))
-        likelihood_based_weights =\
-            (walker_averaged_loglikelihood >= loglikelihood_cutoff).astype(int)
+        if trim_tails:
+            loglikelihood_cutoff = np.mean(walker_averaged_loglikelihood) -\
+                (3 * np.std(walker_averaged_loglikelihood))
+            likelihood_based_weights = (walker_averaged_loglikelihood >=\
+                loglikelihood_cutoff).astype(int)
+        else:
+            likelihood_based_weights =\
+                np.ones_like(walker_averaged_loglikelihood)
         likelihood_based_weights = (likelihood_based_weights[:,np.newaxis] *\
             np.ones(last_checkpoint_loglikelihood.shape)).flatten()
         last_checkpoint_chain = last_checkpoint_group['chain'].value
@@ -575,7 +613,7 @@ class Sampler(object):
         return new_guess_distribution_set
     
     def _generate_reinitialized_jumping_distribution_set(self,\
-        jumping_distribution_set, last_saved_chunk_string,\
+        jumping_distribution_set, last_saved_chunk_string, trim_tails=False,\
         min_eigenvalue=1e-8):
         """
         Generates a new jumping_distribution_set to use for a Sampler
@@ -588,6 +626,10 @@ class Sampler(object):
                                  'chunk{:d}'.format(chunk_index) where
                                  chunk_index is the index of the last saved
                                  chunk
+        trim_tails: if True, only walkers with logL values within 3sigma of the
+                             mean logL value are retained for distribution
+                             purposes
+                    if False (default), all walkers are retained
         
         returns: a JumpingDistributionSet object to use to determine how
                  walkers travel through parameter space for the next chunk of
@@ -604,10 +646,14 @@ class Sampler(object):
             last_checkpoint_group['lnprobability'].value
         walker_averaged_loglikelihood =\
             np.mean(last_checkpoint_loglikelihood, axis=-1)
-        loglikelihood_cutoff = np.mean(walker_averaged_loglikelihood) -\
-            (3 * np.std(walker_averaged_loglikelihood))
-        likelihood_based_weights =\
-            (walker_averaged_loglikelihood >= loglikelihood_cutoff).astype(int)
+        if trim_tails:
+            loglikelihood_cutoff = np.mean(walker_averaged_loglikelihood) -\
+                (3 * np.std(walker_averaged_loglikelihood))
+            likelihood_based_weights = (walker_averaged_loglikelihood >=\
+                loglikelihood_cutoff).astype(int)
+        else:
+            likelihood_based_weights =\
+                np.ones_like(walker_averaged_loglikelihood)
         likelihood_based_weights = (likelihood_based_weights[:,np.newaxis] *\
             np.ones(last_checkpoint_loglikelihood.shape)).flatten()
         last_checkpoint_chain = last_checkpoint_group['chain'].value
@@ -726,11 +772,20 @@ class Sampler(object):
             elif self.restart_mode == 'update':
                 self._setup_restart_update(pos, lnprob,\
                     guess_distribution_set, prior_distribution_set,\
-                    jumping_distribution_set, chunk_string)
-            else:
+                    jumping_distribution_set, chunk_string, trim_tails=False)
+            elif self.restart_mode == 'trimmed_update':
+                self._setup_restart_update(pos, lnprob,\
+                    guess_distribution_set, prior_distribution_set,\
+                    jumping_distribution_set, chunk_string, trim_tails=True)
+            elif self.restart_mode == 'reinitialize':
                 self._setup_restart_reinitialize(guess_distribution_set,\
                     prior_distribution_set, jumping_distribution_set,\
-                    chunk_string)
+                    chunk_string, trim_tails=False)
+            else:
+                # guaranteed that self.restart_mode == 'trimmed_reinitialize'
+                self._setup_restart_reinitialize(guess_distribution_set,\
+                    prior_distribution_set, jumping_distribution_set,\
+                    chunk_string, trim_tails=True)
     
     def _setup_new_file(self):
         """

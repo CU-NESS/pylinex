@@ -9,7 +9,7 @@ Description: File containing a function which can load a Model object from an
 import importlib
 import numpy as np
 from distpy import load_transform_from_hdf5_group
-from ..util import get_hdf5_value, Expression
+from ..util import get_hdf5_value, Expression, RectangularBinner
 from ..expander import load_expander_from_hdf5_group
 from ..basis import Basis
 from .FixedModel import FixedModel
@@ -21,6 +21,7 @@ from .LorentzianModel import LorentzianModel
 from .SinusoidalModel import SinusoidalModel
 from .TanhModel import TanhModel
 from .TransformedModel import TransformedModel
+from .BinnedModel import BinnedModel
 from .DistortedModel import DistortedModel
 from .ProjectedModel import ProjectedModel
 from .SumModel import SumModel
@@ -49,7 +50,8 @@ self_loadable_model_classes =\
 meta_model_classes =\
 [\
     'ExpandedModel', 'RenamedModel', 'RestrictedModel', 'TransformedModel',\
-    'DistortedModel', 'ProjectedModel', 'SlicedModel', 'ScaledModel'\
+    'DistortedModel', 'ProjectedModel', 'SlicedModel', 'ScaledModel',\
+    'BinnedModel'\
 ]
 
 # Model classes which are wrappers around an arbitrary number of Model classes
@@ -130,6 +132,10 @@ def load_model_from_hdf5_group(group):
                 constant_parameters =\
                     {key: subgroup.attrs[key] for key in subgroup.attrs}
                 return SlicedModel(model, **constant_parameters)
+            elif class_name == 'BinnedModel':
+                binner =\
+                    RectangularBinner.load_from_hdf5_group(group['binner'])
+                return BinnedModel(model, binner)
             else:
                 raise RuntimeError("This should never happen. Is there a " +\
                     "model loading function missing from LoadModel.py?")

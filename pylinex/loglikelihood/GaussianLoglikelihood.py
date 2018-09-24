@@ -8,8 +8,8 @@ Description: File containing a class which evaluates a likelihood which is
 """
 import numpy as np
 import numpy.linalg as la
-from distpy import cast_to_transform_list, GaussianDistribution,\
-    DistributionSet
+from distpy import cast_to_transform_list, WindowedDistribution,\
+    GaussianDistribution, DistributionSet, DistributionList
 from ..util import create_hdf5_dataset, get_hdf5_value
 from .Loglikelihood import Loglikelihood
 
@@ -274,7 +274,10 @@ class GaussianLoglikelihood(Loglikelihood):
             maximum_likelihood_parameters, differences=differences,\
             transform_list=transform_list)
         if np.any(max_standard_deviations == 0):
-            raise ValueError("")
+            raise ValueError("At least one of the max_standard deviations " +\
+                "was set to 0, which implies the existence of at least one " +\
+                "element in the null space of the covariance matrix, which " +\
+                "does not make sense.")
         max_standard_deviations =\
             max_standard_deviations * np.ones(self.num_parameters)
         inverse_covariance = inverse_covariance +\
@@ -283,7 +286,8 @@ class GaussianLoglikelihood(Loglikelihood):
     
     def parameter_distribution_fisher_formalism(self,\
         maximum_likelihood_parameters, differences=1e-6, transform_list=None,\
-        max_standard_deviations=np.inf):
+        max_standard_deviations=np.inf,\
+        prior_to_impose_in_transformed_space=None):
         """
         Finds the parameter distribution assuming maximum_likelihood_parameters
         contains a reasonable approximation of the true maximum likelihood
@@ -309,6 +313,22 @@ class GaussianLoglikelihood(Loglikelihood):
                                  of an unconstrained parameter. The default
                                  value is numpy.inf, which causes this
                                  correction to be unimportant in all cases.
+        prior_to_impose_in_transformed_space: if None (default), no prior is
+                                                                 imposed and a
+                                                                 Gaussian is
+                                                                 returned
+                                                                 through the
+                                                                 Fisher matrix
+                                                                 formalism
+                                              otherwise, prior_to_impose should
+                                                         be a Distribution
+                                                         object whose log_value
+                                                         function returns
+                                                         -np.inf in disallowed
+                                                         regions. The prior has
+                                                         no effect inside the
+                                                         region in which it is
+                                                         finite.
         
         returns: DistributionSet object containing GaussianDistribution object
                  approximating distribution in transformed space
@@ -321,8 +341,10 @@ class GaussianLoglikelihood(Loglikelihood):
             transform_list=transform_list,\
             max_standard_deviations=max_standard_deviations)
         distribution = GaussianDistribution(mean, covariance)
-        return\
-            DistributionSet([(distribution, self.parameters, transform_list)])
+        if prior_to_impose_in_transformed_space is not None:
+            distribution = WindowedDistribution(distribution,\
+                prior_to_impose_in_transformed_space)
+        return DistributionSet([(distribution, self.parameters, transform_list)])
     
     @property
     def gradient_computable(self):
