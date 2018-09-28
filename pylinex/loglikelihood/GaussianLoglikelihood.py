@@ -246,8 +246,10 @@ class GaussianLoglikelihood(Loglikelihood):
         contains a reasonable approximation of the true maximum likelihood
         parameter vector.
         
-        maximum_likelihood_parameters: the maximum likelihood  parameter vector
-                                       (or some approximation of it)
+        maximum_likelihood_parameters: the maximum likelihood parameter vector
+                                       (or some approximation of it), given in
+                                       untransformed space, no matter the value
+                                       of the transform_list argument
         differences: either single number of 1D array of numbers to use as the
                      numerical difference in each parameter. Default: 10^(-6)
                      Only necessary if this likelihood's model does not have an

@@ -53,7 +53,8 @@ jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-4),\
 file_name = 'TESTINGSAMPLERDELETEIFYOUSEETHIS.hdf5'
 nwalkers = 50
 steps_per_checkpoint = 100
-num_checkpoints = 20
+num_checkpoints = 10
+nbins = 25
 verbose = True
 
 try:
@@ -71,25 +72,27 @@ try:
     fitter.plot_chain(parameters='.*', ax=ax, show=False,\
         amplitude=parameters[0], scale=parameters[1])
     fitter.close()
-    burn_rule = BurnRule(min_checkpoints=1, desired_fraction=0.1)
+    burn_rule = BurnRule(min_checkpoints=1, desired_fraction=0.5)
     fitter = NLFitter(file_name, burn_rule)
-    fitter.triangle_plot(parameters='.*', figsize=(12, 12), show=False,\
-        fontsize=28, nbins=100, plot_type='contour',\
+    fig = fitter.triangle_plot(parameters='.*', figsize=(12, 12), show=False,\
+        fontsize=28, nbins=nbins, plot_type='contourf',\
         reference_value_mean=parameters,\
-        reference_value_covariance=(model, error), apply_transforms=True)
+        reference_value_covariance=(model, error), apply_transforms=True,\
+        contour_confidence_levels=[0.68, 0.95])
+    fig.subplots_adjust(left=0.2, right=0.95, bottom=0.12, top=0.98)
     fig = pl.figure(figsize=(12,9))
     ax = fig.add_subplot(111)
     fitter.plot_rescaling_factors(ax=ax, show=False)
     fig = pl.figure(figsize=(12,9))
     ax = fig.add_subplot(111)
     number = 1000
-    probabilities = [0.68]
-    alphas = [0.2]
+    probabilities = [0.68, 0.95]
+    alphas = [0.4, 0.2]
     parameter_regex = '.*'
     signals = fitter.plot_reconstruction_confidence_intervals(number,\
         probabilities, parameter_regex, model, true_curve=noiseless_data,\
         x_values=x_values, ax=ax, alphas=alphas,\
-        title='68% confidence interval', show=False)
+        title='68% and 95% confidence intervals', show=False)
     ax.scatter(x_values, data, color='k', label='data')
     ax.set_xlabel('x', size=fontsize)
     ax.set_ylabel('y', size=fontsize)

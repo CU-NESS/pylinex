@@ -13,5 +13,6 @@ from pylinex.util.VariableGrid import VariableGrid
 from pylinex.util.Expression import Expression
 from pylinex.util.Correlation import autocorrelation, chi_squared, psi_squared
 from pylinex.util.TrianglePlot import univariate_histogram,\
-    bivariate_histogram, triangle_plot
+    confidence_contour_2D, bivariate_histogram, triangle_plot
 from pylinex.util.RectangularBinner import RectangularBinner, rect_bin
+

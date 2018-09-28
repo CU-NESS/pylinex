@@ -7,10 +7,12 @@ Description: File containing functions which plot univariate histograms,
              bivariate histograms, and triangle plots (which are really just
              combinations of the previous two types).
 """
+from __future__ import division
 import numpy as np
 import scipy.linalg as scila
 import matplotlib.pyplot as pl
 from matplotlib.ticker import StrMethodFormatter
+from distpy import real_numerical_types, sequence_types
 
 def univariate_histogram(sample, reference_value=None, bins=None,\
     matplotlib_function='fill_between', show_intervals=False, xlabel='',\
@@ -96,10 +98,45 @@ def univariate_histogram(sample, reference_value=None, bins=None,\
     else:
         return ax
 
+def confidence_contour_2D(xsample, ysample, nums=None,\
+    confidence_contours=0.95, hist_kwargs={}):
+    """
+    Finds the posterior distribution levels which represent the boundaries of
+    confidence intervals of the given confidence level(s).
+    
+    xsample: xsample to contour
+    ysample: ysample to contour
+    nums: if histogram has already been created, nums can be passed here
+    confidence_contours: confidence level as a number between 0 and 1 or a 1D
+                         array of such numbers, default: 0.95
+    hist_kwargs: only used if nums is None, contains keyword arguments to pass
+                 to histogram2d function
+    
+    returns: 1D array of confidence contours
+    """
+    if nums is None:
+        (nums, xedges, yedges) =\
+            np.histogram2d(xsample, ysample, **hist_kwargs)
+    nums = np.sort(nums.flatten())
+    cdf_values = np.cumsum(nums)
+    cdf_values = (cdf_values / cdf_values[-1])
+    confidence_levels = 1 - cdf_values
+    if type(confidence_contours) in real_numerical_types:
+        confidence_contours = [confidence_contours]
+    if type(confidence_contours) in sequence_types:
+        confidence_contours = np.sort(confidence_contours)
+        return np.where(np.all(confidence_levels[np.newaxis,:] <=\
+            confidence_contours[:,np.newaxis], axis=-1), nums[0],\
+            np.interp(confidence_contours, confidence_levels[-1::-1],\
+            nums[-1::-1]))
+    else:
+        raise TypeError("confidence_contours was set to neither a single " +\
+            "number or a 1D sequence of numbers.")
+
 def bivariate_histogram(xsample, ysample, reference_value_mean=None,\
     reference_value_covariance=None, bins=None, matplotlib_function='imshow',\
     xlabel='', ylabel='', title='', fontsize=28, ax=None, show=False,\
-    **kwargs):
+    contour_confidence_levels=0.95, **kwargs):
     """
     Plots a 2D histogram of the given joint sample.
     
@@ -119,6 +156,10 @@ def bivariate_histogram(xsample, ysample, reference_value_mean=None,\
         otherwise, this Axes object is plotted on
     show: if True, matplotlib.pyplot.show is called before this function
                    returns
+    contour_confidence_levels: the confidence level of the contour in the
+                               bivariate histograms. Only used if
+                               matplotlib_function is 'contour' or 'contourf'.
+                               Can be single number or sequence of numbers
     kwargs: keyword arguments to pass on to matplotlib.Axes.imshow (any but
             'origin', 'extent', or 'aspect') or matplotlib.Axes.contour or
             matplotlib.Axes.contourf (any)
@@ -139,13 +180,15 @@ def bivariate_histogram(xsample, ysample, reference_value_mean=None,\
             **kwargs)
     else:
         pdf_max = np.max(nums)
+        contour_levels = confidence_contour_2D(xsample, ysample, nums=nums,\
+            confidence_contours=contour_confidence_levels)
+        contour_levels = np.sort(contour_levels)
         if matplotlib_function == 'contour':
-            levels = (pdf_max * np.array([0.1353]))
-            ax.contour(xbin_centers, ybin_centers, nums.T, levels,\
+            ax.contour(xbin_centers, ybin_centers, nums.T, contour_levels,\
                 **kwargs)
         elif matplotlib_function == 'contourf':
-            levels = (pdf_max * np.array([0.1353, 1]))
-            ax.contourf(xbin_centers, ybin_centers, nums.T, levels,\
+            contour_levels = np.concatenate([contour_levels, [pdf_max]])
+            ax.contourf(xbin_centers, ybin_centers, nums.T, contour_levels,\
                 **kwargs)
         else:
             raise ValueError("matplotlib_function not recognized.")
@@ -183,7 +226,7 @@ def bivariate_histogram(xsample, ysample, reference_value_mean=None,\
 def triangle_plot(samples, labels, figsize=(8, 8), show=False,\
     kwargs_1D={}, kwargs_2D={}, fontsize=28, nbins=100,\
     plot_type='contour', reference_value_mean=None,\
-    reference_value_covariance=None):
+    reference_value_covariance=None, contour_confidence_levels=0.95):
     """
     Makes a triangle plot out of N samples corresponding to (possibly
     correlated) random variables
@@ -203,6 +246,10 @@ def triangle_plot(samples, labels, figsize=(8, 8), show=False,\
     reference_value_covariance: if not None, used (along with
                                 reference_value_mean) to plot reference
                                 ellipses in each bivariate histogram
+    contour_confidence_levels: the confidence level of the contour in the
+                               bivariate histograms. Only used if plot_type is
+                               'contour' or 'contourf'. Can be single number or
+                               sequence of numbers
     """
     fig = pl.figure(figsize=figsize)
     samples = np.array(samples)
@@ -274,7 +321,9 @@ def triangle_plot(samples, labels, figsize=(8, 8), show=False,\
                     bins=(bins[column], bins[row]),\
                     matplotlib_function=matplotlib_function_2D, xlabel='',\
                     ylabel='', title='', fontsize=fontsize, ax=ax,\
-                    show=False, **kwargs_2D)
+                    show=False,\
+                    contour_confidence_levels=contour_confidence_levels,\
+                    **kwargs_2D)
             ax.set_xticks(ticks[column])
             if row != column:
                 ax.set_yticks(ticks[row])
@@ -302,4 +351,6 @@ def triangle_plot(samples, labels, figsize=(8, 8), show=False,\
     fig.subplots_adjust(wspace=0, hspace=0)
     if show:
         pl.show()
+    else:
+        return fig
 

@@ -1124,7 +1124,7 @@ class NLFitter(object):
         figsize=(8, 8), show=False, kwargs_1D={}, kwargs_2D={}, fontsize=28,\
         nbins=100, plot_type='contour', parameter_renamer=None,\
         reference_value_mean=None, reference_value_covariance=None,\
-        apply_transforms=True):
+        contour_confidence_levels=0.95, apply_transforms=True):
         """
         Makes a triangle plot.
         
@@ -1153,6 +1153,9 @@ class NLFitter(object):
                                     will be used to plot ellipses. (Should be
                                     given in untransformed space regardless of
                                     the value of apply_transforms.)
+        contour_confidence_levels: the confidence level of the contour in the
+                                   bivariate histograms. Only used if plot_type
+                                   is 'contour' or 'contourf'.
         apply_transforms: if True (default), transforms are applied before
                                              histogram-ing
         """
@@ -1203,11 +1206,12 @@ class NLFitter(object):
                 [(None if (reference is None) else transform(reference))\
                 for (transform, reference) in\
                 zip(self.transform_list, reference_value_mean)]
-        triangle_plot(samples, labels, figsize=figsize, show=show,\
+        return triangle_plot(samples, labels, figsize=figsize, show=show,\
             kwargs_1D=kwargs_1D, kwargs_2D=kwargs_2D, fontsize=fontsize,\
             nbins=nbins, plot_type=plot_type,\
             reference_value_mean=reference_value_mean,\
-            reference_value_covariance=reference_value_covariance)
+            reference_value_covariance=reference_value_covariance,\
+            contour_confidence_levels=contour_confidence_levels)
     
     def plot_univariate_histogram(self, parameter_index, walkers=None, thin=1,\
         ax=None, show=False, reference_value=None, apply_transforms=True,\
@@ -1257,7 +1261,7 @@ class NLFitter(object):
         else:
             sample =\
                 self.chain[:,:,parameter_index][walkers,:][:,::thin].flatten()
-        univariate_histogram(sample, reference_value=reference_value,\
+        return univariate_histogram(sample, reference_value=reference_value,\
             bins=bins, matplotlib_function=matplotlib_function,\
             show_intervals=show_intervals, xlabel=xlabel, ylabel=ylabel,\
             title=title, fontsize=fontsize, ax=ax, show=show, **kwargs)
@@ -1266,7 +1270,7 @@ class NLFitter(object):
         walkers=None, thin=1, ax=None, show=False, reference_value_mean=None,\
         reference_value_covariance=None, apply_transforms=True, fontsize=28,\
         bins=None, matplotlib_function='imshow', xlabel='', ylabel='',\
-        title='', **kwargs):
+        contour_confidence_levels=0.95, title='', **kwargs):
         """
         Plots a 2D histogram of the given parameters.
         
@@ -1297,6 +1301,11 @@ class NLFitter(object):
         title: string for top of plot
         matplotlib_function: function to use in plotting. One of ['imshow',
                              'contour', 'contourf']. default: 'imshow'
+        contour_confidence_levels: the confidence level of the contour in the
+                                   bivariate histograms. Only used if
+                                   matplotlib_function is 'contour' or
+                                   'contourf'. Can be single number or sequence
+                                   of numbers
         kwargs: keyword arguments to pass on to matplotlib.Axes.imshow (any but
                 'origin', 'extent', or 'aspect') or matplotlib.Axes.contour or
                 matplotlib.Axes.contourf (any)
@@ -1333,12 +1342,12 @@ class NLFitter(object):
                 self.chain[:,:,parameter_index1][walkers,:][:,::thin].flatten()
             ysample =\
                 self.chain[:,:,parameter_index2][walkers,:][:,::thin].flatten()
-        bivariate_histogram(xsample, ysample,\
+        return bivariate_histogram(xsample, ysample,\
             reference_value_mean=reference_value_mean,\
             reference_value_covariance=reference_value_covariance, bins=bins,\
             matplotlib_function=matplotlib_function, xlabel=xlabel,\
             ylabel=ylabel, title=title, fontsize=fontsize, ax=ax, show=show,\
-            **kwargs)
+            contour_confidence_levels=contour_confidence_levels, **kwargs)
     
     def plot_lnprobability(self, walkers=None, log_scale=False,\
         title='Log probability', ax=None, show=False):
