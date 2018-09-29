@@ -257,14 +257,23 @@ def triangle_plot(samples, labels, figsize=(8, 8), show=False,\
     if plot_type == 'contour':
         matplotlib_function_1D = 'plot'
         matplotlib_function_2D = 'contour'
+        full_kwargs_1D = {}
+        full_kwargs_2D = {'cmap': 'Dark2', 'linewidth': 2}
     elif plot_type == 'contourf':
         matplotlib_function_1D = 'fill_between'
         matplotlib_function_2D = 'contourf'
+        full_kwargs_1D = {}
+        full_kwargs_2D = {'colors':\
+            ['C{:d}'.format(index) for index in [0, 2, 4, 6, 1, 3, 5, 7]]}
     elif plot_type == 'histogram':
         matplotlib_function_1D = 'bar'
         matplotlib_function_2D = 'imshow'
+        full_kwargs_1D = {}
+        full_kwargs_2D = {}
     else:
         raise ValueError("plot_type not recognized.")
+    full_kwargs_1D.update(kwargs_1D)
+    full_kwargs_2D.update(kwargs_2D)
     ticks = []
     bins = []
     for (isample, sample) in enumerate(samples):
@@ -301,7 +310,7 @@ def triangle_plot(samples, labels, figsize=(8, 8), show=False,\
                     bins=bins[column],\
                     matplotlib_function=matplotlib_function_1D,\
                     show_intervals=False, xlabel='', ylabel='', title='',\
-                    fontsize=fontsize, ax=ax, show=False, **kwargs_1D)
+                    fontsize=fontsize, ax=ax, show=False, **full_kwargs_1D)
             else:
                 if reference_value_mean is None:
                     reference_value_y = None
@@ -323,7 +332,7 @@ def triangle_plot(samples, labels, figsize=(8, 8), show=False,\
                     ylabel='', title='', fontsize=fontsize, ax=ax,\
                     show=False,\
                     contour_confidence_levels=contour_confidence_levels,\
-                    **kwargs_2D)
+                    **full_kwargs_2D)
             ax.set_xticks(ticks[column])
             if row != column:
                 ax.set_yticks(ticks[row])

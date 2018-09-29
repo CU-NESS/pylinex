@@ -168,16 +168,25 @@ class NLFitter(object):
         return self.loglikelihood.model
     
     @property
+    def num_chunks(self):
+        """
+        Property storing the number of chunks stored in the file this NLFitter
+        around which this NLFitter is based.
+        """
+        if not hasattr(self, '_num_chunks'):
+            self._num_chunks = self.file.attrs['max_chunk_index'] + 1
+        return self._num_chunks
+    
+    @property
     def chunks_to_load(self):
         """
         Property storing the chunk numbers to load for this NLFitter.
         """
         if not hasattr(self, '_chunks_to_load'):
-            num_chunks = self.file.attrs['max_chunk_index'] + 1
             if self.load_all_chunks:
-                self._chunks_to_load = np.arange(num_chunks)
+                self._chunks_to_load = np.arange(self.num_chunks)
             else:
-                self._chunks_to_load = np.array([num_chunks - 1])
+                self._chunks_to_load = np.array([self.num_chunks - 1])
         return self._chunks_to_load
     
     @property
@@ -197,10 +206,9 @@ class NLFitter(object):
         """
         if not hasattr(self, '_num_checkpoints'):
             self._num_checkpoints = []
-            for ichunk in range(self.num_chunks_to_load):
-                group = self.file['checkpoints/chunk{:d}'.format(ichunk)]
-                self._num_checkpoints.append(\
-                   group.attrs['max_checkpoint_index'] + 1)
+            for ichunk in self.chunks_to_load:
+                self._num_checkpoints.append(1 + self.file[('checkpoints/' +\
+                    'chunk{:d}').format(ichunk)].attrs['max_checkpoint_index'])
         return self._num_checkpoints
     
     @property
@@ -222,7 +230,7 @@ class NLFitter(object):
         if not hasattr(self, '_total_num_checkpoints_to_load'):
             self._total_num_checkpoints_to_load =\
                 len(self.burn_rule(self.total_num_checkpoints))
-        return self._total_num_checkpoints
+        return self._total_num_checkpoints_to_load
     
     @property
     def checkpoints_to_load(self):
@@ -231,7 +239,7 @@ class NLFitter(object):
         BurnRule) of checkpoints which should be loaded into the final chain.
         """
         if not hasattr(self, '_checkpoints_to_load'):
-            left_to_load = len(self.burn_rule(self.total_num_checkpoints))
+            left_to_load = self.total_num_checkpoints_to_load
             backwards_answer = []
             for iichunk in range(self.num_chunks_to_load-1, -1, -1):
                 ichunk = self.chunks_to_load[iichunk]
