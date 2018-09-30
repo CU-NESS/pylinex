@@ -53,9 +53,12 @@ class NLFitter(object):
         Splits a file into two.
         
         original_file_name: the file location of original file
-        chunk_index: first chunk index to include in the second file (also
-                     equal to the number of chunks to include in the first
-                     file)
+        chunk_index: if a negative integer between -num_chunks (exclusive) and,
+                     -1 (inclusive), chunk_index is the number of chunks to cut
+                     off the end of the original mcmc.hdf5 file. if a positive
+                     integer between 1 (inclusive) and num_chunks (exclusive),
+                     chunk_index is the number of chunks to cut off the start
+                     of the original mcmc.hdf5 file.
         first_output_file_name: output file name containing earlier part of
                                 chain
         second_output_file_name: output file name containing later part of

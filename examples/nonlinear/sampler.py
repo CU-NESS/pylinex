@@ -14,6 +14,8 @@ from distpy import UniformDistribution, GaussianDistribution, DistributionSet,\
 from pylinex import GaussianModel, GaussianLoglikelihood, BurnRule, Sampler,\
     NLFitter
 
+remove_file = True
+
 seed = 1234567890
 np.random.seed(seed)
 
@@ -57,11 +59,17 @@ jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-2),\
 #nwalkers = 2 * loglikelihood.num_parameters
 
 try:
-    sampler = Sampler(file_name, nwalkers, loglikelihood,\
-        jumping_distribution_set=jumping_distribution_set,\
-        guess_distribution_set=guess_distribution_set,\
-        prior_distribution_set=None, nthreads=nthreads,\
-        steps_per_checkpoint=steps_per_checkpoint, restart_mode=None)
+    if os.path.exists(file_name):
+        sampler = Sampler(file_name, nwalkers, loglikelihood,\
+            jumping_distribution_set=None, guess_distribution_set=None,\
+            prior_distribution_set=None, nthreads=nthreads,\
+            steps_per_checkpoint=steps_per_checkpoint, restart_mode='continue')
+    else:
+        sampler = Sampler(file_name, nwalkers, loglikelihood,\
+            jumping_distribution_set=jumping_distribution_set,\
+            guess_distribution_set=guess_distribution_set,\
+            prior_distribution_set=None, nthreads=nthreads,\
+            steps_per_checkpoint=steps_per_checkpoint, restart_mode=None)
     sampler.run_checkpoints(quarter_ncheckpoints)
     sampler.close()
     sampler = Sampler(file_name, nwalkers, loglikelihood,\
@@ -107,11 +115,12 @@ try:
         title='68% and 95% confidence intervals', show=False)
     fitter.close()
 except:
-    #os.remove(file_name)
+    if remove_file:
+        os.remove(file_name)
     raise
 else:
-    #os.remove(file_name)
-    pass
+    if remove_file:
+        os.remove(file_name)
 
 pl.show()
 
