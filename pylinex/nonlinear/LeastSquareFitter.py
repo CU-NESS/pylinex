@@ -29,8 +29,8 @@ class LeastSquareFitter(object):
     maximize the likelihood (if the gradient is computable; otherwise, other
     optimization algorithms are used).
     """
-    def __init__(self, loglikelihood=None, prior_set=None, transform_list=None,\
-        file_name=None, **bounds):
+    def __init__(self, loglikelihood=None, prior_set=None,\
+        transform_list=None, file_name=None, **bounds):
         """
         Initializes a LeastSquareFitter with a Loglikelihood to maximize and a
         prior_set with which to initialize guesses.
