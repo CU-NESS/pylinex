@@ -58,36 +58,12 @@ class Loglikelihood(Savable, Loadable):
         return self._num_channels
     
     @property
-    def model(self):
-        """
-        Property storing the Model object which models the data used by this
-        likelihood.
-        """
-        if not hasattr(self, '_model'):
-            raise AttributeError("model referenced before it was set.")
-        return self._model
-    
-    @model.setter
-    def model(self, value):
-        """
-        Setter for the model of the data used by this likelihood.
-        
-        value: a Model object
-        """
-        if isinstance(value, Model):
-            self._model = value
-        else:
-            raise TypeError("model must be a Model object.")
-    
-    @property
     def parameters(self):
         """
         Property storing the names of the parameters of the model defined by
         this likelihood.
         """
-        if not hasattr(self, '_parameters'):
-            self._parameters = self.model.parameters
-        return self._parameters
+        raise cannot_instantiate_loglikelihood_error
     
     @property
     def num_parameters(self):
@@ -114,39 +90,30 @@ class Loglikelihood(Savable, Loadable):
         Fills the given hdf5 group with information about this Loglikelihood.
         
         group: the group to fill with information about this Loglikelihood
-        data_link: link like that returned by pylinex.h5py_extensions.HDF5Link
-        error_link: link like that returned by pylinex.h5py_extensions.HDF5Link
-        model_links: dictionary of any other kwargs to pass on to the model's
-                     fill_hdf5_group function
         """
         raise cannot_instantiate_loglikelihood_error
     
-    def save_data_and_model(self, group, data_link=None, **model_links):
+    def save_data(self, group, data_link=None):
         """
         Saves the data and model of this Loglikelihood object.
         
         group: hdf5 file group where information about this object is being
                saved
         data_link: link to where data is already saved somewhere (if it exists)
-        model_links: extra kwargs to pass on to the fill_hdf5_group of the
-                     model being saved
         """
         create_hdf5_dataset(group, 'data', data=self.data, link=data_link)
-        self.model.fill_hdf5_group(group.create_group('model'), **model_links)
     
     @staticmethod
-    def load_data_and_model(group):
+    def load_data(group):
         """
         Loads the model of a Loglikelihood object from the given group.
         
         group: hdf5 file group where loglikelihood.save_data_and_model(group)
                has previously been called
         
-        returns: (data, model) where data is an array and model is a Model
+        returns: data, an array
         """
-        data = get_hdf5_value(group['data'])
-        model = load_model_from_hdf5_group(group['model'])
-        return (data, model)
+        return get_hdf5_value(group['data'])
     
     @staticmethod
     def load_from_hdf5_group(group):

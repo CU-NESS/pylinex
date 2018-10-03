@@ -235,7 +235,6 @@ class Fitter(Savable):
                 self._log_prior_covariance_determinant +=\
                     npla.slogdet(this_prior_covariance)[1]
         return self._log_prior_covariance_determinant
-        
     
     @property
     def data(self):

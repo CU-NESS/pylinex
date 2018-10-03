@@ -8,6 +8,7 @@ Description: File containing a class which evaluates a likelihood whose data
 """
 import numpy as np
 from scipy.special import gammaln as log_gamma
+from ..model import load_model_from_hdf5_group, Model
 from .Loglikelihood import Loglikelihood
 
 class PoissonLoglikelihood(Loglikelihood):
@@ -26,6 +27,38 @@ class PoissonLoglikelihood(Loglikelihood):
         self.data = data
         self.model = model
     
+    @property
+    def model(self):
+        """
+        Property storing the Model object which models the data used by this
+        likelihood.
+        """
+        if not hasattr(self, '_model'):
+            raise AttributeError("model referenced before it was set.")
+        return self._model
+    
+    @model.setter
+    def model(self, value):
+        """
+        Setter for the model of the data used by this likelihood.
+        
+        value: a Model object
+        """
+        if isinstance(value, Model):
+            self._model = value
+        else:
+            raise TypeError("model must be a Model object.")
+    
+    @property
+    def parameters(self):
+        """
+        Property storing the names of the parameters of the model defined by
+        this likelihood.
+        """
+        if not hasattr(self, '_parameters'):
+            self._parameters = self.model.parameters
+        return self._parameters
+    
     def fill_hdf5_group(self, group, data_link=None, **model_links):
         """
         Fills the given hdf5 group with information about this Loglikelihood.
@@ -36,7 +69,8 @@ class PoissonLoglikelihood(Loglikelihood):
                      fill_hdf5_group function
         """
         group.attrs['class'] = 'PoissonLoglikelihood'
-        self.save_data_and_model(group, data_link=data_link, **model_links)
+        self.save_data(group, data_link=data_link)
+        self.model.fill_hdf5_group(group.create_group('model'), **model_links)
     
     @staticmethod
     def load_from_hdf5_group(group):
@@ -53,7 +87,8 @@ class PoissonLoglikelihood(Loglikelihood):
         except:
             raise ValueError("group doesn't appear to point to a " +\
                 "PoissonLoglikelihood object.")
-        (data, model) = Loglikelihood.load_data_and_model(group)
+        data = Loglikelihood.load_data(group)
+        model = load_model_from_hdf5_group(group['model'])
         return PoissonLoglikelihood(data, model)
     
     def __call__(self, pars, return_negative=False):

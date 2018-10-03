@@ -13,3 +13,4 @@ from pylinex.nonlinear.LeastSquareFitGenerator import LeastSquareFitGenerator
 from pylinex.nonlinear.Sampler import Sampler
 from pylinex.nonlinear.BurnRule import BurnRule
 from pylinex.nonlinear.NLFitter import NLFitter
+from pylinex.nonlinear.TruncationExtractor import TruncationExtractor

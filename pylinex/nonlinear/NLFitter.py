@@ -114,7 +114,8 @@ class NLFitter(object):
                         first_output_hdf5_file.create_group(\
                         'guess_distribution_sets')
                     for temp_chunk_index in range(chunk_index):
-                        temp_chunk_string = 'chunk{:d}'.format(temp_chunk_index)
+                        temp_chunk_string =\
+                            'chunk{:d}'.format(temp_chunk_index)
                         if temp_chunk_string in\
                             input_guess_distribution_sets_group:
                             input_guess_distribution_sets_group.copy(\
@@ -124,7 +125,8 @@ class NLFitter(object):
                         first_output_hdf5_file.create_group(\
                         'jumping_distribution_sets')
                     for temp_chunk_index in range(chunk_index):
-                        temp_chunk_string = 'chunk{:d}'.format(temp_chunk_index)
+                        temp_chunk_string =\
+                            'chunk{:d}'.format(temp_chunk_index)
                         if temp_chunk_string in\
                             input_jumping_distribution_sets_group:
                             input_jumping_distribution_sets_group.copy(\
@@ -133,7 +135,8 @@ class NLFitter(object):
                     first_output_checkpoints_group =\
                         first_output_hdf5_file.create_group('checkpoints')
                     for temp_chunk_index in range(chunk_index):
-                        temp_chunk_string = 'chunk{:d}'.format(temp_chunk_index)
+                        temp_chunk_string =\
+                            'chunk{:d}'.format(temp_chunk_index)
                         if temp_chunk_string in input_checkpoints_group:
                             input_checkpoints_group.copy(temp_chunk_string,\
                                 first_output_checkpoints_group)
@@ -147,14 +150,16 @@ class NLFitter(object):
                 try:
                     second_output_hdf5_file.attrs['max_chunk_index'] =\
                         num_chunks - chunk_index - 1
-                    input_hdf5_file.copy('loglikelihood', second_output_hdf5_file)
+                    input_hdf5_file.copy('loglikelihood',\
+                        second_output_hdf5_file)
                     input_hdf5_file.copy('parameters', second_output_hdf5_file)
                     input_hdf5_file.copy('state', second_output_hdf5_file)
                     second_output_prior_distribution_sets_group =\
                         second_output_hdf5_file.create_group(\
                         'prior_distribution_sets')
                     for temp_chunk_index in range(chunk_index, num_chunks):
-                        temp_chunk_string = 'chunk{:d}'.format(temp_chunk_index)
+                        temp_chunk_string =\
+                            'chunk{:d}'.format(temp_chunk_index)
                         output_temp_chunk_string =\
                             'chunk{:d}'.format(temp_chunk_index - chunk_index)
                         if temp_chunk_string in\
@@ -167,7 +172,8 @@ class NLFitter(object):
                         second_output_hdf5_file.create_group(\
                         'guess_distribution_sets')
                     for temp_chunk_index in range(chunk_index, num_chunks):
-                        temp_chunk_string = 'chunk{:d}'.format(temp_chunk_index)
+                        temp_chunk_string =\
+                            'chunk{:d}'.format(temp_chunk_index)
                         output_temp_chunk_string =\
                             'chunk{:d}'.format(temp_chunk_index - chunk_index)
                         if temp_chunk_string in\
@@ -180,7 +186,8 @@ class NLFitter(object):
                         second_output_hdf5_file.create_group(\
                         'jumping_distribution_sets')
                     for temp_chunk_index in range(chunk_index, num_chunks):
-                        temp_chunk_string = 'chunk{:d}'.format(temp_chunk_index)
+                        temp_chunk_string =\
+                            'chunk{:d}'.format(temp_chunk_index)
                         output_temp_chunk_string =\
                             'chunk{:d}'.format(temp_chunk_index - chunk_index)
                         if temp_chunk_string in\
@@ -192,7 +199,8 @@ class NLFitter(object):
                     second_output_checkpoints_group =\
                         second_output_hdf5_file.create_group('checkpoints')
                     for temp_chunk_index in range(chunk_index, num_chunks):
-                        temp_chunk_string = 'chunk{:d}'.format(temp_chunk_index)
+                        temp_chunk_string =\
+                            'chunk{:d}'.format(temp_chunk_index)
                         output_temp_chunk_string =\
                             'chunk{:d}'.format(temp_chunk_index - chunk_index)
                         if temp_chunk_string in input_checkpoints_group:
@@ -322,6 +330,36 @@ class NLFitter(object):
             self._loglikelihood =\
                 load_loglikelihood_from_hdf5_group(self.file['loglikelihood'])
         return self._loglikelihood
+    
+    @property
+    def error(self):
+        """
+        Property storing the error vector used in the loglikelihood explored by
+        the Sampler underlying this NLFitter.
+        """
+        if not hasattr(self, '_error'):
+            try:
+                self._error = self.loglikelihood.error
+            except:
+                raise NotImplementedError("error vector could not be " +\
+                    "retrieved because the Loglikelihood explored does not " +\
+                    "have an error property.")
+        return self._error
+    
+    @property
+    def data(self):
+        """
+        Property storing the data vector used in the loglikelihood explored by
+        the Sampler underlying this NLFitter.
+        """
+        if not hasattr(self, '_data'):
+            try:
+                self._data = self.loglikelihood.data
+            except:
+                raise NotImplementedError("data vector could not be " +\
+                    "retrieved because the Loglikelihood explored does not " +\
+                    "have an error property.")
+        return self._data
     
     @property
     def model(self):
@@ -982,7 +1020,7 @@ class NLFitter(object):
             self.reconstructions(number, parameters=parameters, model=model)
         if true_curve is None:
             if (parameters is None) and (model is None):
-                true_curve = self.loglikelihood.data
+                true_curve = self.data
             else:
                 raise NotImplementedError("The bias cannot be computed if " +\
                     "no true_curve is given unless the full " +\
@@ -1062,7 +1100,7 @@ class NLFitter(object):
             number, probabilities, parameters=parameters, model=model)
         if true_curve is None:
             if parameters is None and model is None:
-                true_curve = self.loglikelihood.data
+                true_curve = self.data
             else:
                 raise NotImplementedError("The bias cannot be computed if " +\
                     "no true_curve is given unless the full " +\
@@ -1112,7 +1150,7 @@ class NLFitter(object):
         maximum_probability_parameter_subset =\
             self.maximum_probability_parameters[parameter_indices]
         if (parameters is None) and (model is None) and (true_curve is None):
-            true_curve = self.loglikelihood.data * scale_factor
+            true_curve = self.data * scale_factor
         if model is None:
             model = self.model
         curve = model(maximum_probability_parameter_subset)

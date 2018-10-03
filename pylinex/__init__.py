@@ -36,10 +36,11 @@ from pylinex.model import Model, LoadableModel, FixedModel,\
     InterpolatedModel, TruncatedBasisHyperModel, load_model_from_hdf5_group,\
     TrainingSetCreator
 from pylinex.loglikelihood import Loglikelihood, GaussianLoglikelihood,\
-    PoissonLoglikelihood, load_loglikelihood_from_hdf5_group,\
-    LikelihoodDistributionHarmonizer
+    PoissonLoglikelihood, TruncationLoglikelihood,\
+    load_loglikelihood_from_hdf5_group, LikelihoodDistributionHarmonizer
 from pylinex.nonlinear import Sampler, BurnRule, NLFitter, LeastSquareFitter,\
-    InterpolatingLeastSquareFitter, LeastSquareFitGenerator
+    InterpolatingLeastSquareFitter, LeastSquareFitGenerator,\
+    TruncationExtractor
 from pylinex.hdf5 import load_quantity_from_hdf5_file,\
     load_expander_from_hdf5_file, load_model_from_hdf5_file,\
     load_loglikelihood_from_hdf5_file, ExtractionPlotter

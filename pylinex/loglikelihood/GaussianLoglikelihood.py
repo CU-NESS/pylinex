@@ -11,6 +11,7 @@ import numpy.linalg as la
 from distpy import cast_to_transform_list, WindowedDistribution,\
     GaussianDistribution, DistributionSet, DistributionList
 from ..util import create_hdf5_dataset, get_hdf5_value
+from ..model import load_model_from_hdf5_group, Model
 from .Loglikelihood import Loglikelihood
 
 class GaussianLoglikelihood(Loglikelihood):
@@ -29,6 +30,38 @@ class GaussianLoglikelihood(Loglikelihood):
         self.data = data
         self.error = error
         self.model = model
+    
+    @property
+    def model(self):
+        """
+        Property storing the Model object which models the data used by this
+        likelihood.
+        """
+        if not hasattr(self, '_model'):
+            raise AttributeError("model referenced before it was set.")
+        return self._model
+    
+    @model.setter
+    def model(self, value):
+        """
+        Setter for the model of the data used by this likelihood.
+        
+        value: a Model object
+        """
+        if isinstance(value, Model):
+            self._model = value
+        else:
+            raise TypeError("model must be a Model object.")
+    
+    @property
+    def parameters(self):
+        """
+        Property storing the names of the parameters of the model defined by
+        this likelihood.
+        """
+        if not hasattr(self, '_parameters'):
+            self._parameters = self.model.parameters
+        return self._parameters
     
     @property
     def error(self):
@@ -62,11 +95,12 @@ class GaussianLoglikelihood(Loglikelihood):
         group: the group to fill with information about this Loglikelihood
         data_link: link like that returned by pylinex.h5py_extensions.HDF5Link
         error_link: link like that returned by pylinex.h5py_extensions.HDF5Link
-        model_links: dictionary of any other kwargs to pass on to the model's
-                     fill_hdf5_group function
+        model_links: extra kwargs to pass on to the fill_hdf5_group of the
+                     model being saved
         """
         group.attrs['class'] = 'GaussianLoglikelihood'
-        self.save_data_and_model(group, data_link=data_link, **model_links)
+        self.save_data(group, data_link=data_link)
+        self.model.fill_hdf5_group(group.create_group('model'), **model_links)
         create_hdf5_dataset(group, 'error', data=self.error, link=error_link)
     
     @staticmethod
@@ -84,7 +118,8 @@ class GaussianLoglikelihood(Loglikelihood):
         except:
             raise ValueError("group doesn't appear to point to a " +\
                 "GaussianLoglikelihood object.")
-        (data, model) = Loglikelihood.load_data_and_model(group)
+        data = Loglikelihood.load_data(group)
+        model = load_model_from_hdf5_group(group['model'])
         error = get_hdf5_value(group['error'])
         return GaussianLoglikelihood(data, error, model)
     
