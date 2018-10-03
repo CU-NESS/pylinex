@@ -1405,7 +1405,8 @@ class NLFitter(object):
                 else:
                     fisher_kwargs = fisher_kwargs[0]
                 if apply_transforms:
-                    fisher_kwargs['transform_list'] = self.transform_list
+                    fisher_kwargs['transform_list'] =\
+                        self.transform_list[parameter_indices]
                 likelihood =\
                     GaussianLoglikelihood(np.zeros(len(error)), error, model)
                 reference_value_covariance =\
@@ -1415,7 +1416,8 @@ class NLFitter(object):
             reference_value_mean =\
                 [(None if (reference is None) else transform(reference))\
                 for (transform, reference) in\
-                zip(self.transform_list, reference_value_mean)]
+                zip(self.transform_list[parameter_indices],\
+                reference_value_mean)]
         return triangle_plot(samples, labels, figsize=figsize, show=show,\
             kwargs_1D=kwargs_1D, kwargs_2D=kwargs_2D, fontsize=fontsize,\
             nbins=nbins, plot_type=plot_type,\
