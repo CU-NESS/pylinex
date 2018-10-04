@@ -673,11 +673,13 @@ class NLFitter(object):
     def parameter_covariance(self):
         """
         Property storing the parameter covariance matrix described by the
-        flattened chain in a 2D numpy.ndarray of shape (ndim, ndim).
+        flattened chain in a 2D numpy.ndarray of shape (ndim, ndim). This
+        covariance applies in the same space as the proposal distribution,
+        which may be transformed.
         """
         if not hasattr(self, '_parameter_covariance'):
             self._parameter_covariance =\
-                np.cov(self.flattened_chain, rowvar=False)
+                np.cov(self.transform_list(self.flattened_chain), rowvar=False)
         return self._parameter_covariance
     
     @property
