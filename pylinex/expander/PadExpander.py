@@ -55,7 +55,7 @@ class PadExpander(Expander):
         """
         if type(pad_number) in int_types:
             if pad_number >= 0:
-                return (pad_number, False)
+                return (pad_number, True)
             else:
                 raise ValueError("pad_number cannot be negative.")
         elif isinstance(pad_number, basestring):
