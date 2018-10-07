@@ -223,7 +223,21 @@ def bivariate_histogram(xsample, ysample, reference_value_mean=None,\
     else:
         return ax
 
-def triangle_plot(samples, labels, figsize=(8, 8), show=False,\
+def get_ax_with_geometry(fig, *geometry):
+    """
+    Gets the Axes with the given geometry.
+    
+    fig: Matplotlib Figure object
+    geometry: row, column, and plot index (starting at 1) in tuple
+    
+    returns: a Matplotlib Axes object
+    """
+    for ax in fig.axes:
+        if ax.get_geometry() == tuple(geometry):
+            return ax
+    raise KeyError("No plot has the given geometry.")
+
+def triangle_plot(samples, labels, figsize=(8, 8), fig=None, show=False,\
     kwargs_1D={}, kwargs_2D={}, fontsize=28, nbins=100,\
     plot_type='contour', reference_value_mean=None,\
     reference_value_covariance=None, contour_confidence_levels=0.95):
@@ -251,7 +265,9 @@ def triangle_plot(samples, labels, figsize=(8, 8), show=False,\
                                'contour' or 'contourf'. Can be single number or
                                sequence of numbers
     """
-    fig = pl.figure(figsize=figsize)
+    if fig is None:
+        fig = pl.figure(figsize=figsize)
+    existing_plots = bool(fig.axes)
     samples = np.array(samples)
     num_samples = samples.shape[0]
     if plot_type == 'contour':
@@ -303,7 +319,11 @@ def triangle_plot(samples, labels, figsize=(8, 8), show=False,\
                 continue
             row_label = labels[row]
             plot_number = ((num_samples * row) + column + 1)
-            ax = fig.add_subplot(num_samples, num_samples, plot_number)
+            if existing_plots:
+                ax = get_ax_with_geometry(fig, num_samples, num_samples,\
+                    plot_number)
+            else:
+                ax = fig.add_subplot(num_samples, num_samples, plot_number)
             if row == column:
                 univariate_histogram(column_sample,\
                     reference_value=reference_value_x,\
