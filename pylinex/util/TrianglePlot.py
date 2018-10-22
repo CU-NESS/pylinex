@@ -16,7 +16,8 @@ from distpy import real_numerical_types, sequence_types
 
 def univariate_histogram(sample, reference_value=None, bins=None,\
     matplotlib_function='fill_between', show_intervals=False, xlabel='',\
-    ylabel='', title='', fontsize=28, ax=None, show=False, **kwargs):
+    ylabel='', title='', fontsize=28, ax=None, show=False, norm_by_max=True,\
+    **kwargs):
     """
     Plots a 1D histogram of the given sample.
     
@@ -33,6 +34,8 @@ def univariate_histogram(sample, reference_value=None, bins=None,\
         otherwise, this Axes object is plotted on
     show: if True, matplotlib.pyplot.show is called before this function
                    returns
+    norm_by_max: if True, normalization is such that maximum of histogram
+                          values is 1. Default: True
     kwargs: keyword arguments to pass on to matplotlib.Axes.plot or
             matplotlib.Axes.fill_between
     
@@ -44,6 +47,8 @@ def univariate_histogram(sample, reference_value=None, bins=None,\
     (nums, bins) = np.histogram(sample, bins=bins)
     bin_centers = (bins[1:] + bins[:-1]) / 2
     num_bins = len(bin_centers)
+    if norm_by_max:
+        nums = nums / np.max(nums)
     ylim = (0, 1.1 * np.max(nums))
     if 'color' in kwargs:
         color = kwargs['color']
@@ -274,7 +279,9 @@ def triangle_plot(samples, labels, figsize=(8, 8), fig=None, show=False,\
         matplotlib_function_1D = 'plot'
         matplotlib_function_2D = 'contour'
         full_kwargs_1D = {}
-        full_kwargs_2D = {'cmap': 'Dark2', 'linewidth': 2}
+        full_kwargs_2D = {}
+        if 'colors' not in kwargs_2D:
+            full_kwargs_2D['cmap'] = 'Dark2'
     elif plot_type == 'contourf':
         matplotlib_function_1D = 'fill_between'
         matplotlib_function_2D = 'contourf'

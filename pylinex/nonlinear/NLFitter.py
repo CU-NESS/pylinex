@@ -1333,8 +1333,8 @@ class NLFitter(object):
                 "parameter or a valid index of a parameter.")
     
     def triangle_plot(self, parameters=None, walkers=None, thin=1,\
-        figsize=(8, 8), show=False, kwargs_1D={}, kwargs_2D={}, fontsize=28,\
-        nbins=100, plot_type='contour', parameter_renamer=None,\
+        figsize=(8, 8), fig=None, show=False, kwargs_1D={}, kwargs_2D={},\
+        fontsize=28, nbins=100, plot_type='contour', parameter_renamer=None,\
         reference_value_mean=None, reference_value_covariance=None,\
         contour_confidence_levels=0.95, apply_transforms=True):
         """
@@ -1344,6 +1344,8 @@ class NLFitter(object):
         walkers: either None or indices of walkers to include chain samples
         thin: integer stride with which to thin chain samples
         figsize: size of figure on which the triangle plot will be placed
+        fig: existing figure on which to place triangle plot, if applicable.
+             Default: None
         show: if True, matplotlib.pyplot.show is called before this function
               returns
         kwargs_1D: kwargs to pass on to univariate_histogram function
@@ -1425,7 +1427,7 @@ class NLFitter(object):
             nbins=nbins, plot_type=plot_type,\
             reference_value_mean=reference_value_mean,\
             reference_value_covariance=reference_value_covariance,\
-            contour_confidence_levels=contour_confidence_levels)
+            contour_confidence_levels=contour_confidence_levels, fig=fig)
     
     def plot_univariate_histogram(self, parameter_index, walkers=None, thin=1,\
         ax=None, show=False, reference_value=None, apply_transforms=True,\

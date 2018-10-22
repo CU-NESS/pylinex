@@ -450,7 +450,6 @@ class Sampler(object):
         self.chunk_index = self.chunk_index + 1
         self.file.attrs['max_chunk_index'] = self.chunk_index
         new_chunk_string = 'chunk{0:d}'.format(self.chunk_index)
-        self.file['checkpoints'].create_group(new_chunk_string)
         self._pos = pos
         self._lnprob = lnprob
         if self.prior_distribution_set is None:
@@ -474,6 +473,7 @@ class Sampler(object):
         group = self.file['jumping_distribution_sets']
         subgroup = group.create_group(new_chunk_string)
         self.jumping_distribution_set.fill_hdf5_group(subgroup)
+        self.file['checkpoints'].create_group(new_chunk_string)
         self.checkpoint_index = 0
     
     def _setup_restart_reinitialize(self, guess_distribution_set,\
@@ -500,7 +500,6 @@ class Sampler(object):
         self.chunk_index = self.chunk_index + 1
         self.file.attrs['max_chunk_index'] = self.chunk_index
         new_chunk_string = 'chunk{0:d}'.format(self.chunk_index)
-        self.file['checkpoints'].create_group(new_chunk_string)
         if self.prior_distribution_set is None:
             self.prior_distribution_set = prior_distribution_set
         if prior_distribution_set != self.prior_distribution_set:
@@ -528,6 +527,7 @@ class Sampler(object):
         group = self.file['guess_distribution_sets']
         subgroup = group.create_group(new_chunk_string)
         self.guess_distribution_set.fill_hdf5_group(subgroup)
+        self.file['checkpoints'].create_group(new_chunk_string)
         self.checkpoint_index = 0
     
     def _generate_reinitialized_guess_distribution_set(self,\

@@ -381,7 +381,8 @@ class GaussianLoglikelihood(Loglikelihood):
         if prior_to_impose_in_transformed_space is not None:
             distribution = WindowedDistribution(distribution,\
                 prior_to_impose_in_transformed_space)
-        return DistributionSet([(distribution, self.parameters, transform_list)])
+        return\
+            DistributionSet([(distribution, self.parameters, transform_list)])
     
     @property
     def gradient_computable(self):
