@@ -138,6 +138,15 @@ class RectangularBinner(Savable, Loadable):
         return self._bins_to_keep
     
     @property
+    def nbins_to_keep(self):
+        """
+        Property storing the number of bins in the results of this binner.
+        """
+        if not hasattr(self, '_nbins_to_keep'):
+            self._nbins_to_keep = len(self.bins_to_keep)
+        return self._nbins_to_keep
+    
+    @property
     def binned_x_values(self):
         """
         Property storing the binned x values.
@@ -174,24 +183,23 @@ class RectangularBinner(Savable, Loadable):
         returns: if return_weights is False, new_y_values
                  if return_weights is True, (new_y_values, new_weights)
         """
-        shape = old_y_values.shape[:-1] + (self.nbins,)
+        shape = old_y_values.shape[:-1] + (len(self.bins_to_keep),)
         new_y_values = np.zeros(shape)
         if weights is None:
             weights = np.ones_like(old_y_values)
         if return_weights:
             new_weights = np.zeros(shape)
-        for (final_bin_index, original_bin_index) in\
-            enumerate(self.bins_to_keep):
+        for final_bin_index in range(len(self.bins_to_keep)):
             unique_index = self.unique_indices[final_bin_index]
             unique_count = self.unique_counts[final_bin_index]
             where = slice(unique_index, unique_index + unique_count)
             old_y_slice = old_y_values[...,where]
             weight_slice = weights[...,where]
             new_weight = np.sum(weight_slice, axis=-1)
-            new_y_values[...,original_bin_index] =\
+            new_y_values[...,final_bin_index] =\
                 np.sum(old_y_slice * weight_slice, axis=-1) / new_weight
             if return_weights:
-                new_weights[...,original_bin_index] = new_weight
+                new_weights[...,final_bin_index] = new_weight
         if return_weights:
             return (new_y_values, new_weights)
         else:
@@ -210,14 +218,13 @@ class RectangularBinner(Savable, Loadable):
         returns: if return_weights is False, new_y_values
                  if return_weights is True, (new_y_values, new_weights)
         """
-        shape = old_error.shape[:-1] + (self.nbins,)
+        shape = old_error.shape[:-1] + (self.nbins_to_keep,)
         new_error = np.zeros(shape)
         if weights is None:
             weights = np.ones_like(old_error)
         if return_weights:
             new_weights = np.zeros(shape)
-        for (final_bin_index, original_bin_index) in\
-            enumerate(self.bins_to_keep):
+        for final_bin_index in range(self.nbins_to_keep):
             unique_index = self.unique_indices[final_bin_index]
             unique_count = self.unique_counts[final_bin_index]
             where = slice(unique_index, unique_index + unique_count)
