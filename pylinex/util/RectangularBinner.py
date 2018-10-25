@@ -180,7 +180,8 @@ class RectangularBinner(Savable, Loadable):
             weights = np.ones_like(old_y_values)
         if return_weights:
             new_weights = np.zeros(shape)
-        for (final_bin_index, original_bin_index) in enumerate(self.bins_to_keep):
+        for (final_bin_index, original_bin_index) in\
+            enumerate(self.bins_to_keep):
             unique_index = self.unique_indices[final_bin_index]
             unique_count = self.unique_counts[final_bin_index]
             where = slice(unique_index, unique_index + unique_count)
@@ -195,6 +196,42 @@ class RectangularBinner(Savable, Loadable):
             return (new_y_values, new_weights)
         else:
             return new_y_values
+    
+    def bin_error(self, old_error, weights=None, return_weights=False):
+        """
+        Bins the given error vector(s).
+        
+        old_error: error to bin containing positive numbers with the last axis
+                   being the binning axis.
+        weights: weights to associate with each unbinned y value (should be of
+                 same shape as old_y_values)
+        return_weights: if True, weights are returned alongside binned data
+        
+        returns: if return_weights is False, new_y_values
+                 if return_weights is True, (new_y_values, new_weights)
+        """
+        shape = old_error.shape[:-1] + (len(self.bins_to_keep),)
+        new_error = np.zeros(shape)
+        if weights is None:
+            weights = np.ones_like(old_error)
+        if return_weights:
+            new_weights = np.zeros(shape)
+        for (final_bin_index, original_bin_index) in\
+            enumerate(self.bins_to_keep):
+            unique_index = self.unique_indices[final_bin_index]
+            unique_count = self.unique_counts[final_bin_index]
+            where = slice(unique_index, unique_index + unique_count)
+            old_error_slice = old_error[...,where]
+            weight_slice = weights[...,where]
+            new_weight = np.sum(weight_slice, axis=-1)
+            new_error[...,original_bin_index] = np.sqrt(np.sum(np.power(\
+                weight_slice * old_error_slice, 2), axis=-1)) / new_weight
+            if return_weights:
+                new_weights[...,original_bin_index] = new_weight
+        if return_weights:
+            return (new_error, new_weights)
+        else:
+            return new_error
     
     def __call__(self, old_y_values, weights=None, return_weights=False):
         """
