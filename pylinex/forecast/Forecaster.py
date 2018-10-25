@@ -194,11 +194,11 @@ class Forecaster(object):
                  curve_set_indices is a list of 1D arrays each of length
                  ncurves corresponding to the indices in the given curve_sets
         """
+        nsets = len(curve_sets)
         if expanders is None:
             expanders = [NullExpander()] * nsets
         if seed is not None:
             np.random.seed(seed)
-        nsets = len(curve_sets)
         curve_set_indices = []
         for curve_set in curve_sets:
             curve_set_indices.append(\
