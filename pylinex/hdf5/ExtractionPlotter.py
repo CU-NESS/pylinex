@@ -992,7 +992,7 @@ class ExtractionPlotter(object):
             pl.show()
     
     def plot_parameter_number_grid(self, quantity_to_minimize=None,
-        cmap='binary', show=False):
+        cmap='binary', vmin=None, vmax=None, show=False):
         """
         Plots a histogram of the number of parameters used in each dimension.
         
@@ -1036,7 +1036,8 @@ class ExtractionPlotter(object):
             np.unravel_index(flattened_argmins, grid_shape)
         (x_values, y_values) = (xs[x_indices], ys[y_indices])
         pl.figure()
-        pl.hist2d(x_values, y_values, cmap=cmap, bins=(xbins, ybins))
+        pl.hist2d(x_values, y_values, cmap=cmap, bins=(xbins, ybins),\
+                  vmin=vmin, vmax=vmax)
         try:
             pl.plot([xrank + 0.5] * 2, ylim, color='r', linestyle='--')
             pl.plot(xlim, [yrank + 0.5] * 2, color='r', linestyle='--')
