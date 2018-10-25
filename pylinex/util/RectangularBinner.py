@@ -231,10 +231,10 @@ class RectangularBinner(Savable, Loadable):
             old_error_slice = old_error[...,where]
             weight_slice = weights[...,where]
             new_weight = np.sum(weight_slice, axis=-1)
-            new_error[...,original_bin_index] = np.sqrt(np.sum(np.power(\
+            new_error[...,final_bin_index] = np.sqrt(np.sum(np.power(\
                 weight_slice * old_error_slice, 2), axis=-1)) / new_weight
             if return_weights:
-                new_weights[...,original_bin_index] = new_weight
+                new_weights[...,final_bin_index] = new_weight
         if return_weights:
             return (new_error, new_weights)
         else:
