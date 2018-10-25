@@ -992,7 +992,7 @@ class ExtractionPlotter(object):
             pl.show()
     
     def plot_parameter_number_grid(self, quantity_to_minimize=None,
-        cmap='binary', vmin=None, vmax=None, show=False):
+        cmap='binary', vmin=None, vmax=None, ax=None, show=False):
         """
         Plots a histogram of the number of parameters used in each dimension.
         
@@ -1001,9 +1001,15 @@ class ExtractionPlotter(object):
                                          quantity whose minimization can be
                                          used to decide on a basis truncation
         cmap: the name of the colormap to use for the histogram
+        vmin, vmax: range of data to be plotted by hist2d
+        ax: matplotlib.Axes object on which to plot the histogram. if None, a
+            new figure is created. 
         show: if True, matplotlib.pyplot.show() is called before this function
               returns
         """
+        if ax is None:
+            fig = pl.figure()
+            ax = fig.add_subplot(111)
         minimization_grid = self[quantity_to_minimize]
         if not self.multiple_data_curves:
             minimization_grid = minimization_grid[...,np.newaxis]
@@ -1035,7 +1041,6 @@ class ExtractionPlotter(object):
         (x_indices, y_indices) =\
             np.unravel_index(flattened_argmins, grid_shape)
         (x_values, y_values) = (xs[x_indices], ys[y_indices])
-        pl.figure()
         pl.hist2d(x_values, y_values, cmap=cmap, bins=(xbins, ybins),\
                   vmin=vmin, vmax=vmax)
         try:
