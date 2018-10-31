@@ -211,7 +211,7 @@ class GaussianLoglikelihood(Loglikelihood):
         """
         self.check_parameter_dimension(pars)
         try:
-            logL_value = np.sum(self.weighted_bias(pars) ** 2) / (-2.)
+            logL_value = np.sum(np.abs(self.weighted_bias(pars)) ** 2) / (-2.)
         except (ValueError, ZeroDivisionError):
             logL_value = -np.inf
         if np.isnan(logL_value):
@@ -271,7 +271,7 @@ class GaussianLoglikelihood(Loglikelihood):
                 maximum_likelihood_parameters, differences=differences,\
                 transform_list=transform_list)
         weighted_gradient = self.weight(gradient)
-        return np.dot(weighted_gradient.T, weighted_gradient)
+        return np.real(np.dot(np.conj(weighted_gradient.T), weighted_gradient))
     
     def parameter_covariance_fisher_formalism(self,\
         maximum_likelihood_parameters, differences=1e-6, transform_list=None,\
@@ -410,8 +410,8 @@ class GaussianLoglikelihood(Loglikelihood):
         """
         self.check_parameter_dimension(pars)
         try:
-            gradient_value = np.dot(\
-                self.weighted_gradient(pars).T, self.weighted_bias(pars))
+            gradient_value = np.real(np.dot(self.weighted_gradient(pars).T,\
+                np.conj(self.weighted_bias(pars))))
         except:
             return np.nan * np.ones(self.num_parameters)
         else:
@@ -450,9 +450,10 @@ class GaussianLoglikelihood(Loglikelihood):
             weighted_bias = self.weighted_bias(pars)
             weighted_gradient = self.weighted_gradient(pars)
             weighted_hessian = self.weighted_hessian(pars)
-            hessian_part = np.dot(weighted_hessian.T, weighted_bias)
-            squared_gradient_part =\
-                np.dot(weighted_gradient.T, weighted_gradient)
+            hessian_part =\
+                np.real(np.dot(weighted_hessian.T, np.conj(weighted_bias)))
+            squared_gradient_part = np.real(\
+                np.dot(np.conj(weighted_gradient).T, weighted_gradient))
             hessian_value = hessian_part - squared_gradient_part
         except:
             hessian_value = np.nan * np.ones((self.num_parameters,) * 2)

@@ -7,7 +7,7 @@ Description: Example script showing the use of the RectangularBinner class.
 """
 import numpy as np
 import matplotlib.pyplot as pl
-from pylinex import rect_bin
+from pylinex import RectangularBinner
 
 fontsize = 24
 
@@ -17,13 +17,18 @@ num_new_x_values = 20
 wavelength = 0.4
 
 old_x_values = np.linspace(-1, 1, num_old_x_values)[1:-1]
+old_error = np.ones_like(old_x_values)
 old_y_values =\
     np.sin(2 * np.pi * old_x_values / wavelength) * np.sinh(old_x_values)
 new_x_bin_edges = np.linspace(-1, 1, num_new_x_values + 1)
 weights = np.ones_like(old_y_values)
 
-(new_x_values, new_y_values, new_weights) = rect_bin(new_x_bin_edges,\
-    old_x_values, old_y_values, weights=weights, return_weights=True)
+binner = RectangularBinner(old_x_values, new_x_bin_edges)
+new_x_values = binner.binned_x_values
+(new_y_values, new_weights) = binner.bin(old_y_values, weights=weights,\
+    return_weights=True)
+new_error = binner.bin_error(old_error, weights=weights, return_weights=False)
+print("new_error={}".format(new_error))
 
 fig = pl.figure(figsize=(12,9))
 ax = fig.add_subplot(111)
