@@ -338,12 +338,7 @@ class NLFitter(object):
         the Sampler underlying this NLFitter.
         """
         if not hasattr(self, '_error'):
-            try:
-                self._error = self.loglikelihood.error
-            except:
-                raise NotImplementedError("error vector could not be " +\
-                    "retrieved because the Loglikelihood explored does not " +\
-                    "have an error property.")
+            self._error = self.loglikelihood.error
         return self._error
     
     @property
@@ -353,12 +348,7 @@ class NLFitter(object):
         the Sampler underlying this NLFitter.
         """
         if not hasattr(self, '_data'):
-            try:
-                self._data = self.loglikelihood.data
-            except:
-                raise NotImplementedError("data vector could not be " +\
-                    "retrieved because the Loglikelihood explored does not " +\
-                    "have an error property.")
+            self._data = self.loglikelihood.data
         return self._data
     
     @property
