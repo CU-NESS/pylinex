@@ -992,7 +992,8 @@ class ExtractionPlotter(object):
             pl.show()
     
     def plot_parameter_number_grid(self, quantity_to_minimize=None,
-        cmap='binary', vmin=None, vmax=None, ax=None, show=False):
+        cmap='binary', vmin=None, vmax=None, rank=True, ax=None,\
+        show=False):
         """
         Plots a histogram of the number of parameters used in each dimension.
         
@@ -1002,6 +1003,7 @@ class ExtractionPlotter(object):
                                          used to decide on a basis truncation
         cmap: the name of the colormap to use for the histogram
         vmin, vmax: range of data to be plotted by hist2d
+        rank: boolean which determines whether rank should be plotted
         ax: matplotlib.Axes object on which to plot the histogram. if None, a
             new figure is created. 
         show: if True, matplotlib.pyplot.show() is called before this function
@@ -1017,11 +1019,12 @@ class ExtractionPlotter(object):
         for name in self.dimensions[0]:
             left = self.dimensions[0][name][0]
             right = self.dimensions[0][name][-1]
-            try:
-                xrank = self.training_set_ranks[name]
-            except:
-                pass # don't worry if ranks are unavailable
-            break
+            if rank:
+                try:
+                    xrank = self.training_set_ranks[name]
+                except:
+                    pass # don't worry if ranks are unavailable
+                break
         for name in self.dimensions[1]:
             bottom = self.dimensions[1][name][0]
             top = self.dimensions[1][name][-1]
