@@ -365,25 +365,25 @@ def triangle_plot(samples, labels, figsize=(8, 8), fig=None, show=False,\
                 ax.set_yticks(ticks[row])
             ax.xaxis.set_major_formatter(tick_label_formatter)
             ax.yaxis.set_major_formatter(tick_label_formatter)
-            ax.tick_params(left='on', right='on', top='on', bottom='on',\
-                labelleft='off', labelright='off', labeltop='off',\
-                labelbottom='off', direction='inout')
+            ax.tick_params(left=True, right=True, top=True, bottom=True,\
+                labelleft=False, labelright=False, labeltop=False,\
+                labelbottom=False, direction='inout')
             if (row == column):
-                ax.tick_params(left='off', top='off', right='off')
+                ax.tick_params(left=False, top=False, right=False)
             elif (row == (column + 1)):
-                ax.tick_params(left='off')
+                ax.tick_params(left=False)
                 ax.tick_params(axis='y', direction='in')
-                ax.tick_params(left='on')
+                ax.tick_params(left=False)
             if (row + 1) == num_samples:
                 ax.set_xlabel(column_label, size=fontsize, rotation=15)
-                ax.tick_params(labelbottom='on')
+                ax.tick_params(labelbottom=True)
             if column == 0:
                 if row == 0:
-                    ax.tick_params(labelleft='off')
+                    ax.tick_params(labelleft=False)
                 else:
                     ax.set_ylabel(row_label, size=fontsize, rotation=60,\
                         labelpad=30)
-                    ax.tick_params(labelleft='on')
+                    ax.tick_params(labelleft=True)
     fig.subplots_adjust(wspace=0, hspace=0)
     if show:
         pl.show()
