@@ -11,7 +11,7 @@ import re, h5py
 import numpy as np
 import matplotlib.pyplot as pl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from distpy import JumpingDistributionSet
+from distpy import JumpingDistributionSet, TransformList
 from ..util import sequence_types, real_numerical_types, bool_types,\
     int_types, univariate_histogram, bivariate_histogram, triangle_plot
 from ..model import CompoundModel
@@ -1182,7 +1182,7 @@ class NLFitter(object):
     def plot_reconstruction_confidence_intervals(self, number, probabilities,\
         parameters, model, true_curve=None, x_values=None, ax=None,\
         alphas=None, xlabel=None, ylabel=None, title=None, fontsize=28,\
-        scale_factor=1., show=False):
+        scale_factor=1., color='r', show=False):
         """
         Plots reconstruction confidence intervals with the given model,
         parameters, and confidence levels.
@@ -1227,7 +1227,7 @@ class NLFitter(object):
             pconfidence = int(round(probabilities[index] * 100))
             ax.fill_between(x_values, intervals[index][0] * scale_factor,\
                 intervals[index][1] * scale_factor, alpha=alphas[index],\
-                color='r', label='{:d}% confidence'.format(pconfidence))
+                color=color, label='{:d}% confidence'.format(pconfidence))
         if true_curve is not None:
             ax.plot(x_values, true_curve, linewidth=2, color='k',\
                 label='input')
