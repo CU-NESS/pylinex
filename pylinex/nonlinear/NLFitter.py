@@ -1219,7 +1219,7 @@ class NLFitter(object):
             if alphas is None:
                 alphas = [0.3]
         if ax is None:
-            fig = pl.figure()
+            fig = pl.figure(figsize=(12,9))
             ax = fig.add_subplot(111)
         if x_values is None:
             x_values = np.arange(intervals[0][0].shape[0])
@@ -1247,7 +1247,8 @@ class NLFitter(object):
             return ax
     
     def plot_chain(self, parameters=None, apply_transforms=True,\
-        walkers=None, thin=1, figsize=(8, 8), show=False, **reference_values):
+        walkers=None, thin=1, figsize=(12, 12), show=False,\
+        **reference_values):
         """
         Plots the chain of this MCMC.
         
@@ -1323,7 +1324,7 @@ class NLFitter(object):
                 "parameter or a valid index of a parameter.")
     
     def triangle_plot(self, parameters=None, walkers=None, thin=1,\
-        figsize=(8, 8), fig=None, show=False, kwargs_1D={}, kwargs_2D={},\
+        figsize=(12, 12), fig=None, show=False, kwargs_1D={}, kwargs_2D={},\
         fontsize=28, nbins=100, plot_type='contour', parameter_renamer=None,\
         reference_value_mean=None, reference_value_covariance=None,\
         contour_confidence_levels=0.95, apply_transforms=True):
@@ -1634,7 +1635,8 @@ class NLFitter(object):
         else:
             return ax
     
-    def plot_rescaling_factors(self, log_scale=False, ax=None, show=False):
+    def plot_rescaling_factors(self, log_scale=False, ax=None, fontsize=20,\
+        show=False):
         """
         Plots the rescaling factors for each of the parameters. These values
         should be close to 1.
@@ -1646,26 +1648,40 @@ class NLFitter(object):
         returns: None if show is True, otherwise Axes instance with plot
         """
         if ax is None:
-            fig = pl.figure()
+            fig = pl.figure(figsize=(12,9))
             ax = fig.add_subplot(111)
         x_values = np.arange(self.num_parameters) + 1
-        ax.scatter(x_values, self.rescaling_factors, color='b')
+        to_subtract = (1 if log_scale else 0)
         x_ones = np.ones(self.num_parameters)
-        ax.plot(x_values, x_ones, color='r')
-        ax.plot(x_values, x_ones * 1.1, color='r', linestyle='--')
+        if not log_scale:
+            ax.plot(x_values, x_ones, color='r', linestyle='-')
+        ax.plot(x_values, x_ones * (1.1 - to_subtract), color='r',\
+            linestyle='--')
+        ax.scatter(x_values, self.rescaling_factors - to_subtract, color='k')
         if log_scale:
             ax.set_yscale('log')
-        ax.set_title('Rescaling factors')
-        ax.set_xlabel('Parameter number')
-        ax.set_ylabel('Rescaling factor, $R$')
+        subtract_string = (' - 1' if log_scale else '')
+        ax.set_title('Rescaling factors{!s}'.format(subtract_string),\
+            size=fontsize)
+        ax.set_xlabel('Parameter number', size=fontsize)
+        ax.set_ylabel('Rescaling factor{0!s}, $R{0!s}$'.format(\
+            subtract_string), size=fontsize)
+        ylim = ax.get_ylim()
+        ax.set_ylim((\
+            min(ylim[0], np.min(self.rescaling_factors - to_subtract)),\
+            max(ylim[1], 1.15 - to_subtract)))
         ax.set_xlim((x_values[0] - 0.5, x_values[-1] + 0.5))
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+            which='major')
+        ax.tick_params(labelsize=fontsize, width=1.5, length=4.5,\
+            which='minor')
         if show:
             pl.show()
         else:
             return ax
     
     def plot_acceptance_fraction(self, walkers=None, average=False, ax=None,\
-        log_scale=False, show=False):
+        log_scale=False, fontsize=20, show=False):
         """
         Plots the fraction of MCMC steps which are accepted by walker.
         
@@ -1690,7 +1706,7 @@ class NLFitter(object):
         trimmed_acceptance_fraction = self.acceptance_fraction[walkers,:]
         steps = np.arange(trimmed_acceptance_fraction.shape[1]) + 1
         if ax is None:
-            fig = pl.figure()
+            fig = pl.figure(figsize=(12,9))
             ax = fig.add_subplot(111)
         if average:
             title = '$f_{acc}$ averaged across walkers'
@@ -1716,8 +1732,14 @@ class NLFitter(object):
             else:
                 ax.plot([0.5 + loaded_so_far] * 2, ylim, color='k',\
                     linestyle='--')
-        ax.set_title(title)
+        ax.set_title(title, size=fontsize)
+        ax.set_xlabel('Checkpoint #', size=fontsize)
+        ax.set_ylabel('$f_{acc}$', size=fontsize)
         ax.set_xlim((steps[0] - 0.5, steps[-1] + 0.5))
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+            which='major')
+        ax.tick_params(labelsize=fontsize, width=1.5, length=4.5,\
+            which='minor')
         if show:
             pl.show()
         else:
