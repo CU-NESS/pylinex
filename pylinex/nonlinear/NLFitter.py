@@ -99,6 +99,7 @@ class NLFitter(object):
                     input_hdf5_file.copy('loglikelihood',\
                         first_output_hdf5_file)
                     input_hdf5_file.copy('parameters', first_output_hdf5_file)
+                    input_hdf5_file.copy('state', first_output_hdf5_file)
                     first_output_prior_distribution_sets_group =\
                         first_output_hdf5_file.create_group(\
                         'prior_distribution_sets')
@@ -439,7 +440,7 @@ class NLFitter(object):
                 if left_to_load == 0:
                     backwards_answer.append(np.array([]))
                 elif left_to_load > this_num_checkpoints:
-                    left_to_load = left_to_load - this_num_checkpoints
+                    left_to_load -= this_num_checkpoints
                     backwards_answer.append(np.arange(this_num_checkpoints))
                 else:
                     backwards_answer.append(\
