@@ -21,7 +21,7 @@ class BurnRule(Savable, Loadable):
     burn_rule(100) returns a 1D numpy array of the checkpoints which should be
     included in the final output.
     """
-    def __init__(self, min_checkpoints=1, desired_fraction=0.5):
+    def __init__(self, min_checkpoints=1, desired_fraction=0.5, thin=None):
         """
         Initializes a new BurnRule object with the given arguments.
         
@@ -32,9 +32,12 @@ class BurnRule(Savable, Loadable):
                           the desired_fraction would yield fewer than
                           min_checkpoints checkpoints, then min_checkpoints are
                           returned
+        thin: either None (default, corresponding to 1) or a positive integer
+              representing the stride with which to read the chain
         """
         self.min_checkpoints = min_checkpoints
         self.desired_fraction = desired_fraction
+        self.thin = thin
     
     @property
     def min_checkpoints(self):
@@ -88,6 +91,29 @@ class BurnRule(Savable, Loadable):
                     "(exclusive) and 1 (inclusive).")
         except:
             raise TypeError("desired_fraction doesn't seem to be a float.")
+    
+    @property
+    def thin(self):
+        """
+        Property storing the thinning factor used when reading the chain.
+        """
+        if not hasattr(self, '_thin'):
+            raise AttributeError("thin was referenced before it was set.")
+        return self._thin
+    
+    @thin.setter
+    def thin(self, value):
+        """
+        Setter for the thinning factor.
+        
+        value: either None (default, corresponding to 1) or a positive integer
+        """
+        if value is None:
+            value = 1
+        if isinstance(value, int):
+            self._thin = value
+        else:
+            raise TypeError("thin was set to a non-integer.")
     
     def fill_hdf5_group(self, group):
         """

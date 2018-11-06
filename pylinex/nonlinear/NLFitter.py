@@ -7,7 +7,7 @@ Description: File containing class which analyzes MCMC chains in order to infer
              things about the parameter distributions they describe.
 """
 from __future__ import division
-import re, h5py
+import re, gc, h5py
 import numpy as np
 import matplotlib.pyplot as pl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -38,7 +38,10 @@ class NLFitter(object):
         
         file_name: the hdf5 file in which a chain was saved by a Sampler object
         burn_rule: if None, none of the chain is excluded as a burn-in
-                   otherwise, must be a BurnRule object
+                   otherwise, must be a BurnRule object describing minimum
+                              number of checkpoints to read, desired fraction
+                              of the chain to read, and the thinning factor
+                              describing the stride with which to read.
         load_all_chunks: if True, all chunks are considered by this fitter
                          if False, only the last saved chunk is considered
         """
@@ -286,6 +289,16 @@ class NLFitter(object):
                 "BurnRule object.")
     
     @property
+    def thin(self):
+        """
+        Property storing the factor by which the chain is thinned while being
+        read.
+        """
+        if not hasattr(self, '_thin'):
+            self._thin = self.burn_rule.thin
+        return self._thin
+    
+    @property
     def file_name(self):
         """
         Property storing the string name of the file with the chain to be read.
@@ -466,17 +479,19 @@ class NLFitter(object):
                 for checkpoint_index in these_checkpoints_to_load:
                     checkpoint_group =\
                         checkpoints_group['{}'.format(checkpoint_index)]
-                    chain_chunk.append(checkpoint_group['chain'].value)
+                    chain_chunk.append(\
+                        checkpoint_group['chain'][:,::self.thin,:])
                     lnprobability_chunk.append(\
-                        checkpoint_group['lnprobability'].value)
+                        checkpoint_group['lnprobability'][:,::self.thin])
                     acceptance_fraction_chunk.append(\
-                        checkpoint_group['acceptance_fraction'].value)
+                        checkpoint_group['acceptance_fraction'][:])
                 chain_chunks.append(np.concatenate(chain_chunk, axis=1))
                 lnprobability_chunks.append(\
                     np.concatenate(lnprobability_chunk, axis=1))
                 acceptance_fraction_chunks.append(\
                     np.stack(acceptance_fraction_chunk, axis=1))
                 del chain_chunk, lnprobability_chunk, acceptance_fraction_chunk
+                gc.collect()
         self._jumping_distribution_set =\
             JumpingDistributionSet.load_from_hdf5_group(\
             self.file['jumping_distribution_sets/chunk{:d}'.format(ichunk)])
