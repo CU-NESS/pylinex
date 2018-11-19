@@ -1197,13 +1197,22 @@ class NLFitter(object):
                                     greater than 1 of the form (model, error)
                                     or (model, error, fisher_kwargs) to use for
                                     estimating the covariance matrix under the
-                                    Fisher matrix formalism. This covariance
-                                    will be used to plot ellipses. (Should be
-                                    given in untransformed space regardless of
-                                    the value of apply_transforms.)
+                                    Fisher matrix formalism (error should
+                                    always be 1 sigma ; confidence level will
+                                    be computed automatically using the
+                                    contour_confidence_levels argument). This
+                                    covariance will be used to plot ellipses.
+                                    (Should be given in untransformed space
+                                    regardless of the value of
+                                    apply_transforms.)
         contour_confidence_levels: the confidence level of the contour in the
-                                   bivariate histograms. Only used if plot_type
-                                   is 'contour' or 'contourf'.
+                                   bivariate histograms. Only used for main
+                                   plots if plot_type is 'contour' or
+                                   'contourf'. No matter the value of
+                                   plot_type, this argument is used to compute
+                                   Fisher matrix ellipses if
+                                   reference_value_covariance is given as a
+                                   tuple.
         apply_transforms: if True (default), transforms are applied before
                                              histogram-ing
         """
@@ -1238,6 +1247,15 @@ class NLFitter(object):
                     (reference_value_covariance[0],\
                     reference_value_covariance[1],\
                     reference_value_covariance[2:])
+                if contour_confidence_levels is None:
+                    confidence_level = 0.95
+                    print("WARNING: No contour_confidence_levels given in " +\
+                        "triangle_plot even though it is necessary to " +\
+                        "compute Fisher matrix ellipses. Using 95% " +\
+                        "confidence by default.")
+                else:
+                    confidence_level = np.max(contour_confidence_levels)
+                error = error * np.sqrt((-2) * np.log(1 - confidence_level))
                 if len(fisher_kwargs) == 0:
                     fisher_kwargs = {}
                 else:
