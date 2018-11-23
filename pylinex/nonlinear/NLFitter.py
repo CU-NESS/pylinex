@@ -11,7 +11,7 @@ import re, gc, h5py
 import numpy as np
 import matplotlib.pyplot as pl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from distpy import JumpingDistributionSet, TransformList
+from distpy import TransformList, DistributionSet, JumpingDistributionSet
 from ..util import sequence_types, real_numerical_types, bool_types,\
     int_types, univariate_histogram, bivariate_histogram, triangle_plot
 from ..model import CompoundModel
@@ -319,6 +319,8 @@ class NLFitter(object):
                     np.stack(acceptance_fraction_chunk, axis=1))
                 del chain_chunk, lnprobability_chunk, acceptance_fraction_chunk
                 gc.collect()
+        self._guess_distribution_set = DistributionSet.load_from_hdf5_group(\
+            self.file['guess_distribution_sets/chunk{:d}'.format(ichunk)])
         self._jumping_distribution_set =\
             JumpingDistributionSet.load_from_hdf5_group(\
             self.file['jumping_distribution_sets/chunk{:d}'.format(ichunk)])
@@ -329,6 +331,16 @@ class NLFitter(object):
         del chain_chunks, lnprobability_chunks, acceptance_fraction_chunks
     
     @property
+    def guess_distribution_set(self):
+        """
+        Property storing the DistributionSet used to initialize the last
+        starting point of walkers.
+        """
+        if not hasattr(self, '_guess_distribution_set'):
+            self._load_checkpoints()
+        return self._guess_distribution_set
+    
+    @property
     def jumping_distribution_set(self):
         """
         Property storing the JumpingDistributionSet used in the final chunk
@@ -337,6 +349,96 @@ class NLFitter(object):
         if not hasattr(self, '_jumping_distribution_set'):
             self._load_checkpoints()
         return self._jumping_distribution_set
+    
+    def guess_distribution_set_triangle_plot(self, ndraw, parameters=None,\
+        in_transformed_space=True, figsize=(8, 8), fig=None, show=False,\
+        kwargs_1D={}, kwargs_2D={}, fontsize=28, nbins=100,\
+        plot_type='contour', reference_value_mean=None,\
+        reference_value_covariance=None, contour_confidence_levels=0.95,\
+        parameter_renamer=(lambda x: x)):
+        """
+        Makes a triangle plot out of ndraw samples from the distribution which
+        last generated new walker positions.
+        
+        ndraw: integer number of samples to draw to plot in the triangle plot
+        parameters: sequence of string parameter names to include in the plot
+        figsize: the size of the figure on which to put the triangle plot
+        show: if True, matplotlib.pyplot.show is called before this function
+                       returns
+        kwargs_1D: keyword arguments to pass on to univariate_histogram
+                   function
+        kwargs_2D: keyword arguments to pass on to bivariate_histogram function
+        fontsize: the size of the label fonts
+        nbins: the number of bins for each sample
+        plot_type: 'contourf', 'contour', or 'histogram'
+        reference_value_mean: reference values to place on plots, if there are
+                              any
+        reference_value_covariance: if not None, used (along with
+                                    reference_value_mean) to plot reference
+                                    ellipses in each bivariate histogram
+        contour_confidence_levels: the confidence level of the contour in the
+                                   bivariate histograms. Only used if plot_type
+                                   is 'contour' or 'contourf'. Can be single
+                                   number or sequence of numbers
+        """
+        parameter_indices = self.get_parameter_indices(parameters=parameters)
+        parameters = [self.parameters[index] for index in parameter_indices]
+        return self.guess_distribution_set.triangle_plot(ndraw,\
+            parameters=parameters, in_transformed_space=in_transformed_space,\
+            figsize=figsize, fig=fig, show=show, kwargs_1D=kwargs_1D,\
+            kwargs_2D=kwargs_2D, fontsize=fontsize, nbins=nbins,\
+            plot_type=plot_type, reference_value_mean=reference_value_mean,\
+            reference_value_covariance=reference_value_covariance,\
+            contour_confidence_levels=contour_confidence_levels,\
+            parameter_renamer=parameter_renamer)
+    
+    def jumping_distribution_set_triangle_plot(self, ndraw, source=None,\
+        parameters=None, in_transformed_space=True, figsize=(8, 8), fig=None,\
+        show=False, kwargs_1D={}, kwargs_2D={}, fontsize=28, nbins=100,\
+        plot_type='contour', reference_value_mean=None,\
+        reference_value_covariance=None, contour_confidence_levels=0.95,\
+        parameter_renamer=(lambda x: x)):
+        """
+        Makes a triangle plot out of ndraw samples from the proposal
+        distribution.
+        
+        ndraw: integer number of samples to draw to plot in the triangle plot
+        source: dictionary with parameters as keys and source parameters as
+                values. If None (default), the source is assumed to be the
+                maximum probability parameters
+        parameters: sequence of string parameter names to include in the plot
+        figsize: the size of the figure on which to put the triangle plot
+        show: if True, matplotlib.pyplot.show is called before this function
+                       returns
+        kwargs_1D: keyword arguments to pass on to univariate_histogram
+                   function
+        kwargs_2D: keyword arguments to pass on to bivariate_histogram function
+        fontsize: the size of the label fonts
+        nbins: the number of bins for each sample
+        plot_type: 'contourf', 'contour', or 'histogram'
+        reference_value_mean: reference values to place on plots, if there are
+                              any
+        reference_value_covariance: if not None, used (along with
+                                    reference_value_mean) to plot reference
+                                    ellipses in each bivariate histogram
+        contour_confidence_levels: the confidence level of the contour in the
+                                   bivariate histograms. Only used if plot_type
+                                   is 'contour' or 'contourf'. Can be single
+                                   number or sequence of numbers
+        """
+        if source is None:
+            source =\
+                dict(zip(self.parameters, self.maximum_probability_parameters))
+        parameter_indices = self.get_parameter_indices(parameters=parameters)
+        parameters = [self.parameters[index] for index in parameter_indices]
+        return self.jumping_distribution_set.triangle_plot(source, ndraw,\
+            parameters=parameters, in_transformed_space=in_transformed_space,\
+            figsize=figsize, fig=fig, show=show, kwargs_1D=kwargs_1D,\
+            kwargs_2D=kwargs_2D, fontsize=fontsize, nbins=nbins,\
+            plot_type=plot_type, reference_value_mean=reference_value_mean,\
+            reference_value_covariance=reference_value_covariance,\
+            contour_confidence_levels=contour_confidence_levels,\
+            parameter_renamer=parameter_renamer)
     
     @property
     def chain(self):
