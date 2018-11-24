@@ -33,13 +33,13 @@ class GammaLoglikelihood(Loglikelihood):
     
     @property
     def num_averaged(self):
-    """
-    Property storing the integer numbers of data points which were averaged
-    into the data of this likelihood.
-    """
-    if not hasattr(self, '_num_averaged'):
-        raise AttributeError("num_averaged was referenced before it was set.")
-    return self._num_averaged
+        """
+        Property storing the integer numbers of data points which were averaged
+        into the data of this likelihood.
+        """
+        if not hasattr(self, '_num_averaged'):
+            raise AttributeError("num_averaged was referenced before it was set.")
+        return self._num_averaged
     
     @num_averaged.setter
     def num_averaged(self, value):
@@ -237,4 +237,17 @@ class GammaLoglikelihood(Loglikelihood):
             return -hessian_value
         else:
             return hessian_value
+    
+    def __eq__(self, other):
+        """
+        Checks if self is equal to other.
+        
+        other: a Loglikelihood object to check for equality
+        
+        returns: True if other and self have the same properties
+        """
+        if not isinstance(other, GammaLoglikelihood):
+            return False
+        return (np.allclose(self.num_averaged, other.num_averaged) and\
+            (self.model == other.model) and np.allclose(self.data, other.data))
 

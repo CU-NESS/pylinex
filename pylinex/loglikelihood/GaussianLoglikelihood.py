@@ -461,4 +461,18 @@ class GaussianLoglikelihood(Loglikelihood):
             return -hessian_value
         else:
             return hessian_value
+    
+    def __eq__(self, other):
+        """
+        Checks if self is equal to other.
+        
+        other: a Loglikelihood object to check for equality
+        
+        returns: True if other and self have the same properties
+        """
+        if not isinstance(other, GaussianLoglikelihood):
+            return False
+        return ((self.model == other.model) and\
+            np.allclose(self.data, other.data) and\
+            np.allclose(self.error, other.error))
 

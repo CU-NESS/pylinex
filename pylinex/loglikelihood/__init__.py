@@ -10,6 +10,7 @@ Description: File containing imports for the loglikelihood module. The classes
 from pylinex.loglikelihood.Loglikelihood import Loglikelihood
 from pylinex.loglikelihood.GaussianLoglikelihood import GaussianLoglikelihood
 from pylinex.loglikelihood.PoissonLoglikelihood import PoissonLoglikelihood
+from pylinex.loglikelihood.GammaLoglikelihood import GammaLoglikelihood
 from pylinex.loglikelihood.TruncationLoglikelihood import\
     TruncationLoglikelihood
 from pylinex.loglikelihood.LoadLoglikelihood import\

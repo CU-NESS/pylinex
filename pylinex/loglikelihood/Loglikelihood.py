@@ -185,4 +185,26 @@ class Loglikelihood(Savable, Loadable):
                  containing hessian of loglikelihood value
         """
         raise cannot_instantiate_loglikelihood_error
+    
+    def __eq__(self, other):
+        """
+        Checks if self is equal to other.
+        
+        other: a Loglikelihood object to check for equality
+        
+        returns: True if other and self have the same properties
+        """
+        raise NotImplementedError("The __eq__ magic method must be defined " +\
+            "by each subclass of Loglikelihood individually. The class " +\
+            "being used does not have the method defined.")
+    
+    def __ne__(self, other):
+        """
+        Checks if self is equal to other.
+        
+        other: a Loglikelihood object to check for equality
+        
+        returns: True if other and self do not have the same properties
+        """
+        return (not self.__eq__(other))
 

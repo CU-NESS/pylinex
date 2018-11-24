@@ -276,3 +276,21 @@ class TruncationLoglikelihood(Loglikelihood):
         raise NotImplementedError("hessian of this loglikelihood cannot " +\
             "be computed because it exists in a discrete parameter space.")
     
+    def __eq__(self, other):
+        """
+        Checks if self is equal to other.
+        
+        other: a Loglikelihood object to check for equality
+        
+        returns: True if other and self have the same properties
+        """
+        if not isinstance(other, TruncationLoglikelihood):
+            return False
+        if self.basis_sum != other.basis_sum:
+            return False
+        if not np.allclose(self.data, other.data):
+            return False
+        if not np.allclose(self.error, other.error):
+            return False
+        return (self.information_criterion == other.information_criterion)
+    
