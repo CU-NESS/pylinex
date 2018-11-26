@@ -59,6 +59,6 @@ interpolated_outputs2 = np.array([interpolated_model(inp) for inp in inputs2])
 #print("true_outputs={}".format(true_outputs2))
 #print("interpolated_outputs={}".format(interpolated_outputs2))
 #print("absolute_error={}".format(true_outputs2-interpolated_outputs2))
-print("fractional_error={}".format(\
-    (true_outputs2-interpolated_outputs2)/true_outputs2))
+#print("fractional_error={}".format(\
+#    (true_outputs2-interpolated_outputs2)/true_outputs2))
 

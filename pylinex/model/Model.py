@@ -5,6 +5,7 @@ Date: 12 Nov 2017
 
 Description: File containing an abstract class representing a model.
 """
+from __future__ import division
 import numpy as np
 from distpy import cast_to_transform_list
 from ..util import Savable
@@ -92,7 +93,7 @@ class Model(Savable):
         
         parameters: the 1D parameter vector at which to approximate the
                     gradient it shouldn't be in the neighborhood of any bounds
-        differences: either single number of 1D array of numbers to use as the
+        differences: either single number or 1D array of numbers to use as the
                      numerical difference in parameter. Default: 10^(-6)
         transform_list: TransformList object (or something which can be cast to
                         one) defining the transforms to apply to the parameters
@@ -112,6 +113,157 @@ class Model(Savable):
             np.stack([self(vector) for vector in vectors], axis=-1)
         return (outer_model_values - center_model_value[:,np.newaxis]) /\
             differences[np.newaxis,:]
+    
+    def auto_gradient(self, parameters, differences=1e-6, transform_list=None):
+        """
+        Computes a default gradient procedure. If the gradient of this Model is
+        computable, it is computed directly. Otherwise, it is ascertained
+        through numerical approximation.
+        
+        parameters: parameter values at which to evaluate gradient
+        differences: either single number or 1D array of numbers to use as the
+                     numerical difference in parameter. Default: 10^(-6)
+        transform_list: TransformList object (or something which can be cast to
+                        one) defining the transforms to apply to the parameters
+                        before computing the gradient. Default: None, parameter
+                        space is not transformed
+        
+        returns: array of shape (num_channels, num_parameters) containing
+                 gradient values
+        """
+        if self.gradient_computable:
+            transform_list = cast_to_transform_list(transform_list,\
+                num_transforms=self.num_parameters)
+            return transform_list.transform_gradient(\
+                self.gradient(parameters), parameters)
+        else:
+            return self.numerical_gradient(parameters,\
+                differences=differences, transform_list=transform_list)
+    
+    def seminumerical_hessian(self, parameters, differences=1e-6,\
+        transform_list=None):
+        """
+        Numerically approximates the gradient of this model. parameters should
+        not be within differences of any bounds.
+        
+        parameters: the 1D parameter vector at which to approximate the
+                    gradient it shouldn't be in the neighborhood of any bounds
+        differences: either single number or 1D array of numbers to use as the
+                     numerical difference in parameter. Default: 10^(-6)
+        transform_list: TransformList object (or something which can be cast to
+                        one) defining the transforms to apply to the parameters
+                        before computing the gradient. Default: None, parameter
+                        space is not transformed
+        
+        returns: array of shape (num_channels, num_parameters, num_parameters)
+                 containing hessian values
+        """
+        differences = differences * np.ones(self.num_parameters)
+        transform_list = cast_to_transform_list(transform_list,\
+            num_transforms=self.num_parameters)
+        center_model_gradient = transform_list.transform_gradient(\
+            self.gradient(parameters), parameters)
+        vectors = transform_list.I(transform_list(parameters)[np.newaxis,:] +\
+            np.diag(differences))
+        outer_gradient_values = np.stack([\
+            transform_list.transform_gradient(self.gradient(vector), vector)\
+            for vector in vectors], axis=-1)
+        approximate_hessian =\
+            (outer_gradient_values - center_model_gradient[:,:,np.newaxis]) /\
+            differences[np.newaxis,np.newaxis,:]
+        return (approximate_hessian +\
+            np.swapaxes(approximate_hessian, -2, -1)) / 2
+    
+    def numerical_hessian(self, parameters, larger_differences=1e-5,\
+        smaller_differences=1e-6, transform_list=None):
+        """
+        Numerically approximates the gradient of this model. parameters should
+        not be within differences of any bounds.
+        
+        parameters: the 1D parameter vector at which to approximate the
+                    gradient it shouldn't be in the neighborhood of any bounds
+        larger_differences: either single number or 1D array of numbers to use
+                            as the numerical difference in parameters.
+                            Default: 10^(-5). This is the amount by which the
+                            parameters are shifted between evaluations of the
+                            gradient
+        smaller_differences: either single_number or 1D array of numbers to use
+                             as the numerical difference in parameters.
+                             Default: 10^(-6). This is the amount by which the
+                             parameters are shifted during each approximation
+                             of the gradient.
+        transform_list: TransformList object (or something which can be cast to
+                        one) defining the transforms to apply to the parameters
+                        before computing the gradient. Default: None, parameter
+                        space is not transformed
+        
+        returns: array of shape (num_channels, num_parameters, num_parameters)
+                 containing hessian values
+        """
+        larger_differences = larger_differences * np.ones(self.num_parameters)
+        center_model_gradient = self.numerical_gradient(parameters,\
+            differences=smaller_differences, transform_list=transform_list)
+        transform_list = cast_to_transform_list(transform_list,\
+            num_transforms=self.num_parameters)
+        vectors = transform_list.I(transform_list(parameters)[np.newaxis,:] +\
+            np.diag(larger_differences))
+        outer_gradient_values = np.stack([self.numerical_gradient(vector,\
+            differences=smaller_differences, transform_list=transform_list)\
+            for vector in vectors], axis=-1)
+        approximate_hessian =\
+            (outer_gradient_values - center_model_gradient[:,:,np.newaxis]) /\
+            larger_differences[np.newaxis,np.newaxis,:]
+        return (approximate_hessian +\
+            np.swapaxes(approximate_hessian, -2, -1)) / 2
+    
+    def auto_hessian(self, parameters, larger_differences=1e-5,\
+        smaller_differences=1e-6, transform_list=None):
+        """
+        Computes a default gradient procedure. If the gradient of this Model is
+        computable, it is computed directly. Otherwise, it is ascertained
+        through numerical approximation.
+        
+        parameters: the 1D parameter vector at which to approximate the
+                    gradient it shouldn't be in the neighborhood of any bounds
+        larger_differences: either single number or 1D array of numbers to use
+                            as the numerical difference in parameters.
+                            Default: 10^(-5). This is the amount by which the
+                            parameters are shifted between evaluations of the
+                            gradient. Only used if gradient is not explicitly
+                            computable.
+        smaller_differences: either single_number or 1D array of numbers to use
+                             as the numerical difference in parameters.
+                             Default: 10^(-6). This is the amount by which the
+                             parameters are shifted during each approximation
+                             of the gradient. Only used if hessian is not
+                             explicitly computable
+        transform_list: TransformList object (or something which can be cast to
+                        one) defining the transforms to apply to the parameters
+                        before computing the gradient. Default: None, parameter
+                        space is not transformed
+        
+        returns: array of shape (num_channels, num_parameters, num_parameters)
+                 containing hessian values
+        """
+        if self.gradient_computable:
+            if self.hessian_computable:
+                transform_list = cast_to_transform_list(transform_list,\
+                    num_transforms=self.num_parameters)
+                untransformed_gradient = self.gradient(parameters)
+                untransformed_hessian = self.hessian(parameters)
+                transformed_gradient = transform_list.transform_gradient(\
+                    untransformed_gradient, parameters)
+                return transform_list.transform_hessian(untransformed_hessian,\
+                    transformed_gradient, parameters)
+            else:
+                return self.seminumerical_hessian(parameters,\
+                    differences=smaller_differences,\
+                    transform_list=transform_list)
+        else:
+            return self.numerical_hessian(parameters,\
+                larger_differences=larger_differences,\
+                smaller_differences=smaller_differences,\
+                transform_list=transform_list)
     
     @property
     def hessian_computable(self):

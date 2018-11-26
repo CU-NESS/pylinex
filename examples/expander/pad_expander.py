@@ -13,7 +13,7 @@ from pylinex import PadExpander, load_expander_from_hdf5_file
 array = np.arange(100)
 error = np.tile(np.linspace(1, 2, 20), (5,))
 
-expander = PadExpander(1, 3)
+expander = PadExpander('1+', '3+')
 expanded_array = expander(array)
 assert np.all(expanded_array[:1] == 0)
 assert np.all(expanded_array[1:-3] == array)

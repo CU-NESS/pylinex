@@ -8,10 +8,10 @@ Description: File containing a class which evaluates a likelihood whose data
 """
 import numpy as np
 from ..util import real_numerical_types, sequence_types
-from ..model import load_model_from_hdf5_group, Model
 from .Loglikelihood import Loglikelihood
+from .LoglikelihoodWithModel import LoglikelihoodWithModel
 
-class GammaLoglikelihood(Loglikelihood):
+class GammaLoglikelihood(LoglikelihoodWithModel):
     """
     Class which evaluates a likelihood whose data are Gamma-distributed.
     """
@@ -69,38 +69,6 @@ class GammaLoglikelihood(Loglikelihood):
             self._summed_data = self.data * self.num_averaged
         return self._summed_data
     
-    @property
-    def model(self):
-        """
-        Property storing the Model object which models the data used by this
-        likelihood.
-        """
-        if not hasattr(self, '_model'):
-            raise AttributeError("model referenced before it was set.")
-        return self._model
-    
-    @model.setter
-    def model(self, value):
-        """
-        Setter for the model of the data used by this likelihood.
-        
-        value: a Model object
-        """
-        if isinstance(value, Model):
-            self._model = value
-        else:
-            raise TypeError("model must be a Model object.")
-    
-    @property
-    def parameters(self):
-        """
-        Property storing the names of the parameters of the model defined by
-        this likelihood.
-        """
-        if not hasattr(self, '_parameters'):
-            self._parameters = self.model.parameters
-        return self._parameters
-    
     def fill_hdf5_group(self, group, data_link=None, **model_links):
         """
         Fills the given hdf5 group with information about this Loglikelihood.
@@ -112,8 +80,8 @@ class GammaLoglikelihood(Loglikelihood):
         """
         group.attrs['class'] = 'GammaLoglikelihood'
         self.save_data(group, data_link=data_link)
+        self.save_model(group, **model_links)
         group.create_dataset('num_averaged', data=self.num_averaged)
-        self.model.fill_hdf5_group(group.create_group('model'), **model_links)
     
     @staticmethod
     def load_from_hdf5_group(group):
@@ -131,7 +99,7 @@ class GammaLoglikelihood(Loglikelihood):
             raise ValueError("group doesn't appear to point to a " +\
                 "GammaLoglikelihood object.")
         data = Loglikelihood.load_data(group)
-        model = load_model_from_hdf5_group(group['model'])
+        model = LoglikelihoodWithModel.load_model(group)
         num_averaged = group['num_averaged'].value
         return GammaLoglikelihood(data, model, num_averaged)
     
@@ -172,7 +140,8 @@ class GammaLoglikelihood(Loglikelihood):
             self._gradient_computable = self.model.gradient_computable
         return self._gradient_computable
     
-    def gradient(self, pars, return_negative=False):
+    def auto_gradient(self, pars, return_negative=False, differences=1e-6,\
+        transform_list=None):
         """
         Computes the gradient of this Loglikelihood for minimization purposes.
         
@@ -181,13 +150,20 @@ class GammaLoglikelihood(Loglikelihood):
                          loglikelihood is returned (this is useful for times
                          when the loglikelihood must be maximized since scipy
                          optimization functions only deal with minimization
+        differences: either single number or 1D array of numbers to use as the
+                     numerical difference in parameter. Default: 10^(-6)
+        transform_list: TransformList object (or something which can be cast to
+                        one) defining the transforms to apply to the parameters
+                        before computing the gradient. Default: None, parameter
+                        space is not transformed
         
         returns: 1D numpy.ndarray of length num_parameters containing gradient
                  of loglikelihood value
         """
         self.check_parameter_dimension(pars)
         mean = self.model(pars)
-        model_gradient = self.model.gradient(pars)
+        model_gradient = self.model.auto_gradient(pars,\
+            differences=differences, transform_list=transform_list)
         if np.any(mean <= 0):
             raise ValueError("models for Gamma likelihoods can only " +\
                 "return positive numbers.")
@@ -210,7 +186,9 @@ class GammaLoglikelihood(Loglikelihood):
                 self.model.hessian_computable)
         return self._hessian_computable
     
-    def hessian(self, pars, return_negative=False):
+    def auto_hessian(self, pars, return_negative=False,\
+        larger_differences=1e-5, smaller_differences=1e-6,\
+        transform_list=None):
         """
         Computes the hessian of this Loglikelihood for minimization purposes.
         
@@ -219,19 +197,40 @@ class GammaLoglikelihood(Loglikelihood):
                          loglikelihood is returned (this is useful for times
                          when the loglikelihood must be maximized since scipy
                          optimization functions only deal with minimization
+        larger_differences: either single number or 1D array of numbers to use
+                            as the numerical difference in parameters.
+                            Default: 10^(-5). This is the amount by which the
+                            parameters are shifted between evaluations of the
+                            gradient. Only used if gradient is not explicitly
+                            computable.
+        smaller_differences: either single_number or 1D array of numbers to use
+                             as the numerical difference in parameters.
+                             Default: 10^(-6). This is the amount by which the
+                             parameters are shifted during each approximation
+                             of the gradient. Only used if hessian is not
+                             explicitly computable
+        transform_list: TransformList object (or something which can be cast to
+                        one) defining the transforms to apply to the parameters
+                        before computing the gradient. Default: None, parameter
+                        space is not transformed
         
         returns: square 2D numpy.ndarray of side length num_parameters
                  containing hessian of loglikelihood value
         """
         self.check_parameter_dimension(pars)
         mean = self.model(pars)
-        model_gradient = self.model.gradient(pars)
-        model_hessian = self.model.hessian(pars)
+        model_gradient = self.model.auto_gradient(pars,\
+            differences=smaller_differences, transform_list=transform_list)
+        model_hessian = self.model.auto_hessian(pars,\
+            larger_differences=larger_differences,\
+            smaller_differences=smaller_differences,\
+            transform_list=transform_list)
         hessian_part = np.sum(((self.num_averaged * (self.data - mean)) /\
             (mean ** 2))[:,np.newaxis,np.newaxis] * model_hessian, axis=0)
         squared_gradient_part = np.sum(model_gradient[:,:,np.newaxis] *\
-            model_gradient[:,np.newaxis,:] *\
-            ((mean - (2 * self.data)) / mean)[:,np.newaxis,np.newaxis], axis=0)
+            model_gradient[:,np.newaxis,:] * ((self.num_averaged *\
+            (mean - (2 * self.data))) / (mean ** 3))[:,np.newaxis,np.newaxis],\
+            axis=0)
         hessian_value = hessian_part + squared_gradient_part
         if return_negative:
             return -hessian_value

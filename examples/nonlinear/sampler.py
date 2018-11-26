@@ -24,7 +24,7 @@ nthreads = 1 # to test multithreading, set to > 1
 file_name = 'TESTING_SAMPLER_CLASS.hdf5'
 num_channels = 100
 num_iterations = 100
-quarter_ncheckpoints = 50
+quarter_ncheckpoints = 10
 steps_per_checkpoint = 10
 x_values = np.linspace(99, 101, num_channels)
 error = np.ones_like(x_values) * 0.1
@@ -95,9 +95,9 @@ try:
     fitter.plot_chain(show=False, amplitude=true_amplitude,\
         center=true_center, scale=true_scale)
     fig = fitter.triangle_plot(parameters='.*', plot_type='contourf',\
-        reference_value_mean=[true_amplitude, true_center, true_scale],\
-        reference_value_covariance=(model, error), figsize=(12, 12),\
-        contour_confidence_levels=[0.40, 0.95], show=False)
+        reference_value_mean=np.array([true_amplitude, true_center,\
+        true_scale]), reference_value_covariance=(model, error),\
+        figsize=(12, 12), contour_confidence_levels=[0.40, 0.95], show=False)
     fig.subplots_adjust(left=0.2)
     fitter.close()
     burn_rule = BurnRule(min_checkpoints=10, desired_fraction=0.5)

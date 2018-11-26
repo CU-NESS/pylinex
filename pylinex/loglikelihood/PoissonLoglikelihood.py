@@ -8,10 +8,10 @@ Description: File containing a class which evaluates a likelihood whose data
 """
 import numpy as np
 from scipy.special import gammaln as log_gamma
-from ..model import load_model_from_hdf5_group, Model
 from .Loglikelihood import Loglikelihood
+from .LoglikelihoodWithModel import LoglikelihoodWithModel
 
-class PoissonLoglikelihood(Loglikelihood):
+class PoissonLoglikelihood(LoglikelihoodWithModel):
     """
     Class which evaluates a likelihood whose data are Poisson-distributed.
     """
@@ -27,38 +27,6 @@ class PoissonLoglikelihood(Loglikelihood):
         self.data = data
         self.model = model
     
-    @property
-    def model(self):
-        """
-        Property storing the Model object which models the data used by this
-        likelihood.
-        """
-        if not hasattr(self, '_model'):
-            raise AttributeError("model referenced before it was set.")
-        return self._model
-    
-    @model.setter
-    def model(self, value):
-        """
-        Setter for the model of the data used by this likelihood.
-        
-        value: a Model object
-        """
-        if isinstance(value, Model):
-            self._model = value
-        else:
-            raise TypeError("model must be a Model object.")
-    
-    @property
-    def parameters(self):
-        """
-        Property storing the names of the parameters of the model defined by
-        this likelihood.
-        """
-        if not hasattr(self, '_parameters'):
-            self._parameters = self.model.parameters
-        return self._parameters
-    
     def fill_hdf5_group(self, group, data_link=None, **model_links):
         """
         Fills the given hdf5 group with information about this Loglikelihood.
@@ -70,7 +38,7 @@ class PoissonLoglikelihood(Loglikelihood):
         """
         group.attrs['class'] = 'PoissonLoglikelihood'
         self.save_data(group, data_link=data_link)
-        self.model.fill_hdf5_group(group.create_group('model'), **model_links)
+        self.save_model(group, **model_links)
     
     @staticmethod
     def load_from_hdf5_group(group):
@@ -88,7 +56,7 @@ class PoissonLoglikelihood(Loglikelihood):
             raise ValueError("group doesn't appear to point to a " +\
                 "PoissonLoglikelihood object.")
         data = Loglikelihood.load_data(group)
-        model = load_model_from_hdf5_group(group['model'])
+        model = LoglikelihoodWithModel.load_model(group)
         return PoissonLoglikelihood(data, model)
     
     def __call__(self, pars, return_negative=False):
@@ -126,7 +94,8 @@ class PoissonLoglikelihood(Loglikelihood):
             self._gradient_computable = self.model.gradient_computable
         return self._gradient_computable
     
-    def gradient(self, pars, return_negative=False):
+    def auto_gradient(self, pars, return_negative=False, differences=1e-6,\
+        transform_list=None):
         """
         Computes the gradient of this Loglikelihood for minimization purposes.
         
@@ -135,6 +104,12 @@ class PoissonLoglikelihood(Loglikelihood):
                          loglikelihood is returned (this is useful for times
                          when the loglikelihood must be maximized since scipy
                          optimization functions only deal with minimization
+        differences: either single number or 1D array of numbers to use as the
+                     numerical difference in parameter. Default: 10^(-6)
+        transform_list: TransformList object (or something which can be cast to
+                        one) defining the transforms to apply to the parameters
+                        before computing the gradient. Default: None, parameter
+                        space is not transformed
         
         returns: 1D numpy.ndarray of length num_parameters containing gradient
                  of loglikelihood value
@@ -144,7 +119,8 @@ class PoissonLoglikelihood(Loglikelihood):
         if np.any(mean <= 0):
             raise ValueError("models for Poisson likelihoods can only " +\
                 "return positive numbers.")
-        gradient_value = np.sum(self.model.gradient(pars) *\
+        gradient_value = np.sum(self.model.auto_gradient(pars,\
+            differences=differences, transform_list=transform_list) *\
             ((self.data / mean) - 1)[:,np.newaxis], axis=0)
         if return_negative:
             return -gradient_value
@@ -163,7 +139,9 @@ class PoissonLoglikelihood(Loglikelihood):
                 self.model.hessian_computable)
         return self._hessian_computable
     
-    def hessian(self, pars, return_negative=False):
+    def auto_hessian(self, pars, return_negative=False,\
+        larger_differences=1e-5, smaller_differences=1e-6,\
+        transform_list=None):
         """
         Computes the hessian of this Loglikelihood for minimization purposes.
         
@@ -172,6 +150,22 @@ class PoissonLoglikelihood(Loglikelihood):
                          loglikelihood is returned (this is useful for times
                          when the loglikelihood must be maximized since scipy
                          optimization functions only deal with minimization
+        larger_differences: either single number or 1D array of numbers to use
+                            as the numerical difference in parameters.
+                            Default: 10^(-5). This is the amount by which the
+                            parameters are shifted between evaluations of the
+                            gradient. Only used if gradient is not explicitly
+                            computable.
+        smaller_differences: either single_number or 1D array of numbers to use
+                             as the numerical difference in parameters.
+                             Default: 10^(-6). This is the amount by which the
+                             parameters are shifted during each approximation
+                             of the gradient. Only used if hessian is not
+                             explicitly computable
+        transform_list: TransformList object (or something which can be cast to
+                        one) defining the transforms to apply to the parameters
+                        before computing the gradient. Default: None, parameter
+                        space is not transformed
         
         returns: square 2D numpy.ndarray of side length num_parameters
                  containing hessian of loglikelihood value
@@ -181,11 +175,15 @@ class PoissonLoglikelihood(Loglikelihood):
         if np.any(mean <= 0):
             raise ValueError("models for Poisson likelihoods can only " +\
                 "return positive numbers.")
-        hess = self.model.hessian(pars)
+        hess = self.model.auto_hessian(pars,\
+            larger_differences=larger_differences,\
+            smaller_differences=smaller_differences,\
+            transform_list=transform_list)
         data_over_mean = (self.data / mean)[:,np.newaxis,np.newaxis]
         hessian_part = np.sum(hess * (data_over_mean - 1), axis=0)
         del hess
-        grad = self.model.gradient(pars)
+        grad = self.model.auto_gradient(pars, differences=smaller_differences,\
+            transform_list=transform_list)
         data_over_mean2 = (data_over_mean / mean[:,np.newaxis,np.newaxis])
         gradient_part = np.sum(grad[:,:,np.newaxis] * grad[:,np.newaxis,:] *\
             data_over_mean2, axis=0)

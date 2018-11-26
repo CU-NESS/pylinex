@@ -8,6 +8,7 @@ Description: File containing a function which loads an arbitrary Loglikelihood
 """
 from .GaussianLoglikelihood import GaussianLoglikelihood
 from .PoissonLoglikelihood import PoissonLoglikelihood
+from .GammaLoglikelihood import GammaLoglikelihood
 
 def load_loglikelihood_from_hdf5_group(group):
     """
@@ -26,3 +27,4 @@ def load_loglikelihood_from_hdf5_group(group):
     except NameError:
         raise ValueError("The class name of this distribution is not known!")
     return cls.load_from_hdf5_group(group)
+

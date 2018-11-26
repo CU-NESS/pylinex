@@ -1365,8 +1365,8 @@ class NLFitter(object):
                 if apply_transforms:
                     fisher_kwargs['transform_list'] =\
                         self.transform_list[parameter_indices]
-                likelihood =\
-                    GaussianLoglikelihood(np.zeros(len(error)), error, model)
+                likelihood = GaussianLoglikelihood(\
+                    model(reference_value_mean), error, model)
                 reference_value_covariance =\
                     likelihood.parameter_covariance_fisher_formalism(\
                     reference_value_mean, **fisher_kwargs)
