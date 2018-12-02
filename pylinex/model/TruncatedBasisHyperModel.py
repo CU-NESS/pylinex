@@ -18,7 +18,8 @@ class TruncatedBasisHyperModel(LoadableModel):
     A BasisModel where the number of terms used is decided by a parameter
     instead of being fixed.
     """
-    def __init__(self, basis, min_terms=None, max_terms=None):
+    def __init__(self, basis, min_terms=None, max_terms=None,\
+        default_num_terms=None):
         """
         Initializes a new TruncatedBasisHyperModel with the given basis at its
         core.
@@ -26,10 +27,13 @@ class TruncatedBasisHyperModel(LoadableModel):
         basis: the Basis object at the heart of this model
         min_terms: the minimum number of terms allowed
         max_terms: the maximum number of terms allowed
+        default_num_terms: this is the number of terms used for the quick_fit
+                           function. If None (default), max_terms is used
         """
         self.basis = basis
         self.min_terms = min_terms
         self.max_terms = max_terms
+        self.default_num_terms = default_num_terms
     
     @property
     def basis(self):
@@ -131,6 +135,36 @@ class TruncatedBasisHyperModel(LoadableModel):
             raise TypeError("max_terms was sent to a non-int.")
     
     @property
+    def default_num_terms(self):
+        """
+        Property storing the number of terms used in the quick_fit function.
+        """
+        if not hasattr(self, '_default_num_terms'):
+            raise AttributeError("default_num_terms was referenced before " +\
+                "it was set.")
+        return self._default_num_terms
+    
+    @default_num_terms.setter
+    def default_num_terms(self, value):
+        """
+        Setter for the number of terms 
+        
+        value: if None (default for __init__), set to max_terms
+               otherwise, integer between min_terms and max_terms (inclusive)
+        """
+        if value is None:
+            self._default_num_terms = self.max_terms
+        elif isinstance(value, int):
+            if (value >= self.min_terms) and (value <= self.max_terms):
+                self._default_num_terms = value
+            else:
+                raise ValueError("default_num_terms was set to a number " +\
+                    "outside of [min_terms,max_terms].")
+        else:
+            raise TypeError("default_num_terms was set to neither None nor " +\
+                "an integer.")
+    
+    @property
     def parameters(self):
         """
         Property storing a list of strings associated with the parameters
@@ -223,6 +257,7 @@ class TruncatedBasisHyperModel(LoadableModel):
         self.basis.fill_hdf5_group(group.create_group('basis'))
         group.attrs['min_terms'] = self.min_terms
         group.attrs['max_terms'] = self.max_terms
+        group.attrs['default_num_terms'] = self.default_num_terms
     
     def __eq__(self, other):
         """
@@ -241,7 +276,7 @@ class TruncatedBasisHyperModel(LoadableModel):
             return False
         if self.max_terms != other.max_terms:
             return False
-        return True
+        return (self.default_num_terms == other.default_num_terms)
     
     @staticmethod
     def load_from_hdf5_group(group):
@@ -256,8 +291,12 @@ class TruncatedBasisHyperModel(LoadableModel):
         basis = Basis.load_from_hdf5_group(group['basis'])
         min_terms = group.attrs['min_terms']
         max_terms = group.attrs['max_terms']
+        if 'default_num_terms' in group.attrs:
+            default_num_terms = group.attrs['default_num_terms']
+        else:
+            default_num_terms = None
         return TruncatedBasisHyperModel(basis, min_terms=min_terms,\
-            max_terms=max_terms)
+            max_terms=max_terms, default_num_terms=default_num_terms)
     
     def quick_fit(self, data, error=None):
         """
@@ -281,7 +320,7 @@ class TruncatedBasisHyperModel(LoadableModel):
             error = 1
         if type(error) in numerical_types:
             error = error * np.ones_like(data)
-        fitter = Fitter(self.basis, data, error=error)
+        fitter = Fitter(self.basis[:self.max_terms], data, error=error)
         mean = np.concatenate([fitter.parameter_mean, [self.max_terms]])
         covariance = fitter.parameter_covariance
         column_to_add = np.zeros((covariance.shape[0], 1))
@@ -290,5 +329,9 @@ class TruncatedBasisHyperModel(LoadableModel):
             (np.arange(covariance.shape[-1]) == (covariance.shape[-1] - 1))
         covariance =\
             np.concatenate([covariance, row_to_add[None,:]], axis=0)
+        fitter = Fitter(self.basis[:self.default_num_terms], date, error=error)
+        mean = np.concatenate([fitter.parameter_mean,\
+            np.zeros(len(mean) - len(fitter.parameter_mean) - 1),\
+            [self.default_num_terms]])
         return (mean, covariance)
 

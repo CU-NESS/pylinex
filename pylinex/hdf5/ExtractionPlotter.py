@@ -515,6 +515,8 @@ class ExtractionPlotter(object):
         returns: 1D numpy.ndarray of indices of parameters
         """
         num_basis_vectors = self.basis_sum.num_basis_vectors
+        if isinstance(names, basestring):
+            names = [names]
         slices = [self.basis_sum.slices_by_name[name] for name in names]
         parameter_indices =\
             [range(*slc.indices(num_basis_vectors)) for slc in slices]
