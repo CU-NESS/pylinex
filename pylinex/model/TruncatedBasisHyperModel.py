@@ -329,7 +329,7 @@ class TruncatedBasisHyperModel(LoadableModel):
             (np.arange(covariance.shape[-1]) == (covariance.shape[-1] - 1))
         covariance =\
             np.concatenate([covariance, row_to_add[None,:]], axis=0)
-        fitter = Fitter(self.basis[:self.default_num_terms], date, error=error)
+        fitter = Fitter(self.basis[:self.default_num_terms], data, error=error)
         mean = np.concatenate([fitter.parameter_mean,\
             np.zeros(len(mean) - len(fitter.parameter_mean) - 1),\
             [self.default_num_terms]])
