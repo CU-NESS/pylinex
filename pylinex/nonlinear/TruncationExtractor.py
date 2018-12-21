@@ -17,7 +17,7 @@ from ..util import Savable, create_hdf5_dataset, sequence_types,\
 from ..expander import Expander, NullExpander, ExpanderSet
 from ..basis import TrainedBasis, BasisSum, effective_training_set_rank
 from ..fitter import Fitter
-from ..loglikelihood import TruncationLoglikelihood
+from ..loglikelihood import LinearTruncationLoglikelihood
 from .Sampler import Sampler
 from .BurnRule import BurnRule
 from .NLFitter import NLFitter
@@ -430,8 +430,8 @@ class TruncationExtractor(Savable):
         determine the number of terms to use of each basis.
         """
         if not hasattr(self, '_loglikelihood'):
-            self._loglikelihood =\
-                TruncationLoglikelihood(self.basis_sum, self.data, self.error,\
+            self._loglikelihood = LinearTruncationLoglikelihood(\
+                self.basis_sum, self.data, self.error,\
                 information_criterion=self.information_criterion)
         return self._loglikelihood
     

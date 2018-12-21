@@ -1,5 +1,5 @@
 """
-File: pylinex/loglikelihood/TruncationLoglikelihood.py
+File: pylinex/loglikelihood/LinearTruncationLoglikelihood.py
 Author: Keith Tauscher
 Date: 29 Sep 2018
 
@@ -20,7 +20,7 @@ except:
     # this try/except allows for python 2/3 compatible string type checking
     basestring = str
 
-class TruncationLoglikelihood(Loglikelihood):
+class LinearTruncationLoglikelihood(Loglikelihood):
     """
     Class which represents a DIC-like loglikelihood which uses the number of
     coefficients to use in each of a number of bases as the parameters of the
@@ -237,6 +237,7 @@ class TruncationLoglikelihood(Loglikelihood):
         
         returns: the Loglikelihood object loaded from the given hdf5 file group
         """
+        group.attrs['class'] = 'LinearTruncationLoglikelihood'
         data = Loglikelihood.load_data(group)
         error = get_hdf5_value(group['error'])
         basis_sum = BasisSum.load_from_hdf5_group(group['basis_sum'])

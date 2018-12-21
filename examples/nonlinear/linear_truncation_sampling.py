@@ -1,10 +1,18 @@
+"""
+File: examples/nonlinear/linear_truncation_sampling.py
+Author: Keith Tauscher
+Date: 17 Dec 2018
+
+Description: Example script showing simple case of sampling a
+             LinearTruncationLoglikelihood object.
+"""
 import os
 import numpy as np
 import matplotlib.pyplot as pl
 from distpy import DiscreteUniformDistribution, DistributionSet,\
     GridHopJumpingDistribution, JumpingDistributionSet
-from pylinex import FourierBasis, BasisSum, Fitter, TruncationLoglikelihood,\
-    Sampler, BurnRule, NLFitter
+from pylinex import FourierBasis, BasisSum, Fitter,\
+    LinearTruncationLoglikelihood, Sampler, BurnRule, NLFitter
 
 seed = 0
 np.random.seed(seed)
@@ -16,7 +24,7 @@ num_channels = 1000
 noise_level = 1
 true_amplitudes = [100, 3]
 x_values = np.linspace(-np.pi, np.pi, num_channels)
-names = ['a', 'b']
+names = ['even', 'odd']
 ndim = len(names)
 jumping_probability = 0.5
 nterms_maxima = np.array([40, 40])
@@ -33,7 +41,7 @@ noise = np.random.normal(0, 1, size=error.shape) * error
 data = noise + true_curve
 information_criterion = 'deviance_information_criterion'
 
-loglikelihood = TruncationLoglikelihood(basis_sum, data, error,\
+loglikelihood = LinearTruncationLoglikelihood(basis_sum, data, error,\
     information_criterion=information_criterion)
 
 prior_distribution_set = DistributionSet()
@@ -49,7 +57,7 @@ jumping_distribution_set.add_distribution(\
     jumping_probability=jumping_probability, minima=nterms_minima,\
     maxima=nterms_maxima), loglikelihood.parameters)
 
-file_name = 'TEST_TRUNCATION_SAMPLER.hdf5'
+file_name = 'TEST_LINEAR_TRUNCATION_SAMPLER.hdf5'
 nwalkers = 64
 steps_per_checkpoint = 100
 num_checkpoints = 10

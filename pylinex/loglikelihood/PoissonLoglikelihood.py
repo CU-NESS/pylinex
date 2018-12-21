@@ -21,7 +21,6 @@ class PoissonLoglikelihood(LoglikelihoodWithModel):
         data, and Model of the data.
         
         data: 1D numpy.ndarray of data being fit
-        error: 1D numpy.ndarray describing the noise level of the data
         model: the Model object with which to describe the data
         """
         self.data = data

@@ -1245,6 +1245,8 @@ class NLFitter(object):
             wspace=0.25, hspace=0.25)
         if show:
             pl.show()
+        else:
+            return fig
     
     def get_parameter_index(self, parameter):
         """

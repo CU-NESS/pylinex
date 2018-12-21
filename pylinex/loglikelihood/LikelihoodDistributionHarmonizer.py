@@ -71,9 +71,12 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
                     "match up with the structure of the model in the given " +\
                     "Loglikelihood.")
             unknown_submodel = unknown_submodel[unknown_name]
-        unknown_parameter_names =\
-            ['{0!s}_{1!s}'.format('_'.join(unknown_name_chain), parameter)\
-            for parameter in unknown_submodel.parameters]
+        if unknown_name_chain:
+            unknown_parameter_names =\
+                ['{0!s}_{1!s}'.format('_'.join(unknown_name_chain), parameter)\
+                for parameter in unknown_submodel.parameters]
+        else:
+            unknown_parameter_names = unknown_submodel.parameters
         def remaining_parameter_solver(incomplete_parameters):
             #
             # Solves for the unknown_parameters by using the drawn values of

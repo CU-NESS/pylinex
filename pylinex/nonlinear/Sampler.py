@@ -217,7 +217,7 @@ class Sampler(object):
                if 'reinitialize', the Sampler uses the previous 
         """
         allowed_modes = ['continue', 'update', 'trimmed_update',\
-            'reinitialize', 'trimmed_reinitialize']
+            'reinitialize', 'trimmed_reinitialize', 'fisher_update']
         if (value is None) or (value in allowed_modes):
             self._restart_mode = value
         else:
@@ -649,6 +649,54 @@ class Sampler(object):
         self.file['checkpoints'].create_group(new_chunk_string)
         self.checkpoint_index = 0
     
+    def _setup_restart_fisher_update(self, pos, lnprob,\
+        guess_distribution_set, prior_distribution_set,\
+        jumping_distribution_set, last_saved_chunk_string):
+        """
+        Sets up a restarted run which is begun with an update to the
+        JumpingDistributionSet but with no other update.
+        
+        pos: the walkers' last saved positions in parameter space
+        lnprob: lnprobability values of the walkers' last saved positions
+        guess_distribution_set: the DistributionSet describing the initial
+                                walker positions of the last saved chunk
+        prior_distribution_set: the DistributionSet describing the priors in
+                                the posterior explored by the last saved chunk
+        jumping_distribution_set: the JumpingDistributionSet describing the
+                                  proposal distributions of the MCMC in the
+                                  last saved chunk
+        last_saved_chunk_string: string of form 'chunk{}'.format(chunk_index)
+                                 where chunk index is the index of the last
+                                 saved chunk
+        """
+        self.chunk_index = self.chunk_index + 1
+        self.file.attrs['max_chunk_index'] = self.chunk_index
+        new_chunk_string = 'chunk{0:d}'.format(self.chunk_index)
+        self._pos = pos
+        self._lnprob = lnprob
+        if self.prior_distribution_set is None:
+            self.prior_distribution_set = prior_distribution_set
+        elif (self.prior_distribution_set != prior_distribution_set):
+            raise ValueError("prior_distribution_set changed since last " +\
+                "run, so restart_mode can't be 'continue'.")
+        if self.prior_distribution_set is not None:
+            group = self.file['prior_distribution_sets']
+            subgroup = group.create_group(new_chunk_string)
+            self.prior_distribution_set.fill_hdf5_group(subgroup)
+        self.guess_distribution_set = guess_distribution_set
+        group = self.file['guess_distribution_sets']
+        subgroup = group.create_group(new_chunk_string)
+        self.guess_distribution_set.fill_hdf5_group(subgroup)
+        if self.jumping_distribution_set is None:
+            self.jumping_distribution_set =\
+                self._generate_fisher_updated_jumping_distribution_set(\
+                jumping_distribution_set, last_saved_chunk_string)
+        group = self.file['jumping_distribution_sets']
+        subgroup = group.create_group(new_chunk_string)
+        self.jumping_distribution_set.fill_hdf5_group(subgroup)
+        self.file['checkpoints'].create_group(new_chunk_string)
+        self.checkpoint_index = 0
+    
     def _setup_restart_reinitialize(self, guess_distribution_set,\
         prior_distribution_set, jumping_distribution_set,\
         last_saved_chunk_string, trim_tails=False):
@@ -858,6 +906,73 @@ class Sampler(object):
             jumping_distribution_set.discrete_subset()
         return new_jumping_distribution_set
     
+    def _generate_fisher_updated_jumping_distribution_set(self,\
+        jumping_distribution_set, last_saved_chunk_string,\
+        max_standard_deviations=np.inf, larger_differences=1e-5,\
+        smaller_differences=1e-6):
+        """
+        Generates a new jumping_distribution_set to use for a Sampler
+        restarted with restart_mode=='reinitialize'.
+        
+        jumping_distribution_set: the JumpingDistributionSet object describing
+                                  how walkers jumped through parameter space
+                                  in the last saved chunk
+        last_saved_chunk_string: string of the form
+                                 'chunk{:d}'.format(chunk_index) where
+                                 chunk_index is the index of the last saved
+                                 chunk
+        max_standard_deviations: the maximum allowable 1-sigma deviations of
+                                 each parameter. If this is a constant, it is
+                                 assumed to apply to all parameters
+        larger_differences: either single number or 1D array of numbers to use
+                            as the numerical difference in parameters.
+                            Default: 10^(-5). This is the amount by which the
+                            parameters are shifted between evaluations of the
+                            gradient. Only used if loglikelihood gradient is
+                            not explicitly computable.
+        smaller_differences: either single_number or 1D array of numbers to use
+                             as the numerical difference in parameters.
+                             Default: 10^(-6). This is the amount by which the
+                             parameters are shifted during each approximation
+                             of the gradient. Only used if loglikelihood
+                             hessian is not explicitly computable
+        
+        returns: a JumpingDistributionSet object to use to determine how
+                 walkers travel through parameter space for the next chunk of
+                 this sampler
+        """
+        if jumping_distribution_set.discrete_params:
+            raise TypeError("The fisher_update restart_mode can only be " +\
+                "used when there are no discrete parameters in the " +\
+                "likelihood.")
+        else:
+            parameters = jumping_distribution_set.params
+            transform_list = jumping_distribution_set.transform_set[parameters]
+            last_checkpoint_group =\
+                self.file['checkpoints/{!s}'.format(last_saved_chunk_string)]
+            last_checkpoint_group =\
+                last_checkpoint_group['{:d}'.format(self.checkpoint_index-1)]
+            last_checkpoint_loglikelihood =\
+                last_checkpoint_group['lnprobability'].value
+            last_checkpoint_chain = last_checkpoint_group['chain'].value
+            maximum_likelihood_index = np.unravel_index(\
+                np.argmax(last_checkpoint_loglikelihood),\
+                last_checkpoint_loglikelihood.shape)
+            maximum_likelihood_parameters =\
+                last_checkpoint_chain[maximum_likelihood_index]
+            last_checkpoint_covariance =\
+                self.loglikelihood.parameter_covariance_fisher_formalism(\
+                maximum_likelihood_parameters, transform_list=transform_list,\
+                max_standard_deviations=max_standard_deviations,\
+                larger_differences=larger_differences,\
+                smaller_differences=smaller_differences)
+            last_checkpoint_covariance /=\
+                self.proposal_covariance_reduction_factor
+            distribution =\
+                GaussianJumpingDistribution(last_checkpoint_covariance)
+            return JumpingDistributionSet([(distribution, parameters,\
+                transform_list)])
+    
     def _load_distribution_sets(self, chunk_string):
         """
         Loads the three relevant distribution sets from the existing file at
@@ -954,11 +1069,15 @@ class Sampler(object):
                 self._setup_restart_reinitialize(guess_distribution_set,\
                     prior_distribution_set, jumping_distribution_set,\
                     chunk_string, trim_tails=False)
-            else:
-                # guaranteed that self.restart_mode == 'trimmed_reinitialize'
+            elif self.restart_mode == 'trimmed_reinitialize':
                 self._setup_restart_reinitialize(guess_distribution_set,\
                     prior_distribution_set, jumping_distribution_set,\
                     chunk_string, trim_tails=True)
+            else:
+                # guaranteed here that self.restart_mode == 'fisher_update'
+                self._setup_restart_fisher_update(pos, lnprob,\
+                    guess_distribution_set, prior_distribution_set,\
+                    jumping_distribution_set, chunk_string)
     
     def _setup_new_file(self):
         """
