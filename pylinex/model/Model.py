@@ -53,7 +53,7 @@ class Model(Savable):
         """
         raise shouldnt_instantiate_model_error
     
-    def curve_sample(self, distribution_set, ndraw):
+    def curve_sample(self, distribution_set, ndraw, return_parameters=False):
         """
         Generates a curve sample from this model given a DistributionSet
         object.
@@ -62,10 +62,20 @@ class Model(Savable):
                           describes a distribution for the parameters of this
                           model
         ndraw: positive integer number of curves to generate
+        return_parameters: if True, parameters are returned alongside training
+                           set
+        
+        returns: curve_set as 2D array of form (ndraw, nchannel) or
+                 (curve_set, parameters) where parameters is a 2D array of
+                 form (ndraw, npar)
         """
         draw = distribution_set.draw(ndraw)
         draw = np.array([draw[parameter] for parameter in self.parameters]).T
-        return np.array([self(parameters) for parameters in draw])
+        curve_set = np.array([self(parameters) for parameters in draw])
+        if return_parameters:
+            return (curve_set, parameters)
+        else:
+            return curve_set
     
     @property
     def gradient_computable(self):
