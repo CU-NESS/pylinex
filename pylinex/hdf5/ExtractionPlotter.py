@@ -310,9 +310,9 @@ class ExtractionPlotter(object):
                         basis_sum = BasisSum.load_from_hdf5_group(\
                             fitter_group['basis_sum'])
                         parameter_mean = get_hdf5_value(\
-                            fitter_group['posterior/parameter_mean'])
+                            fitter_group['posterior/parameter_mean'])[icurve]
                         this_mean =\
-                            np.dot(parameter_mean, basis_sum.basis)[icurve]
+                            np.dot(parameter_mean, basis_sum.basis)
                     self._channel_mean.append(this_mean)
                 self._channel_mean = np.array(self._channel_mean)
             elif 'channel_mean' in\

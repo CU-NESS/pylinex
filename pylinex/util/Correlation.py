@@ -93,7 +93,8 @@ def psi_squared(curves, error=None, normalize_by_chi_squared=False,\
                 "are used.")
     return return_value
 
-def chi_squared(curves, error=None, return_null_hypothesis_error=False):
+def chi_squared(curves, error=None, return_null_hypothesis_error=False,\
+    num_parameters=0):
     """
     Calculates the standard reduced chi-squared statistic using the given
     curves, which are assumed normalized (unless error is not None).
@@ -106,6 +107,7 @@ def chi_squared(curves, error=None, return_null_hypothesis_error=False):
     return_null_hypothesis_error: if True, expected error on chi_squared (if
                                            curves are noise-like) is returned
                                            as well
+    num_parameters: number of modes of noise assumed to be removed, default: 0
     
     returns: single number, mean-square data value
     """
@@ -116,7 +118,9 @@ def chi_squared(curves, error=None, return_null_hypothesis_error=False):
     else:
         normed_curves = curves / error
     return_value = np.mean(np.power(normed_curves, 2))
+    return_value /= (1 - (num_parameters / curves.size))
     if return_null_hypothesis_error:
-        return_value = (return_value, np.sqrt(2 / curves.size))
+        return_value =\
+            (return_value, np.sqrt(2 / (curves.size - num_parameters)))
     return return_value
 
