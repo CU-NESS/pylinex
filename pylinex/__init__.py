@@ -21,8 +21,9 @@ from pylinex.quantity import Quantity, ConstantQuantity, AttributeQuantity,\
     FunctionQuantity, CompiledQuantity, CalculatedQuantity, QuantityFinder,\
     load_quantity_from_hdf5_group
 from pylinex.expander import Expander, NullExpander, PadExpander,\
-    RepeatExpander, ModulationExpander, MatrixExpander, CompositeExpander,\
-    ShapedExpander, load_expander_from_hdf5_group, ExpanderSet
+    AxisExpander, RepeatExpander, ModulationExpander, MatrixExpander,\
+    CompositeExpander, ShapedExpander, load_expander_from_hdf5_group,\
+    ExpanderSet
 from pylinex.basis import Basis, PolynomialBasis, GramSchmidtBasis,\
     FourierBasis, LegendreBasis, TrainedBasis, BasisSet, BasisSum,\
     effective_training_set_rank

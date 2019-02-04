@@ -727,7 +727,8 @@ class ExtractionPlotter(object):
         name=None, true_curves={}, title=None, xlabel=None, ylabel=None,\
         subtract_truth=False, plot_truth=False, yscale='linear',\
         error_to_plot='posterior', plot_zero=False, verbose=True, ax=None,\
-        scale_factor=1, channels=None, fontsize=24, color='r', show=False):
+        scale_factor=1, channels=None, fontsize=24, color='r', figsize=(12,9),\
+        show=False):
         """
         Plots a subbasis fit from this Extractor.
         
@@ -759,7 +760,7 @@ class ExtractionPlotter(object):
         returns: None if show is True, Axes instance containing plot otherwise
         """
         if ax is None:
-            fig = pl.figure()
+            fig = pl.figure(figsize=figsize)
             ax = fig.add_subplot(111)
         if subtract_truth or plot_truth:
             true_curve = self.get_true_curve(name, true_curves, icurve=icurve)
@@ -833,7 +834,7 @@ class ExtractionPlotter(object):
                     alpha=0.3)
         if subtract_truth or plot_zero:
             ax.plot(channels, np.zeros_like(channels), color='k', linewidth=1)
-        elif plot_truth:
+        if plot_truth and (not subtract_truth):
             ax.plot(channels, true_curve, color='k', linewidth=1)
         ax.set_yscale(yscale)
         if title is not None:
