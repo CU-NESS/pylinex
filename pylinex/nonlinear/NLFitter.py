@@ -1342,8 +1342,9 @@ class NLFitter(object):
                         "given by the number of parameters in the triangle " +\
                         "plot.")
                 else:
+                    transform_list = self.transform_list[parameter_indices]
                     reference_value_covariance =\
-                        self.transform_list.transform_covariance(\
+                        transform_list.transform_covariance(\
                         reference_value_covariance, reference_value_mean,\
                         axis=(0, 1))
             else:
