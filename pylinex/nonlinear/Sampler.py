@@ -1354,10 +1354,15 @@ class Sampler(object):
         """
         if not hasattr(self, '_logprobability'):
             if self.has_priors:
-                self._logprobability = (lambda pars, *args, **kwargs:\
-                    (self.loglikelihood(pars, *args, **kwargs) +\
-                    self.prior_distribution_set.log_value(\
-                    dict(zip(self.parameters, pars)))))
+                def logprobability(pars, *args, **kwargs):
+                    prior_value = self.prior_distribution_set.log_value(\
+                        dict(zip(self.parameters, pars)))
+                    if np.isfinite(prior_value):
+                        return (self.loglikelihood(pars, *args, **kwargs) +\
+                            prior_value)
+                    else:
+                        return -np.inf
+                self._logprobability = logprobability
             else:
                 self._logprobability = self.loglikelihood
         return self._logprobability

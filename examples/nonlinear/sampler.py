@@ -10,7 +10,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as pl
 from distpy import UniformDistribution, GaussianDistribution, DistributionSet,\
-    GaussianJumpingDistribution, JumpingDistributionSet
+    GaussianJumpingDistribution, JumpingDistributionSet,\
+    InfiniteUniformDistribution
 from pylinex import GaussianModel, GaussianLoglikelihood, BurnRule, Sampler,\
     NLFitter
 
@@ -56,37 +57,44 @@ jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-4),\
 jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-2),\
     'scale', 'log10')
 
+prior_distribution_set = DistributionSet()
+prior_distribution_set.add_distribution(InfiniteUniformDistribution(),\
+    'amplitude')
+prior_distribution_set.add_distribution(InfiniteUniformDistribution(),\
+    'center')
+prior_distribution_set.add_distribution(InfiniteUniformDistribution(), 'scale')
+
 #nwalkers = 2 * loglikelihood.num_parameters
 
 try:
     if os.path.exists(file_name):
         sampler = Sampler(file_name, nwalkers, loglikelihood,\
             jumping_distribution_set=None, guess_distribution_set=None,\
-            prior_distribution_set=None, nthreads=nthreads,\
+            prior_distribution_set=prior_distribution_set, nthreads=nthreads,\
             steps_per_checkpoint=steps_per_checkpoint, restart_mode='continue')
     else:
         sampler = Sampler(file_name, nwalkers, loglikelihood,\
             jumping_distribution_set=jumping_distribution_set,\
             guess_distribution_set=guess_distribution_set,\
-            prior_distribution_set=None, nthreads=nthreads,\
+            prior_distribution_set=prior_distribution_set, nthreads=nthreads,\
             steps_per_checkpoint=steps_per_checkpoint, restart_mode=None)
     sampler.run_checkpoints(quarter_ncheckpoints)
     sampler.close()
     sampler = Sampler(file_name, nwalkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
-        prior_distribution_set=None, nthreads=nthreads,\
+        prior_distribution_set=prior_distribution_set, nthreads=nthreads,\
         steps_per_checkpoint=steps_per_checkpoint, restart_mode='update')
     sampler.run_checkpoints(quarter_ncheckpoints)
     sampler.close()
     sampler = Sampler(file_name, nwalkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
-        prior_distribution_set=None, nthreads=nthreads,\
+        prior_distribution_set=prior_distribution_set, nthreads=nthreads,\
         steps_per_checkpoint=steps_per_checkpoint, restart_mode='reinitialize')
     sampler.run_checkpoints(quarter_ncheckpoints)
     sampler.close()
     sampler = Sampler(file_name, nwalkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
-        prior_distribution_set=None, nthreads=nthreads,\
+        prior_distribution_set=prior_distribution_set, nthreads=nthreads,\
         steps_per_checkpoint=steps_per_checkpoint, restart_mode='continue')
     sampler.run_checkpoints(quarter_ncheckpoints)
     sampler.close()

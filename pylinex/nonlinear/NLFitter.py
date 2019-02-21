@@ -1523,7 +1523,7 @@ class NLFitter(object):
             contour_confidence_levels=contour_confidence_levels, **kwargs)
     
     def plot_lnprobability(self, walkers=None, log_scale=False,\
-        title='Log probability', ax=None, show=False):
+        title='Log probability', fontsize=24, ax=None, show=False):
         """
         Plots the log probability values accessed by this MCMC chain.
         
@@ -1533,6 +1533,8 @@ class NLFitter(object):
         log_scale: if False (default), everything is plotted on linear scale
                    if True, difference from maximum likelihood is plotted on a
                             log scale (on y-axis)
+        title: string title to put on top of Axes
+        fontsize: size of fonts for labels and title
         ax: Axes instance on which to plot the log_probability chain
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
@@ -1551,17 +1553,52 @@ class NLFitter(object):
         if log_scale:
             ax.semilogy(steps,\
                 (np.max(trimmed_lnprobability) - trimmed_lnprobability).T)
-            ax.set_ylabel('$\ln(p_{max})-\ln(p)$')
+            ax.set_ylabel('$\ln(p_{max})-\ln(p)$', size=fontsize)
         else:
             ax.plot(steps, trimmed_lnprobability.T)
-            ax.set_ylabel('$\ln(p)$')
+            ax.set_ylabel('$\ln(p)$', size=fontsize)
         ax.set_xlim((steps[0], steps[-1]))
-        ax.set_title(title)
-        ax.set_xlabel('Step number')
+        ax.set_title(title, size=fontsize)
+        ax.set_xlabel('Step number', size=fontsize)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+            which='major')
+        ax.tick_params(labelsize=fontsize, width=1.5, length=4.5,\
+            which='minor')
         if show:
             pl.show()
         else:
             return ax
+    
+    def plot_lnprobability_both_types(self, walkers=None,\
+        title='Log probability', fontsize=24, fig=None, show=False):
+        """
+        Plots both types of lnprobability plots on a single matplotlib.Figure
+        
+        walkers: if None, all walkers are shown.
+                 if int, describes the number of walkers shown in the plot
+                 if sequence, describes which walkers are shown in the plot
+        log_scale: if False (default), everything is plotted on linear scale
+                   if True, difference from maximum likelihood is plotted on a
+                            log scale (on y-axis)
+        title: string title to put on top of Figure
+        fig: Figure instance on which to plot the log_probability chain
+        show: if True, matplotlib.pyplot.show() is called before this function
+                       returns
+        
+        returns: matplotlib.Figure if show is False, otherwise None
+        """
+        if fig is None:
+            fig = pl.figure(figsize=(14,14))
+        ax = fig.add_subplot(211)
+        self.plot_lnprobability(walkers=walkers, log_scale=False,\
+            title=title, fontsize=fontsize, ax=ax, show=False)
+        ax = fig.add_subplot(212)
+        self.plot_lnprobability(walkers=walkers, log_scale=True,\
+            title='', fontsize=fontsize, ax=ax, show=False)
+        if show:
+            pl.show()
+        else:
+            return fig
     
     def plot_covariance_matrix(self, normalize_by_variances=False, fig=None,\
         ax=None, show=False, **imshow_kwargs):
@@ -1646,6 +1683,37 @@ class NLFitter(object):
         else:
             return ax
     
+    def plot_rescaling_factors_both_types(self, fontsize=20, fig=None,\
+        show=False):
+        """
+        Plots both types of lnprobability plots on a single matplotlib.Figure
+        
+        walkers: if None, all walkers are shown.
+                 if int, describes the number of walkers shown in the plot
+                 if sequence, describes which walkers are shown in the plot
+        log_scale: if False (default), everything is plotted on linear scale
+                   if True, difference from maximum likelihood is plotted on a
+                            log scale (on y-axis)
+        title: string title to put on top of Figure
+        fig: Figure instance on which to plot the log_probability chain
+        show: if True, matplotlib.pyplot.show() is called before this function
+                       returns
+        
+        returns: matplotlib.Figure if show is False, otherwise None
+        """
+        if fig is None:
+            fig = pl.figure(figsize=(14,14))
+        ax = fig.add_subplot(211)
+        self.plot_lnprobability(log_scale=False, fontsize=fontsize, ax=ax,\
+            show=False)
+        ax = fig.add_subplot(212)
+        self.plot_lnprobability(log_scale=True, fontsize=fontsize, ax=ax,\
+            show=False)
+        if show:
+            pl.show()
+        else:
+            return fig
+    
     def plot_acceptance_fraction(self, walkers=None, average=False, ax=None,\
         log_scale=False, fontsize=20, show=False):
         """
@@ -1660,6 +1728,7 @@ class NLFitter(object):
                            plotted
         ax: Axes instance on which to plot the acceptance fraction
         log_scale: if True, the acceptance fraction is shown in a semilogy plot
+        fontsize: size of fonts for labels and title
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
         
@@ -1710,4 +1779,40 @@ class NLFitter(object):
             pl.show()
         else:
             return ax
+    
+    def plot_acceptance_fraction_four_types(self, walkers=None, fig=None,\
+        fontsize=20, show=False):
+        """
+        Plots the acceptance fraction in four formats on a single figure. The
+        top (bottom) figures show on a linear (log) scale. The left (right)
+        figures show all walkers (all walkers averaged).
+        
+        walkers: if None, all walkers are shown.
+                 if int, describes the number of walkers shown in the plot
+                 if sequence, describes which walkers are shown in the plot
+        fig: None or Figure instance on which to plot the acceptance fraction
+        fontsize: size of fonts for labels and title
+        show: if True, matplotlib.pyplot.show() is called before this function
+                       returns
+        
+        returns: Figure if show is False, None if show is True
+        """
+        if fig is None:
+            fig = pl.figure(figsize=(20, 16))
+        ax = fig.add_subplot(221)
+        self.plot_acceptance_fraction(walkers=walkers, average=False, ax=ax,\
+            log_scale=False, fontsize=fontsize, show=False)
+        ax = fig.add_subplot(222)
+        self.plot_acceptance_fraction(walkers=walkers, average=True, ax=ax,\
+            log_scale=False, fontsize=fontsize, show=False)
+        ax = fig.add_subplot(223)
+        self.plot_acceptance_fraction(walkers=walkers, average=False, ax=ax,\
+            log_scale=True, fontsize=fontsize, show=False)
+        ax = fig.add_subplot(224)
+        self.plot_acceptance_fraction(walkers=walkers, average=True, ax=ax,\
+            log_scale=True, fontsize=fontsize, show=False)
+        if show:
+            pl.show()
+        else:
+            return fig
 
