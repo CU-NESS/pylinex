@@ -16,4 +16,5 @@ from pylinex.basis.TrainedBasis import TrainedBasis
 from pylinex.basis.BasisSet import BasisSet
 from pylinex.basis.BasisSum import BasisSum
 from pylinex.basis.EffectiveRank import effective_training_set_rank
+from pylinex.basis.TrainingSetPlot import plot_training_set_with_modes
 

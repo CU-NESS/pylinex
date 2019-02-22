@@ -158,6 +158,7 @@ class TrainedBasis(Basis):
     def training_set_fit_coefficients(self):
         """
         Property storing the coefficients of the fit to each training set
+        curve.
         """
         if not hasattr(self, '_training_set_fit_coefficients'):
             self._training_set_fit_coefficients =\
