@@ -254,6 +254,8 @@ class TrainingSetCreator(object):
                 self._file.create_group('parameters')
                 self._file.create_group('curves')
                 self._file.attrs['next_index'] = 0
+                if self.seed is not None:
+                    self._file.attrs['seed'] = self.seed
         return self._file
     
     def generate(self):
