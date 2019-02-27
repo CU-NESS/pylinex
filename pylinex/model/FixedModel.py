@@ -163,5 +163,5 @@ class FixedModel(LoadableModel):
         
         returns: a FixedModel object
         """
-        return FixedModel(group['fixed_curve'].value)
+        return FixedModel(group['fixed_curve'][()])
 

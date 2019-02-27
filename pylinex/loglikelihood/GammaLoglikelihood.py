@@ -100,7 +100,7 @@ class GammaLoglikelihood(LoglikelihoodWithModel):
                 "GammaLoglikelihood object.")
         data = Loglikelihood.load_data(group)
         model = LoglikelihoodWithModel.load_model(group)
-        num_averaged = group['num_averaged'].value
+        num_averaged = group['num_averaged'][()]
         return GammaLoglikelihood(data, model, num_averaged)
     
     def __call__(self, pars, return_negative=False):

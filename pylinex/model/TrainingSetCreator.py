@@ -247,7 +247,12 @@ class TrainingSetCreator(object):
                     continue
                 parameter_draw = np.array([parameter_draw[parameter]\
                     for parameter in self.model.parameters])
-                curve = self.model(parameter_draw)
+                try:
+                    curve = self.model(parameter_draw)
+                except KeyboardInterrupt:
+                    raise
+                except:
+                    curve = np.array([np.nan])
                 self.file['parameters'].create_dataset(curve_string,\
                     data=parameter_draw)
                 self.file['curves'].create_dataset(curve_string, data=curve)
@@ -300,21 +305,31 @@ class TrainingSetCreator(object):
         if de_facto_num_curves == 0:
             raise RuntimeError("No curves have been generated yet.")
         else:
-            num_channels = group['curve_0'].size
+            num_channels = np.max([group['curve_{:d}'.format(icurve)].size\
+                for icurve in range(de_facto_num_curves)])
         training_set = np.ndarray((de_facto_num_curves, num_channels))
+        to_keep = []
         for icurve in range(de_facto_num_curves):
-            training_set[icurve,:] = group['curve_{:d}'.format(icurve)].value
+            curve = group['curve_{:d}'.format(icurve)][()]
+            if np.any(np.isnan(curve)):
+                training_set[icurve,:] = np.nan
+            else:
+                training_set[icurve,:] = curve
+                to_keep.append(icurve)
+        to_keep = np.array(to_keep)
         self.close()
-        return_value = [training_set]
+        return_value = [training_set[to_keep,:]]
         if return_parameters:
             parameters =\
                 np.ndarray((de_facto_num_curves, self.model.num_parameters))
             group = self.file['parameters']
             for icurve in range(de_facto_num_curves):
-                parameters[icurve,:] = group['curve_{:d}'.format(icurve)].value
+                parameters[icurve,:] = group['curve_{:d}'.format(icurve)][()]
+            parameters = parameters[to_keep,:]
             parameters = {param: parameters[:,iparam]\
                 for (iparam, param) in enumerate(self.model.parameters)}
             return_value = return_value + [parameters]
+            self.close()
         if return_model:
             return_value = return_value + [self.model]
         if return_prior_set:
@@ -323,6 +338,32 @@ class TrainingSetCreator(object):
             return return_value[0]
         else:
             return tuple(return_value)
+    
+    def get_bad_parameters(self):
+        """
+        Gets the bad parameters which were encountered by this
+        TrainingSetCreator (i.e. the parameter values which produce curves that
+        throw errors or return nan's)
+        
+        returns: (model, parameters) where model is a Model object and
+                 parameters is a dictionary of arrays indexed by parameter name
+        """
+        group = self.file['curves']
+        de_facto_num_curves = 0
+        while 'curve_{:d}'.format(de_facto_num_curves) in group:
+            de_facto_num_curves += 1
+        to_keep = []
+        for icurve in range(de_facto_num_curves):
+            if np.any(np.isnan(group['curve_{:d}'.format(icurve)][()])):
+                to_keep.append(icurve)
+        self.close()
+        parameters = np.ndarray((len(to_keep), self.model.num_parameters))
+        group = self.file['parameters']
+        for (iicurve, icurve) in enumerate(to_keep):
+            parameters[iicurve,:] = group['curve_{:d}'.format(icurve)][()]
+        parameters = {param: parameters[:,iparam]\
+            for (iparam, param) in enumerate(self.model.parameters)}
+        return (self.model, parameters)
     
     @staticmethod
     def load_training_set(file_name, return_parameters=False,\
@@ -348,17 +389,26 @@ class TrainingSetCreator(object):
         if num_curves == 0:
             raise RuntimeError("No curves have been stored in the given file.")
         else:
-            num_channels = group['curve_0'].size
+            num_channels = np.max([group['curve_{:d}'.format(icurve)].size\
+                for icurve in range(de_facto_num_curves)])
         training_set = np.ndarray((num_curves, num_channels))
+        to_keep = []
         for icurve in range(num_curves):
-            training_set[icurve,:] = group['curve_{:d}'.format(icurve)].value
-        return_value = [training_set]
+            curve = group['curve_{:d}'.format(icurve)][()]
+            if np.any(np.isnan(curve)):
+                training_set[icurve,:] = np.nan
+            else:
+                training_set[icurve,:] = curve
+                to_keep.append(icurve)
+        to_keep = np.array(to_keep)
+        return_value = [training_set[to_keep,:]]
         model = load_model_from_hdf5_group(hdf5_file['model'])
         if return_parameters:
             parameters = np.ndarray((num_curves, model.num_parameters))
             group = hdf5_file['parameters']
             for icurve in range(num_curves):
-                parameters[icurve,:] = group['curve_{:d}'.format(icurve)].value
+                parameters[icurve,:] = group['curve_{:d}'.format(icurve)][()]
+            parameters = parameters[to_keep,:]
             parameters = {parameter: parameters[:,iparameter]\
                 for (iparameter, parameter) in enumerate(model.parameters)}
             return_value = return_value + [parameters]
@@ -373,6 +423,35 @@ class TrainingSetCreator(object):
             return return_value[0]
         else:
             return return_value
+    
+    @staticmethod
+    def load_bad_parameters(file_name):
+        """
+        Gets the bad parameters which were encountered by this
+        TrainingSetCreator (i.e. the parameter values which produce curves that
+        throw errors or return nan's)
+        
+        returns: (model, parameters) where model is a Model object and
+                 parameters is a dictionary of arrays indexed by parameter name
+        """
+        hdf5_file = h5py.File(file_name, 'r')
+        group = hdf5_file['curves']
+        num_curves = 0
+        while 'curve_{:d}'.format(num_curves) in group:
+            num_curves += 1
+        to_keep = []
+        for icurve in range(num_curves):
+            if np.any(np.isnan(group['curve_{:d}'.format(icurve)][()])):
+                to_keep.append(icurve)
+        model = load_model_from_hdf5_group(hdf5_file['model'])
+        parameters = np.ndarray((len(to_keep), model.num_parameters))
+        group = hdf5_file['parameters']
+        for (iicurve, icurve) in enumerate(to_keep):
+            parameters[iicurve,:] = group['curve_{:d}'.format(icurve)][()]
+        parameters = {parameter: parameters[:,iparameter]\
+            for (iparameter, parameter) in enumerate(model.parameters)}
+        hdf5_file.close()
+        return (model, parameters)
     
     def close(self):
         """

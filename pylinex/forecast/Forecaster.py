@@ -169,7 +169,7 @@ class Forecaster(object):
             self._input_curves = {}
             group = self.plotter.file['input_curves']
             for name in group:
-                self._input_curves[name] = group[name].value
+                self._input_curves[name] = group[name][()]
         return self._input_curves
     
     def make_data_curves(self, ncurves, curve_sets, expanders, error,\

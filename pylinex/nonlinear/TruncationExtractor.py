@@ -149,7 +149,7 @@ class TruncationExtractor(Savable):
         value: sequence of numbers
         """
         if type(value) in sequence_types:
-            if all([isinstance(element, int) for element in value]):
+            if all([(type(element) in int_types) for element in value]):
                 if all([(element > 1) for element in value]):
                     self._nterms_maxima =\
                         np.array([element for element in value])

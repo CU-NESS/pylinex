@@ -100,12 +100,12 @@ class LeastSquareFitter(object):
             successes.append(subgroup.attrs['success'])
             min_value = subgroup.attrs['min_value']
             mins.append(min_value)
-            argmin = subgroup['argmin'].value
+            argmin = subgroup['argmin'][()]
             argmins.append(argmin)
             transformed_argmins.append(self.transform_list.apply(argmin))
             if 'covariance_estimate' in subgroup:
                 covariance_estimates.append(\
-                    subgroup['covariance_estimate'].value)
+                    subgroup['covariance_estimate'][()])
             else:
                 covariance_estimates.append(None)
             reduced_chi_squared_statistics.append((2 * min_value) /\

@@ -271,8 +271,8 @@ class RectangularBinner(Savable, Loadable):
         
         returns: RectangularBinner whose info was saved in the given group
         """
-        unbinned_x_values = group['unbinned_x_values'].value
-        bin_edges = group['bin_edges'].value
+        unbinned_x_values = group['unbinned_x_values'][()]
+        bin_edges = group['bin_edges'][()]
         return RectangularBinner(unbinned_x_values, bin_edges)
     
     def __eq__(self, other):

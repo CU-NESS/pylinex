@@ -106,7 +106,7 @@ def load_model_from_hdf5_group(group):
                 return DistortedModel(model, transform_list)
             elif class_name == 'ProjectedModel':
                 basis = Basis.load_from_hdf5_group(group['basis'])
-                error = group['error'].value
+                error = group['error'][()]
                 return ProjectedModel(model, basis, error=error)
             elif class_name == 'ScaledModel':
                 scale_factor = group.attrs['scale_factor']
@@ -156,7 +156,7 @@ def load_model_from_hdf5_group(group):
             elif class_name == 'TiedModel':
                 shared_name = group.attrs['shared_name']
                 tied_parameters =\
-                    [element for element in group['tied_parameters'].value]
+                    [element for element in group['tied_parameters'][()]]
                 return TiedModel(names, models, shared_name, *tied_parameters)
             elif class_name == 'ProductModel':
                 return ProductModel(names, models)

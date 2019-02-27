@@ -110,7 +110,7 @@ class BurnRule(Savable, Loadable):
         """
         if value is None:
             value = 1
-        if isinstance(value, int):
+        if type(value) in int_types:
             self._thin = value
         else:
             raise TypeError("thin was set to a non-integer.")

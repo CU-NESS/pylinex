@@ -780,7 +780,7 @@ class Sampler(object):
         last_checkpoint_group =\
             last_checkpoint_group['{:d}'.format(self.checkpoint_index-1)]
         last_checkpoint_loglikelihood =\
-            last_checkpoint_group['lnprobability'].value
+            last_checkpoint_group['lnprobability'][()]
         walker_averaged_loglikelihood =\
             np.mean(last_checkpoint_loglikelihood, axis=-1)
         if trim_tails:
@@ -793,7 +793,7 @@ class Sampler(object):
                 np.ones_like(walker_averaged_loglikelihood)
         likelihood_based_weights = (likelihood_based_weights[:,np.newaxis] *\
             np.ones(last_checkpoint_loglikelihood.shape)).flatten()
-        last_checkpoint_chain = last_checkpoint_group['chain'].value
+        last_checkpoint_chain = last_checkpoint_group['chain'][()]
         last_checkpoint_chain_continuous =\
             last_checkpoint_chain[...,continuous_parameter_indices]
         flattened_shape = (-1, last_checkpoint_chain_continuous.shape[-1])
@@ -864,7 +864,7 @@ class Sampler(object):
         last_checkpoint_group =\
             last_checkpoint_group['{:d}'.format(self.checkpoint_index-1)]
         last_checkpoint_loglikelihood =\
-            last_checkpoint_group['lnprobability'].value
+            last_checkpoint_group['lnprobability'][()]
         walker_averaged_loglikelihood =\
             np.mean(last_checkpoint_loglikelihood, axis=-1)
         if trim_tails:
@@ -877,7 +877,7 @@ class Sampler(object):
                 np.ones_like(walker_averaged_loglikelihood)
         likelihood_based_weights = (likelihood_based_weights[:,np.newaxis] *\
             np.ones(last_checkpoint_loglikelihood.shape)).flatten()
-        last_checkpoint_chain = last_checkpoint_group['chain'].value
+        last_checkpoint_chain = last_checkpoint_group['chain'][()]
         last_checkpoint_chain_continuous =\
             last_checkpoint_chain[...,continuous_parameter_indices]
         flattened_shape = (-1, last_checkpoint_chain_continuous.shape[-1])
@@ -953,8 +953,8 @@ class Sampler(object):
             last_checkpoint_group =\
                 last_checkpoint_group['{:d}'.format(self.checkpoint_index-1)]
             last_checkpoint_loglikelihood =\
-                last_checkpoint_group['lnprobability'].value
-            last_checkpoint_chain = last_checkpoint_group['chain'].value
+                last_checkpoint_group['lnprobability'][()]
+            last_checkpoint_chain = last_checkpoint_group['chain'][()]
             maximum_likelihood_index = np.unravel_index(\
                 np.argmax(last_checkpoint_loglikelihood),\
                 last_checkpoint_loglikelihood.shape)
@@ -1020,11 +1020,11 @@ class Sampler(object):
                  values of the walkers' lnprobability
         """
         group = self.file['state']
-        pos = group['pos'].value
-        lnprob = group['lnprob'].value
+        pos = group['pos'][()]
+        lnprob = group['lnprob'][()]
         subgroup = group['rstate']
         alg = subgroup.attrs['algorithm']
-        keys = subgroup['keys'].value
+        keys = subgroup['keys'][()]
         rstate_pos = subgroup.attrs['pos']
         has_gauss = subgroup.attrs['has_gauss']
         cached_gaussian = subgroup.attrs['cached_gaussian']

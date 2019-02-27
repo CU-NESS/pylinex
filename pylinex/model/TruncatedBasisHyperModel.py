@@ -154,7 +154,7 @@ class TruncatedBasisHyperModel(LoadableModel):
         """
         if value is None:
             self._default_num_terms = self.max_terms
-        elif isinstance(value, int):
+        elif type(value) in int_types:
             if (value >= self.min_terms) and (value <= self.max_terms):
                 self._default_num_terms = value
             else:
