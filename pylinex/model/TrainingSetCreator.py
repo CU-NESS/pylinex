@@ -25,7 +25,7 @@ class TrainingSetCreator(object):
     Class which creates sets of curves given models and prior distributions.
     """
     def __init__(self, model, prior_set, num_curves, file_name, seed=None,\
-        verbose=True):
+        allow_errors=True, verbose=True):
         """
         Creates a training set of curves from the given models and the given
         prior region.
@@ -40,11 +40,36 @@ class TrainingSetCreator(object):
                  convolution (i.e. pair of beam+maps)
         """
         self.verbose = verbose
+        self.allow_errors = allow_errors
         self.seed = seed
         self.file_name = file_name
         self.num_curves = num_curves
         self.model = model
         self.prior_set = prior_set
+    
+    @property
+    def allow_errors(self):
+        """
+        Property storing a boolean which determines whether errors are allowed
+        (True) or disallowed (False). If they are disallowed, they are raised
+        directly.
+        """
+        if not hasattr(self, '_allow_errors'):
+            raise AttributeError("allow_errors was referenced before it " +\
+                "was set.")
+        return self._allow_errors
+    
+    @allow_errors.setter
+    def allow_errors(self, value):
+        """
+        Setter for the allow_errors switch.
+        
+        value: True or False
+        """
+        if type(value) in bool_types:
+            self._allow_errors = value
+        else:
+            raise TypeError("allow_errors was set to a non-bool.")
     
     @property
     def seed(self):
@@ -252,7 +277,10 @@ class TrainingSetCreator(object):
                 except KeyboardInterrupt:
                     raise
                 except:
-                    curve = np.array([np.nan])
+                    if self.allow_errors:
+                        curve = np.array([np.nan])
+                    else:
+                        raise
                 self.file['parameters'].create_dataset(curve_string,\
                     data=parameter_draw)
                 self.file['curves'].create_dataset(curve_string, data=curve)
