@@ -420,7 +420,7 @@ class TrainingSetCreator(object):
             raise RuntimeError("No curves have been stored in the given file.")
         else:
             num_channels = np.max([group['curve_{:d}'.format(icurve)].size\
-                for icurve in range(de_facto_num_curves)])
+                for icurve in range(num_curves)])
         training_set = np.ndarray((num_curves, num_channels))
         to_keep = []
         for icurve in range(num_curves):
