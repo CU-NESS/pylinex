@@ -8,7 +8,7 @@ Description: File containing a class which evaluates a likelihood whose data
 """
 import numpy as np
 from ..util import real_numerical_types, sequence_types
-from .Loglikelihood import Loglikelihood
+from .LoglikelihoodWithData import LoglikelihoodWithData
 from .LoglikelihoodWithModel import LoglikelihoodWithModel
 
 class GammaLoglikelihood(LoglikelihoodWithModel):
@@ -98,7 +98,7 @@ class GammaLoglikelihood(LoglikelihoodWithModel):
         except:
             raise ValueError("group doesn't appear to point to a " +\
                 "GammaLoglikelihood object.")
-        data = Loglikelihood.load_data(group)
+        data = LoglikelihoodWithData.load_data(group)
         model = LoglikelihoodWithModel.load_model(group)
         num_averaged = group['num_averaged'][()]
         return GammaLoglikelihood(data, model, num_averaged)
@@ -249,4 +249,22 @@ class GammaLoglikelihood(LoglikelihoodWithModel):
             return False
         return (np.allclose(self.num_averaged, other.num_averaged) and\
             (self.model == other.model) and np.allclose(self.data, other.data))
+    
+    def change_data(self, new_data):
+        """
+        Finds the GammaLoglikelihood with a different data vector with
+        everything else kept constant.
+        
+        returns: a new GammaLoglikelihood with the given data property
+        """
+        return GammaLoglikelihood(new_data, self.model, self.num_averaged)
+    
+    def change_model(self, new_model):
+        """
+        Finds the GammaLoglikelihood with a different model with everything
+        else kept constant.
+        
+        returns: a new GammaLoglikelihood with the given model
+        """
+        return GammaLoglikelihood(self.data, new_model, self.num_averaged)
 

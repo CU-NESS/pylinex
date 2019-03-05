@@ -8,7 +8,7 @@ Description: File containing a class which evaluates a likelihood whose data
 """
 import numpy as np
 from scipy.special import gammaln as log_gamma
-from .Loglikelihood import Loglikelihood
+from .LoglikelihoodWithData import LoglikelihoodWithData
 from .LoglikelihoodWithModel import LoglikelihoodWithModel
 
 class PoissonLoglikelihood(LoglikelihoodWithModel):
@@ -54,7 +54,7 @@ class PoissonLoglikelihood(LoglikelihoodWithModel):
         except:
             raise ValueError("group doesn't appear to point to a " +\
                 "PoissonLoglikelihood object.")
-        data = Loglikelihood.load_data(group)
+        data = LoglikelihoodWithData.load_data(group)
         model = LoglikelihoodWithModel.load_model(group)
         return PoissonLoglikelihood(data, model)
     
@@ -205,4 +205,22 @@ class PoissonLoglikelihood(LoglikelihoodWithModel):
             return False
         return\
             (self.model == other.model) and np.allclose(self.data, other.data)
+    
+    def change_data(self, new_data):
+        """
+        Finds the PoissonLoglikelihood with a different data vector with
+        everything else kept constant.
+        
+        returns: a new PoissonLoglikelihood with the given data property
+        """
+        return PoissonLoglikelihood(new_data, self.model)
+    
+    def change_model(self, new_model):
+        """
+        Finds the PoissonLoglikelihood with a different model with everything
+        else kept constant.
+        
+        returns: a new PoissonLoglikelihood with the given model
+        """
+        return PoissonLoglikelihood(self.data, new_model)
 

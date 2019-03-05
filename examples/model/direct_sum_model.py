@@ -6,6 +6,7 @@ Date: 1 Jul 2018
 Description: File containing an example script showing various uses of the
              DirectSumModel class.
 """
+from __future__ import division
 import os
 import numpy as np
 import matplotlib.pyplot as pl
@@ -50,12 +51,10 @@ data = true_curve + noise
 variances = np.sqrt(np.diag(covariance))
 expected_variances =\
     ((noise_level / np.sqrt(smaller_num_channels)) * np.ones(num_models))
-print('inferred_parameters={}'.format(mean))
-print('true_parameters={}'.format(true_parameters))
-print('inferred_parameters-true_parameters={}'.format(mean - true_parameters))
-print('variances={}'.format(variances))
-print('expected_variances={}'.format(expected_variances))
-print('variances-expected_variances={}'.format(variances - expected_variances))
+assert(np.all(np.abs(inferred_parameters - true_parameters) <\
+    np.abs(true_parameters / 10)))
+assert(np.all(np.abs(variances - expected_variances) <\
+    (expected_variances / 10)))
 fit_curve = direct_sum_model(mean)
 
 fig = pl.figure(figsize=(12, 9))

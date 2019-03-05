@@ -12,7 +12,7 @@ import numpy as np
 from distpy import DistributionSet, DiscreteUniformDistribution,\
     DistributionSet, DiscreteUniformDistribution, KroneckerDeltaDistribution,\
     JumpingDistributionSet, GridHopJumpingDistribution
-from ..util import Savable, create_hdf5_dataset, sequence_types,\
+from ..util import Savable, create_hdf5_dataset, int_types, sequence_types,\
     bool_types
 from ..expander import Expander, NullExpander, ExpanderSet
 from ..basis import TrainedBasis, BasisSum, effective_training_set_rank

@@ -1,7 +1,7 @@
 """
 File: pylinex/__init__.py
 Author: Keith Tauscher
-Date: 3 Sep 2017
+Date: 4 Mar 2019
 
 Description: Imports the most important elements from all submodules. The
              imports written here are designed to support imports of the form,
@@ -37,8 +37,8 @@ from pylinex.model import Model, LoadableModel, FixedModel,\
     InterpolatedModel, TruncatedBasisHyperModel, load_model_from_hdf5_group,\
     TrainingSetCreator
 from pylinex.loglikelihood import Loglikelihood, RosenbrockLoglikelihood,\
-    LoglikelihoodWithModel, GaussianLoglikelihood, PoissonLoglikelihood,\
-    GammaLoglikelihood, LinearTruncationLoglikelihood,\
+    LoglikelihoodWithData, LoglikelihoodWithModel, GaussianLoglikelihood,\
+    PoissonLoglikelihood, GammaLoglikelihood, LinearTruncationLoglikelihood,\
     NonlinearTruncationLoglikelihood, load_loglikelihood_from_hdf5_group,\
     LikelihoodDistributionHarmonizer
 from pylinex.nonlinear import Sampler, BurnRule, NLFitter, LeastSquareFitter,\

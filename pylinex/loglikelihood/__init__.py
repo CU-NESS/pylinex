@@ -1,7 +1,7 @@
 """
 File: pylinex/loglikelihood/__init__.py
 Author: Keith Tauscher
-Date: 25 Feb 2018
+Date: 4 Mar 2019
 
 Description: File containing imports for the loglikelihood module. The classes
              in this module concern the saving, loading, storing, and
@@ -10,6 +10,7 @@ Description: File containing imports for the loglikelihood module. The classes
 from pylinex.loglikelihood.Loglikelihood import Loglikelihood
 from pylinex.loglikelihood.RosenbrockLoglikelihood import\
     RosenbrockLoglikelihood
+from pylinex.loglikelihood.LoglikelihoodWithData import LoglikelihoodWithData
 from pylinex.loglikelihood.LoglikelihoodWithModel import LoglikelihoodWithModel
 from pylinex.loglikelihood.GaussianLoglikelihood import GaussianLoglikelihood
 from pylinex.loglikelihood.PoissonLoglikelihood import PoissonLoglikelihood

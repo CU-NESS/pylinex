@@ -11,7 +11,7 @@ import numpy.linalg as la
 from distpy import cast_to_transform_list, WindowedDistribution,\
     GaussianDistribution, DistributionSet, DistributionList
 from ..util import create_hdf5_dataset, get_hdf5_value
-from .Loglikelihood import Loglikelihood
+from .LoglikelihoodWithData import LoglikelihoodWithData
 from .LoglikelihoodWithModel import LoglikelihoodWithModel
 
 class GaussianLoglikelihood(LoglikelihoodWithModel):
@@ -109,7 +109,7 @@ class GaussianLoglikelihood(LoglikelihoodWithModel):
         except:
             raise ValueError("group doesn't appear to point to a " +\
                 "GaussianLoglikelihood object.")
-        data = Loglikelihood.load_data(group)
+        data = LoglikelihoodWithData.load_data(group)
         model = LoglikelihoodWithModel.load_model(group)
         error = GaussianLoglikelihood.load_error(group)
         return GaussianLoglikelihood(data, error, model)
@@ -387,4 +387,22 @@ class GaussianLoglikelihood(LoglikelihoodWithModel):
         return ((self.model == other.model) and\
             np.allclose(self.data, other.data) and\
             np.allclose(self.error, other.error))
+    
+    def change_data(self, new_data):
+        """
+        Finds the GaussianLoglikelihood with a different data vector with
+        everything else kept constant.
+        
+        returns: a new GaussianLoglikelihood with the given data property
+        """
+        return GaussianLoglikelihood(new_data, self.error, self.model)
+    
+    def change_model(self, new_model):
+        """
+        Finds the GaussianLoglikelihood with a different model with everything
+        else kept constant.
+        
+        returns: a new GaussianLoglikelihood with the given model
+        """
+        return GaussianLoglikelihood(self.data, self.error, new_model)
 

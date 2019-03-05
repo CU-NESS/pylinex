@@ -8,10 +8,10 @@ Description: File containing a class which represents a DIC-like loglikelihood
              of bases as the parameters of the likelihood.
 """
 import numpy as np
-from ..util import create_hdf5_dataset
+from ..util import create_hdf5_dataset, get_hdf5_value
 from ..basis import Basis, BasisSum
 from ..fitter import Fitter
-from .Loglikelihood import Loglikelihood
+from .LoglikelihoodWithData import LoglikelihoodWithData
 
 try:
     # this runs with no issues in python 2 but raises error in python 3
@@ -20,7 +20,7 @@ except:
     # this try/except allows for python 2/3 compatible string type checking
     basestring = str
 
-class LinearTruncationLoglikelihood(Loglikelihood):
+class LinearTruncationLoglikelihood(LoglikelihoodWithData):
     """
     Class which represents a DIC-like loglikelihood which uses the number of
     coefficients to use in each of a number of bases as the parameters of the
@@ -238,7 +238,7 @@ class LinearTruncationLoglikelihood(Loglikelihood):
         returns: the Loglikelihood object loaded from the given hdf5 file group
         """
         group.attrs['class'] = 'LinearTruncationLoglikelihood'
-        data = Loglikelihood.load_data(group)
+        data = LoglikelihoodWithData.load_data(group)
         error = get_hdf5_value(group['error'])
         basis_sum = BasisSum.load_from_hdf5_group(group['basis_sum'])
         information_criterion = group.attrs['information_criterion']
@@ -294,4 +294,14 @@ class LinearTruncationLoglikelihood(Loglikelihood):
         if not np.allclose(self.error, other.error):
             return False
         return (self.information_criterion == other.information_criterion)
+    
+    def change_data(self, new_data):
+        """
+        Finds the LinearTruncationLoglikelihood with a different data vector
+        with everything else kept constant.
+        
+        returns: new LinearTruncationLoglikelihood with the given data property
+        """
+        return LinearTruncationLoglikelihood(self.basis_sum, new_data,\
+            self.error, information_criterion=self.information_criterion)
     

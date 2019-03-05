@@ -7,9 +7,9 @@ Description: File containing class representing a likelihood whose parameters
              are identical to the parameters of some Model object.
 """
 from ..model import Model, load_model_from_hdf5_group
-from .Loglikelihood import Loglikelihood
+from .LoglikelihoodWithData import LoglikelihoodWithData
 
-class LoglikelihoodWithModel(Loglikelihood):
+class LoglikelihoodWithModel(LoglikelihoodWithData):
     """
     Class representing a likelihood whose parameters are identical to the
     parameters of some Model object.
@@ -67,4 +67,31 @@ class LoglikelihoodWithModel(Loglikelihood):
         returns: Model object associated with this Loglikelihood object
         """
         return load_model_from_hdf5_group(group['model'])
+    
+    def change_model(self, new_model):
+        """
+        Returns a LoglikelihoodWithModel of the same class as this object with
+        a different model. Everything else is kept constant.
+        
+        returns: a new LoglikelihoodWithModel of the same class as this object
+        """
+        raise NotImplementedError("Either the LoglikelihoodWithModel class " +\
+            "was directly instantiated (not allowed, use a subclass " +\
+            "instead) or the subclass of LoglikelihoodWithModel being used " +\
+            "has not implemented the change_model function (in which case " +\
+            "it should be implemented).")
+    
+    def center(self, parameters):
+        """
+        Finds a LoglikelihoodWithModel of the same class as this object with
+        the data set to this object's model evaluated at the given parameters.
+        
+        parameters: the parameters at which the desired loglikelihood should be
+                    maximized
+        
+        returns: a new LoglikelihoodWithModel of the same class as this object
+                 whose data has been changed to be equal to this object's model
+                 evaluated at the given parameters
+        """
+        return self.change_data(self.model(parameters))
 

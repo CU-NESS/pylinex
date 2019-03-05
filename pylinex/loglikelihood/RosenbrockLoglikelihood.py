@@ -109,34 +109,6 @@ class RosenbrockLoglikelihood(Loglikelihood):
             raise TypeError("scale_ratio was set to a non-number.")
     
     @property
-    def data(self):
-        """
-        Since the Rosenbrock likelihood is a simple function of the parameters
-        instead of a modeled data vector, it has no data property.
-        """
-        raise AttributeError("The RosenbrockLoglikelihood class does not " +\
-            "have a data property.")
-    
-    @property
-    def num_channels(self):
-        """
-        Since the Rosenbrock likelihood is a simple function of the parameters
-        instead of a modeled data vector, it has no num_channels property.
-        """
-        raise AttributeError("The RosenbrockLoglikelihood class does not " +\
-            "have a num_channels property.")
-    
-    @property
-    def degrees_of_freedom(self):
-        """
-        Since the Rosenbrock likelihood is a simple function of the parameters
-        instead of a modeled data vector, it has no degrees_of_freedom
-        property.
-        """
-        raise AttributeError("The RosenbrockLoglikelihood class does not " +\
-            "have a degrees_of_freedom property.")
-    
-    @property
     def parameters(self):
         """
         Property storing the parameters of the likelihood, which are simply

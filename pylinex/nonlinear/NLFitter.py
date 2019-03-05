@@ -928,6 +928,50 @@ class NLFitter(object):
             model = self.model
         return np.array([model(args) for args in parameter_sample])
     
+    def reconstruction_RMSs(self, number, parameters=None, model=None):
+        """
+        Computes the root-mean-square deviations from the mean of the given
+        number of reconstructions made using the given model and parameters.
+        
+        number: the number of reconstructions to create
+        parameters: if None (default), all parameters are used
+                    if string, parameter which match the regular expression
+                               given by parameters are used
+                    if list of ints, the parameters with these indices are used
+                    if list of strings, these parameters are used
+        model: if None (default), the full model in the loglikelihood is used
+               otherwise, the model with which to create reconstructions from
+                          parameters
+        
+        returns: 1D numpy.ndarray of shape (number,) containing RMS values
+        """
+        reconstructions =\
+            self.reconstructions(number, parameters=parameters, model=model)
+        centered_reconstructions = reconstructions -\
+            np.mean(reconstructions, axis=0, keepdims=True)
+        return np.sqrt(np.mean(np.power(centered_reconstructions, 2), axis=1))
+    
+    def mean_reconstruction_RMS(self, number, parameters=None, model=None):
+        """
+        Computes the mean root-mean-square deviation from the mean of the given
+        number of reconstructions made using the given model and parameters.
+        
+        number: the number of reconstructions to create
+        parameters: if None (default), all parameters are used
+                    if string, parameter which match the regular expression
+                               given by parameters are used
+                    if list of ints, the parameters with these indices are used
+                    if list of strings, these parameters are used
+        model: if None (default), the full model in the loglikelihood is used
+               otherwise, the model with which to create reconstructions from
+                          parameters
+        
+        returns: single value giving mean RMS deviation from the mean of the
+                 given model with the given parameters
+        """
+        return np.mean(self.reconstruction_RMSs(number, parameters=parameters,\
+            model=model))
+    
     def bias(self, number, parameters=None, model=None, true_curve=None):
         """
         Computes differences between a true_curve and reconstructions of the
@@ -967,7 +1011,7 @@ class NLFitter(object):
         return reconstructions - true_curve
     
     def reconstruction_confidence_intervals(self, number, probabilities,\
-        parameters=None, model=None):
+        parameters=None, model=None, return_reconstructions=False):
         """
         Computes confidence intervals on reconstructions of quantities created
         by applying the given model to the given parameters from this fitter's
@@ -984,9 +1028,15 @@ class NLFitter(object):
         model: if None (default), full likelihood's model is used
                otherwise, the model with which to create reconstructions from
                           parameters
+        return_reconstructions: if True (default: False), returns
+                                reconstructions as well as intervals.
         
         returns: list of tuples of the form (band_min, band_max) representing
-                 confidence_intervals with the given confidence levels
+                 confidence_intervals with the given confidence levels, or
+                 single such tuple. If return_reconstructions is True, the
+                 return value is
+                 (value_when_return_reconstructions_is_False, reconstructions)
+                 where reconstructions has shape (number, num_channels)
         """
         reconstructions =\
             self.reconstructions(number, parameters=parameters, model=model)
@@ -1005,10 +1055,13 @@ class NLFitter(object):
         right_bands =\
             sorted_channel_values[number-1-numbers_to_exclude_from_right,:]
         if single_input:
-            return (left_bands[0], right_bands[0])
+            return_value = (left_bands[0], right_bands[0])
         else:
-            return [(left_bands[index], right_bands[index])\
+            return_value = [(left_bands[index], right_bands[index])\
                 for index in range(len(probabilities))]
+        if return_reconstructions:
+            return_value = (return_value, reconstructions)
+        return return_value
     
     def bias_confidence_intervals(self, number, probabilities,\
         parameters=None, model=None, true_curve=None):
@@ -1029,12 +1082,18 @@ class NLFitter(object):
                otherwise, the model with which to create reconstructions from
                           parameters
         true_curve: curve to subtract from all reconstructions to compute bias
+        return_biases: if True (default: False), returns biases as well as
+                       intervals.
         
         returns: list of tuples of the form (band_min, band_max) representing
-                 confidence_intervals with the given confidence levels
+                 confidence_intervals with the given confidence levels. If
+                 return_biases is True, the return value is
+                 (value_when_return_biases_is_False, biases) where
+                 reconstructions has shape (number, num_channels)
         """
-        intervals = self.reconstruction_confidence_intervals(\
-            number, probabilities, parameters=parameters, model=model)
+        (intervals, reconstructions) =\
+            self.reconstruction_confidence_intervals(number, probabilities,\
+            parameters=parameters, model=model, return_reconstructions=True)
         if true_curve is None:
             if parameters is None and model is None:
                 true_curve = self.data
@@ -1045,10 +1104,16 @@ class NLFitter(object):
                     "which case, if true_curve is None, it is replaced the " +\
                     "loglikelihood's data vector.")
         if type(probabilities) in real_numerical_types:
-            return (intervals[0] - true_curve, intervals[1] - true_curve)
+            return_value =\
+                (intervals[0] - true_curve, intervals[1] - true_curve)
         else:
-            return [(interval[0] - true_curve, interval[1] - true_curve)\
+            return_value =\
+                [(interval[0] - true_curve, interval[1] - true_curve)\
                 for interval in intervals]
+        if return_biases:
+            return_value =\
+                (return_value, reconstructions - true_curve[np.newaxis,:])
+        return return_value
     
     def plot_maximum_probability_reconstruction(self, parameters=None,\
         model=None, true_curve=None, subtract_truth=False, x_values=None,\
@@ -1127,7 +1192,7 @@ class NLFitter(object):
     def plot_reconstruction_confidence_intervals(self, number, probabilities,\
         parameters, model, true_curve=None, x_values=None, ax=None,\
         alphas=None, xlabel=None, ylabel=None, title=None, fontsize=28,\
-        scale_factor=1., color='r', show=False):
+        scale_factor=1., color='r', show=False, return_reconstructions=False):
         """
         Plots reconstruction confidence intervals with the given model,
         parameters, and confidence levels.
@@ -1154,10 +1219,14 @@ class NLFitter(object):
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
         
-        returns: None if show is True, otherwise Axes instance with plot
+        returns: (reconstructions if return_reconstructions else None) if show
+                 is True, otherwise
+                 ((ax, reconstructions) if return_reconstructions else None)
+                 where ax is an Axes instance with plot
         """
-        intervals = self.reconstruction_confidence_intervals(number,\
-            probabilities, parameters=parameters, model=model)
+        (intervals, reconstructions) =\
+            self.reconstruction_confidence_intervals(number, probabilities,\
+            parameters=parameters, model=model, return_reconstructions=True)
         if type(probabilities) in real_numerical_types:
             probabilities = [probabilities]
             intervals = [intervals]
@@ -1188,6 +1257,10 @@ class NLFitter(object):
         ax.tick_params(labelsize=fontsize, width=2.5, length=7.5)
         if show:
             pl.show()
+            if return_reconstructions:
+                return reconstructions
+        elif return_reconstructions:
+            return (ax, reconstructions)
         else:
             return ax
     
@@ -1704,10 +1777,10 @@ class NLFitter(object):
         if fig is None:
             fig = pl.figure(figsize=(14,14))
         ax = fig.add_subplot(211)
-        self.plot_lnprobability(log_scale=False, fontsize=fontsize, ax=ax,\
+        self.plot_rescaling_factors(log_scale=False, fontsize=fontsize, ax=ax,\
             show=False)
         ax = fig.add_subplot(212)
-        self.plot_lnprobability(log_scale=True, fontsize=fontsize, ax=ax,\
+        self.plot_rescaling_factors(log_scale=True, fontsize=fontsize, ax=ax,\
             show=False)
         if show:
             pl.show()

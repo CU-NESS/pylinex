@@ -77,4 +77,5 @@ fitter.plot_rescaling_factors(ax=None, show=False)
 fitter.close()
 
 pl.show()
+os.remove(file_name)
 

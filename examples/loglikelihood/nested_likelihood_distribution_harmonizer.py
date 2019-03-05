@@ -54,7 +54,7 @@ draw = full_distribution_set.draw(ndraw)
 
 fig = pl.figure(figsize=(12, 9))
 ax = fig.add_subplot(111)
-ax.hist(draw['AB_B_a0'], color='k', histtype='stepfilled', normed=True,\
+ax.hist(draw['AB_B_a0'], color='k', histtype='stepfilled', density=True,\
     label='harmonized')
 ylim = ax.get_ylim()
 ax.plot([input_B] * 2, ylim, color='r', label='input')

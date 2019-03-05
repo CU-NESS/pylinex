@@ -31,7 +31,6 @@ composite_model = CompositeModel(expression, names, models,\
 
 random_pars = np.random.randn(2)
 assert np.allclose(reference_model(random_pars), composite_model(random_pars))
-print(reference_model.gradient(random_pars))
 assert np.allclose(reference_model.gradient(random_pars),\
     composite_model.gradient(random_pars))
 assert np.allclose(reference_model.hessian(random_pars),\
