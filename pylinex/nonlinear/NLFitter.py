@@ -522,14 +522,23 @@ class NLFitter(object):
         return self._parameters
     
     @property
+    def transform_set(self):
+        """
+        Property storing the set of Transforms used in the last loaded chunk's
+        JumpingDistributionSet.
+        """
+        if not hasattr(self, '_transform_set'):
+            self._transform_set = self.jumping_distribution_set.transform_set
+        return self._transform_set
+    
+    @property
     def transform_list(self):
         """
         Property storing the list of Transforms used in the last loaded chunk's
         JumpingDistributionSet.
         """
         if not hasattr(self, '_transform_list'):
-            self._transform_list =\
-                self.jumping_distribution_set.transform_set[self.parameters]
+            self._transform_list = self.transform_set[self.parameters]
         return self._transform_list
     
     @property
@@ -1140,6 +1149,8 @@ class NLFitter(object):
         xlabel: string to place on x axis
         ylabel: string to place on y axis
         title: title to place on the Axes with this plot
+        scale_factor: factor by which to multiply reconstructions before
+                      plotting
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
         
@@ -1190,14 +1201,17 @@ class NLFitter(object):
             return ax
     
     def plot_reconstruction_confidence_intervals(self, number, probabilities,\
-        parameters, model, true_curve=None, x_values=None, ax=None,\
-        alphas=None, xlabel=None, ylabel=None, title=None, fontsize=28,\
-        scale_factor=1., color='r', show=False, return_reconstructions=False):
+        parameters, model, true_curve=None, x_values=None,\
+        matplotlib_function='errorbar', ax=None, alphas=None, xlabel=None,\
+        ylabel=None, title=None, fontsize=28, scale_factor=1., show=False,\
+        return_reconstructions=False, **kwargs):
         """
         Plots reconstruction confidence intervals with the given model,
         parameters, and confidence levels.
         
         number: number of curves used to compute of confidence intervals
+        probabilities: either single number between 0 and 1 (exclusive), or
+                       sequence of such numbers
         parameters: if None (default), all parameters are used
                     if string, parameter which match the regular expression
                                given by parameters are used
@@ -1209,6 +1223,7 @@ class NLFitter(object):
         true_curve: true form of the quantity being reconstructed
         x_values: the array to use as the x_values of all plots.
                   If None, x_values start at 0 and increment up in steps of 1
+        matplotlib_function: either 'errorbar' or 'fill_between'
         ax: the Axes instance on which to plot the confidence intervals
         alphas: the alpha values with which to fill in each interval (must be
                 sequence of values between 0 and 1 of length greater than or
@@ -1216,17 +1231,30 @@ class NLFitter(object):
         xlabel: string to place on x axis
         ylabel: string to place on y axis
         title: title to place on the Axes with this plot
+        fontsize: size of label and title font
+        scale_factor: factor by which to multiply reconstructions before
+                      plotting (is not applied to true_curve, if given)
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
+        return_reconstructions: allows user to access reconstructions used
+        **kwargs: extra keyword arguments to pass to matplotlib_function
         
         returns: (reconstructions if return_reconstructions else None) if show
                  is True, otherwise
                  ((ax, reconstructions) if return_reconstructions else None)
                  where ax is an Axes instance with plot
         """
+        available_matplotlib_functions = ['fill_between', 'errorbar']
+        if matplotlib_function not in available_matplotlib_functions:
+            raise ValueError(("The given matplotlib function, '{0!s}', was " +\
+                "not in the list of implemented matplotlib functions of " +\
+                "the plot_reconstruction_confidence_intervals function, " +\
+                "{1}.").format(matplotlib_function,\
+                available_matplotlib_functions))
         (intervals, reconstructions) =\
             self.reconstruction_confidence_intervals(number, probabilities,\
             parameters=parameters, model=model, return_reconstructions=True)
+        mean_reconstruction = np.mean(reconstructions, axis=0)
         if type(probabilities) in real_numerical_types:
             probabilities = [probabilities]
             intervals = [intervals]
@@ -1237,14 +1265,30 @@ class NLFitter(object):
             ax = fig.add_subplot(111)
         if x_values is None:
             x_values = np.arange(intervals[0][0].shape[0])
-        for index in range(len(intervals)):
-            pconfidence = int(round(probabilities[index] * 100))
-            ax.fill_between(x_values, intervals[index][0] * scale_factor,\
-                intervals[index][1] * scale_factor, alpha=alphas[index],\
-                color=color, label='{:d}% confidence'.format(pconfidence))
+        for (iinterval, interval) in enumerate(intervals):
+            pconfidence = int(round(probabilities[iinterval] * 100))
+            confidence_label = '{:d}% confidence'.format(pconfidence)
+            if matplotlib_function == 'fill_between':
+                ax.fill_between(x_values, interval[0] * scale_factor,\
+                    interval[1] * scale_factor, alpha=alphas[iinterval],\
+                    label=confidence_label, **kwargs)
+            elif matplotlib_function == 'errorbar':
+                error =\
+                    [((endpoint - mean_reconstruction) * scale_factor * sign)\
+                    for (sign, endpoint) in zip((-1, 1), interval)]
+                ax.errorbar(x_values, mean_reconstruction * scale_factor,\
+                    yerr=error, alpha=alphas[iinterval],\
+                    label=confidence_label, **kwargs)
+            else:
+                raise ValueError("This error should never happen!")
         if true_curve is not None:
-            ax.plot(x_values, true_curve, linewidth=2, color='k',\
-                label='input')
+            if matplotlib_function == 'fill_between':
+                ax.plot(x_values, true_curve, linewidth=2, color='k',\
+                    label='input')
+            elif matplotlib_function == 'errorbar':
+                ax.scatter(x_values, true_curve, color='k')
+            else:
+                raise ValueError("This error should never happen!")
         ax.set_xlim((x_values[0], x_values[-1]))
         ax.legend(fontsize=fontsize)
         if title is None:

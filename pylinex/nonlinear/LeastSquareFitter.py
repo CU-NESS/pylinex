@@ -46,8 +46,8 @@ class LeastSquareFitter(object):
                         TransformList object) describing how to find
                         transformed_argmin and covariance estimate in the
                         transform space
-        save: if True, saves endpoints and other information about this
-              LeastSquareFitter to an hdf5 file
+        file_name: if None, nothing in this object will be saved
+                   if valid file path, this object is saved to this file
         bounds: extra bounds to apply in the form of keyword arguments of the
                 form (min, max). Any parameters not included will be bounded by
                 their Model's bounds parameter. If none is given, all Model's

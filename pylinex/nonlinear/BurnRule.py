@@ -9,7 +9,7 @@ Description: File containing a class representing a rule to help determine
              they are likely to skew the distribution sampled.
 """
 import numpy as np
-from ..util import Savable, Loadable, int_types
+from ..util import Savable, Loadable, int_types, numerical_types
 
 class BurnRule(Savable, Loadable):
     """
@@ -27,11 +27,11 @@ class BurnRule(Savable, Loadable):
         
         min_checkpoints: the minimum number of checkpoints to include in the
                          output when this BurnRule is called.
-        desired_fraction: number between 0 and 1. the desired fraction of the
-                          available chain to include in the final output. If
-                          the desired_fraction would yield fewer than
-                          min_checkpoints checkpoints, then min_checkpoints are
-                          returned
+        desired_fraction: number between 0 and 1 (inclusive). the desired
+                          fraction of the available chain to include in the
+                          final output. If the desired_fraction would yield
+                          fewer than min_checkpoints checkpoints, then
+                          min_checkpoints are returned
         thin: either None (default, corresponding to 1) or a positive integer
               representing the stride with which to read the chain
         """
@@ -81,16 +81,16 @@ class BurnRule(Savable, Loadable):
         Setter for the fraction of the chain which should be returned in the
         limit of an infinite chain.
         
-        value: must satisfy 0<value<=1
+        value: must satisfy 0<=value<=1
         """
-        try:
-            if (value > 0) and (value <= 1):
+        if type(value) in numerical_types:
+            if (value >= 0) and (value <= 1):
                 self._desired_fraction = value
             else:
-                raise ValueError("desired_fraction is not between 0 " +\
-                    "(exclusive) and 1 (inclusive).")
-        except:
-            raise TypeError("desired_fraction doesn't seem to be a float.")
+                raise ValueError(\
+                    "desired_fraction is not between 0 and 1 (inclusive).")
+        else:
+            raise TypeError("desired_fraction doesn't seem to be a number.")
     
     @property
     def thin(self):

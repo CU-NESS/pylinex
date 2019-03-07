@@ -472,8 +472,8 @@ class Basis(Savable, Loadable):
         return Basis(basis, expander=expander)
     
     def plot(self, basis_indices=slice(None), x_values=None, title='Basis',\
-        xlabel=None, ylabel=None, fontsize=20, fig=None, ax=None, show=True,\
-        **kwargs):
+        xlabel=None, ylabel=None, fontsize=20, fig=None, ax=None,\
+        figsize=(12, 9), show=True, **kwargs):
         """
         Plots the basis vectors stored in this Basis object.
         
@@ -487,17 +487,22 @@ class Basis(Savable, Loadable):
         if x_values is None:
             x_values = np.arange(self.num_smaller_channel_set_indices)
         if (fig is None) and (ax is None):
-            fig = pl.figure()
+            fig = pl.figure(figsize=figsize)
         if ax is None:
             ax = fig.add_subplot(111)
         ax.plot(x_values, self.basis[basis_indices].T, **kwargs)
         ax.plot(x_values, np.zeros_like(x_values), linewidth=1, color='k')
+        ax.set_xlim((x_values[0], x_values[-1]))
         if title is not None:
             ax.set_title(title, size=fontsize)
         if xlabel is not None:
             ax.set_xlabel(xlabel, size=fontsize)
         if ylabel is not None:
             ax.set_ylabel(ylabel, size=fontsize)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+            which='major')
+        ax.tick_params(labelsize=fontsize, width=1.5, length=4.5,\
+            which='minor')
         if show:
             pl.show()
         else:
