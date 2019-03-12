@@ -312,7 +312,7 @@ class TrainingSetCreator(object):
                 del self.file[parameters_string]
             if curves_string in self.file:
                 del self.file[curves_string]
-            self.file.close()
+            self.close()
             print(("Stopping curve generation due to KeyboardInterrupt at " +\
                 "{!s}.").format(time.ctime()))
     
@@ -358,12 +358,12 @@ class TrainingSetCreator(object):
             parameters = parameters[to_keep,:]
             parameters = {param: parameters[:,iparam]\
                 for (iparam, param) in enumerate(self.model.parameters)}
-            return_value = return_value + [parameters]
+            return_value.append(parameters)
             self.close()
         if return_model:
-            return_value = return_value + [self.model]
+            return_value.append(self.model)
         if return_prior_set:
-            return_value = return_value + [self.prior_set]
+            return_value.append(self.prior_set)
         if len(return_value) == 1:
             return return_value[0]
         else:
@@ -441,18 +441,68 @@ class TrainingSetCreator(object):
             parameters = parameters[to_keep,:]
             parameters = {parameter: parameters[:,iparameter]\
                 for (iparameter, parameter) in enumerate(model.parameters)}
-            return_value = return_value + [parameters]
+            return_value.append(parameters)
         if return_model:
-            return_value = return_value + [model]
+            return_value.append(model)
         if return_prior_set:
             prior_set =\
                 DistributionSet.load_from_hdf5_group(hdf5_file['prior_set'])
-            return_value = return_value + [prior_set]
+            return_value.append(prior_set)
         hdf5_file.close()
         if len(return_value) == 1:
             return return_value[0]
         else:
-            return return_value
+            return tuple(return_value)
+    
+    @staticmethod
+    def load_training_sets(file_names, return_parameters=False,\
+        return_model=False):
+        """
+        Loads training sets from the multiple TrainingSetCreator objects which
+        were saved to the given file names.
+        
+        file_names: list of files in which TrainingSetCreator object(s) were
+                    saved
+        return_parameters: if True, dictionary of parameter values is also
+                           returned
+        return_model: if True, model is also returned
+        
+        returns: numpy.ndarray whose shape is (total_num_curves, num_channels),
+                 followed by parameters and model if applicable
+        """
+        if len(file_names) == 0:
+            raise ValueError("file_names must be a non-empty list of file " +\
+                "names at which TrainingSetCreator(s) were saved.")
+        training_set_chunks = []
+        if return_parameters:
+            parameters_chunks = []
+        models = []
+        for file_name in file_names:
+            load = TrainingSetCreator.load_training_set(file_name,\
+                return_parameters=return_parameters, return_model=True,\
+                return_prior_set=False)
+            training_set_chunks.append(load[0])
+            if return_parameters:
+                parameters_chunks.append(load[1])
+            models.append(load[-1])
+        if not all([(model == models[0]) for model in models]):
+            raise ValueError("The models used for the different " +\
+                "TrainingSetCreator objects were not identical.")
+        model = models[0]
+        training_set = np.concatenate(training_set_chunks, axis=0)
+        return_value = [training_set]
+        if return_parameters:
+            parameters =\
+                {parameter: np.concatenate([parameters_chunk[parameter]\
+                for parameters_chunk in parameters_chunks])\
+                for parameter in model.parameters}
+            return_value.append(parameters)
+        if return_model:
+            return_value.append(model)
+        if len(return_value) == 1:
+            return return_value[0]
+        else:
+            return tuple(return_value)
     
     @staticmethod
     def load_bad_parameters(file_name):

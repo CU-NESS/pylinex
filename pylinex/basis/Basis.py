@@ -471,26 +471,47 @@ class Basis(Savable, Loadable):
         expander = load_expander_from_hdf5_group(group['expander'])
         return Basis(basis, expander=expander)
     
-    def plot(self, basis_indices=slice(None), x_values=None, title='Basis',\
-        xlabel=None, ylabel=None, fontsize=20, fig=None, ax=None,\
-        figsize=(12, 9), show=True, **kwargs):
+    def plot(self, basis_indices=slice(None), x_values=None,\
+        matplotlib_function='plot', title='Basis', xlabel=None, ylabel=None,\
+        fontsize=20, fig=None, ax=None, figsize=(12, 9), show=True, **kwargs):
         """
         Plots the basis vectors stored in this Basis object.
         
         basis_indices: the indices of the basis vectors to include in the plot.
                        Default: slice(None) (all basis vectors are included)
+        x_values: the x values to use in plotting the basis, defaults to
+                  np.arange(num_channels) if x_values is None
+        matplotlib_function: type of plot to make, either 'plot' or 'scatter'
         title: title of the plot. Default: 'Basis'
+        xlabel, ylabel: labels for the x and y axes
+        fontsize: size of fonts for title and labels
+        fig: existing figure on which to put plot, if it exists (default None)
+        ax: existing axes on which to put plot, if they exist (default None)
+        figsize: size of figure to create if no such figure exists already
         show: if True, matplotlib.pyplot.show() is called before this function
               returns
-        **kwargs: keyword arguments to pass to matplotlib.pyplot.plot()
+        **kwargs: keyword arguments to pass to matplotlib_function
         """
+        supported_matlpotlib_functions = ['plot', 'scatter']
         if x_values is None:
             x_values = np.arange(self.num_smaller_channel_set_indices)
         if (fig is None) and (ax is None):
             fig = pl.figure(figsize=figsize)
         if ax is None:
             ax = fig.add_subplot(111)
-        ax.plot(x_values, self.basis[basis_indices].T, **kwargs)
+        if matplotlib_function == 'plot':
+            ax.plot(x_values, self.basis[basis_indices].T, **kwargs)
+        elif matplotlib_function == 'scatter':
+            (minimum, maximum) = (np.inf, -np.inf)
+            for vector in self.basis[basis_indices]:
+                ax.scatter(x_values, vector, **kwargs)
+                minimum = min(minimum, np.min(vector))
+                maximum = max(maximum, np.max(vector))
+            ax.set_ylim((minimum, maximum))
+        else:
+            raise ValueError("matplotlib_function, which was set to " +\
+                "'{0!s}', was not one of the supported types, {1}.".format(\
+                matplotlib_function, supported_matplotlib_functions))
         ax.plot(x_values, np.zeros_like(x_values), linewidth=1, color='k')
         ax.set_xlim((x_values[0], x_values[-1]))
         if title is not None:

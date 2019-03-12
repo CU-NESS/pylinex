@@ -245,6 +245,40 @@ class NLFitter(object):
         return self._num_checkpoints
     
     @property
+    def chunk_summary_string(self):
+        """
+        Property storing a string which summarizes the chunks of the Fitter.
+        """
+        if not hasattr(self, '_chunk_summary'):
+            summary = ''
+            for ichunk in range(self.num_chunks):
+                summary = '{0!s}Chunk #{1:d} has {2:d} checkpoints\n'.format(\
+                    summary, 1 + ichunk, 1 + self.file[('checkpoints/' +\
+                    'chunk{:d}').format(ichunk)].attrs['max_checkpoint_index'])
+            self._chunk_summary = summary[:-1]
+        return self._chunk_summary
+    
+    @staticmethod
+    def chunk_summary(file_name):
+        """
+        Finds a string which summarizes the chunks of the Fitter which is
+        assumed to located in an hdf5 file at the given file name.
+        
+        file_name: path to an hdf5 file which could be used to initialize an
+                   NLFitter
+        
+        returns: multi-line string summary of the chunks given by the sampler
+                 hdf5 file assumed to be located at file_name
+        """
+        with h5py.File(file_name, 'r') as hdf5_file:
+            summary = ''
+            for ichunk in range(1 + hdf5_file.attrs['max_chunk_index']):
+                summary = '{0!s}Chunk #{1:d} has {2:d} checkpoints\n'.format(\
+                    summary, 1 + ichunk, 1 + hdf5_file[('checkpoints/' +\
+                    'chunk{:d}').format(ichunk)].attrs['max_checkpoint_index'])
+        return summary[:-1]
+    
+    @property
     def total_num_checkpoints(self):
         """
         Property storing the integer total number of checkpoints to be
@@ -1202,9 +1236,9 @@ class NLFitter(object):
     
     def plot_reconstruction_confidence_intervals(self, number, probabilities,\
         parameters, model, true_curve=None, x_values=None,\
-        matplotlib_function='errorbar', ax=None, alphas=None, xlabel=None,\
-        ylabel=None, title=None, fontsize=28, scale_factor=1., show=False,\
-        return_reconstructions=False, **kwargs):
+        matplotlib_function='errorbar', ax=None, figsize=(12,9), alphas=None,\
+        xlabel=None, ylabel=None, title=None, fontsize=28, scale_factor=1.,\
+        show=False, return_reconstructions=False, breakpoints=None, **kwargs):
         """
         Plots reconstruction confidence intervals with the given model,
         parameters, and confidence levels.
@@ -1225,6 +1259,7 @@ class NLFitter(object):
                   If None, x_values start at 0 and increment up in steps of 1
         matplotlib_function: either 'errorbar' or 'fill_between'
         ax: the Axes instance on which to plot the confidence intervals
+        figsize: size of figure to make is ax is None
         alphas: the alpha values with which to fill in each interval (must be
                 sequence of values between 0 and 1 of length greater than or
                 equal to the length of probabilities.
@@ -1237,6 +1272,8 @@ class NLFitter(object):
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
         return_reconstructions: allows user to access reconstructions used
+        breakpoints: either None (default), integer index of a breakpoint (the
+                     first point of the next segment) or list of such integers
         **kwargs: extra keyword arguments to pass to matplotlib_function
         
         returns: (reconstructions if return_reconstructions else None) if show
@@ -1258,20 +1295,39 @@ class NLFitter(object):
         if type(probabilities) in real_numerical_types:
             probabilities = [probabilities]
             intervals = [intervals]
-            if alphas is None:
-                alphas = [0.3]
+            alphas = [0.3 if (alphas is None) else alphas]
         if ax is None:
-            fig = pl.figure(figsize=(12,9))
+            fig = pl.figure(figsize=figsize)
             ax = fig.add_subplot(111)
+        num_channels = intervals[0][0].shape[0]
         if x_values is None:
-            x_values = np.arange(intervals[0][0].shape[0])
+            x_values = np.arange(num_channels)
+        if matplotlib_function == 'fill_between':
+            if breakpoints is None:
+                breakpoints = num_channels
+            if type(breakpoints) in int_types:
+                breakpoints = (breakpoints % num_channels)
+                if breakpoints == 0:
+                    breakpoints = np.array([0, num_channels])
+                else:
+                    breakpoints = np.array([0, breakpoints, num_channels])
+            elif type(breakpoints) in sequence_types:
+                breakpoints = np.sort(np.mod(breakpoints, num_channels))
+                if breakpoints[0] != 0:
+                    breakpoints = np.concatenate([[0], breakpoints])
+                breakpoints = np.concatenate([breakpoints, [num_channels]])
         for (iinterval, interval) in enumerate(intervals):
             pconfidence = int(round(probabilities[iinterval] * 100))
             confidence_label = '{:d}% confidence'.format(pconfidence)
             if matplotlib_function == 'fill_between':
-                ax.fill_between(x_values, interval[0] * scale_factor,\
-                    interval[1] * scale_factor, alpha=alphas[iinterval],\
-                    label=confidence_label, **kwargs)
+                for (isegment, (start, end)) in\
+                    enumerate(zip(breakpoints[:-1], breakpoints[1:])):
+                    ax.fill_between(x_values[start:end],\
+                        interval[0][start:end] * scale_factor,\
+                        interval[1][start:end] * scale_factor,\
+                        alpha=alphas[iinterval],\
+                        label=(confidence_label if (isegment == 0) else None),\
+                        **kwargs)
             elif matplotlib_function == 'errorbar':
                 error =\
                     [((endpoint - mean_reconstruction) * scale_factor * sign)\
@@ -1283,8 +1339,11 @@ class NLFitter(object):
                 raise ValueError("This error should never happen!")
         if true_curve is not None:
             if matplotlib_function == 'fill_between':
-                ax.plot(x_values, true_curve, linewidth=2, color='k',\
-                    label='input')
+                for (isegment, (start, end)) in\
+                    enumerate(zip(breakpoints[:-1], breakpoints[1:])):
+                    ax.plot(x_values[start:end], true_curve[start:end],\
+                        linewidth=2, color='k',\
+                        label=('input' if (isegment == 0) else None))
             elif matplotlib_function == 'errorbar':
                 ax.scatter(x_values, true_curve, color='k')
             else:
