@@ -7,7 +7,7 @@ Description: File containing class which analyzes MCMC chains in order to infer
              things about the parameter distributions they describe.
 """
 from __future__ import division
-import re, gc, h5py
+import os, re, gc, h5py
 import numpy as np
 import matplotlib.pyplot as pl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -270,6 +270,8 @@ class NLFitter(object):
         returns: multi-line string summary of the chunks given by the sampler
                  hdf5 file assumed to be located at file_name
         """
+        if not os.path.exists(file_name):
+            return "No sampler has been run at {!s}.".format(file_name)
         with h5py.File(file_name, 'r') as hdf5_file:
             summary = ''
             for ichunk in range(1 + hdf5_file.attrs['max_chunk_index']):
