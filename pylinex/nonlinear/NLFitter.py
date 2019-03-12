@@ -973,10 +973,12 @@ class NLFitter(object):
             model = self.model
         return np.array([model(args) for args in parameter_sample])
     
-    def reconstruction_RMSs(self, number, parameters=None, model=None):
+    def reconstruction_RMS_by_channel(self, number, parameters=None,\
+        model=None):
         """
-        Computes the root-mean-square deviations from the mean of the given
-        number of reconstructions made using the given model and parameters.
+        Computes the root-mean-square deviations from the mean in each channel
+        of the given number of reconstructions made using the given model and
+        parameters.
         
         number: the number of reconstructions to create
         parameters: if None (default), all parameters are used
@@ -988,17 +990,18 @@ class NLFitter(object):
                otherwise, the model with which to create reconstructions from
                           parameters
         
-        returns: 1D numpy.ndarray of shape (number,) containing RMS values
+        returns: 1D numpy.ndarray of shape (num_channels,) with RMS values
         """
         reconstructions =\
             self.reconstructions(number, parameters=parameters, model=model)
         centered_reconstructions = reconstructions -\
             np.mean(reconstructions, axis=0, keepdims=True)
-        return np.sqrt(np.mean(np.power(centered_reconstructions, 2), axis=1))
+        return np.sqrt(np.mean(np.power(centered_reconstructions, 2), axis=0))
     
-    def mean_reconstruction_RMS(self, number, parameters=None, model=None):
+    def reconstruction_RMS(self, number, parameters=None, model=None,\
+        x_slice=slice(None)):
         """
-        Computes the mean root-mean-square deviation from the mean of the given
+        Computes the root-mean-square deviation from the mean of the given
         number of reconstructions made using the given model and parameters.
         
         number: the number of reconstructions to create
@@ -1010,12 +1013,14 @@ class NLFitter(object):
         model: if None (default), the full model in the loglikelihood is used
                otherwise, the model with which to create reconstructions from
                           parameters
+        x_slice: slice with which to trim x_values to include in final RMS'ing
         
-        returns: single value giving mean RMS deviation from the mean of the
-                 given model with the given parameters
+        returns: single number containing the RMS of the
+                 reconstruction_RMS_by_channel error
         """
-        return np.mean(self.reconstruction_RMSs(number, parameters=parameters,\
-            model=model))
+        rms_by_channel = self.reconstruction_RMS_by_channel(number,\
+            parameters=parameters, model=model)
+        return np.sqrt(np.mean(np.power(rms_by_channel[x_slice], 2)))
     
     def bias(self, number, parameters=None, model=None, true_curve=None):
         """
@@ -1238,9 +1243,10 @@ class NLFitter(object):
     
     def plot_reconstruction_confidence_intervals(self, number, probabilities,\
         parameters, model, true_curve=None, x_values=None,\
-        matplotlib_function='errorbar', ax=None, figsize=(12,9), alphas=None,\
-        xlabel=None, ylabel=None, title=None, fontsize=28, scale_factor=1.,\
-        show=False, return_reconstructions=False, breakpoints=None, **kwargs):
+        matplotlib_function='fill_between', ax=None, figsize=(12,9),\
+        alphas=None, xlabel=None, ylabel=None, title=None, fontsize=28,\
+        scale_factor=1., show=False, return_reconstructions=False,\
+        breakpoints=None, **kwargs):
         """
         Plots reconstruction confidence intervals with the given model,
         parameters, and confidence levels.
@@ -1259,7 +1265,7 @@ class NLFitter(object):
         true_curve: true form of the quantity being reconstructed
         x_values: the array to use as the x_values of all plots.
                   If None, x_values start at 0 and increment up in steps of 1
-        matplotlib_function: either 'errorbar' or 'fill_between'
+        matplotlib_function: either 'errorbar' or 'fill_between' (default)
         ax: the Axes instance on which to plot the confidence intervals
         figsize: size of figure to make is ax is None
         alphas: the alpha values with which to fill in each interval (must be
@@ -1993,4 +1999,35 @@ class NLFitter(object):
             pl.show()
         else:
             return fig
+    
+    def plot_diagnostics(self, walkers=None, fontsize=20, show=False):
+        """
+        Plots diagnostic plots for the sample from this object. This function
+        calls NLFitter.plot_rescaling_factors_both_types,
+        NLFitter.plot_acceptance_fraction_four_types, and
+        NLFitter.plot_lnprobability_both_types functions.
+        
+        walkers: Walkers to show for convergence + acceptance fraction figures
+                 if None, all walkers are shown.
+                 if int, describes the number of walkers shown in the plot
+                 if sequence, describes which walkers are shown in the plot
+        fontsize: size of fonts for labels and title
+        show: if True, matplotlib.pyplot.show() is called before this function
+              returns
+        
+        returns: if show is True, nothing is returned
+                 otherwise, returns tuple of form (convergence_figure,
+                            acceptance_fraction_figure, log_probability_figure)
+        """
+        convergence_figure = self.plot_rescaling_factors_both_types(\
+            fontsize=fontsize, fig=None, show=False)
+        acceptance_fraction_figure = self.plot_acceptance_fraction_four_types(\
+            walkers=walkers, fig=None, fontsize=fontsize, show=False)
+        log_probability_figure = self.plot_lnprobability_both_types(\
+            walkers=walkers, fontsize=fontsize, fig=None, show=False)
+        if show:
+            pl.show()
+        else:
+            return (convergence_figure, acceptance_fraction_figure,\
+                log_probability_figure)
 
