@@ -12,7 +12,7 @@ Description: Imports the most important elements from all submodules. The
 from pylinex.util import int_types, float_types, real_numerical_types,\
     complex_numerical_types, numerical_types, bool_types, sequence_types,\
     Savable, Loadable, HDF5Link, create_hdf5_dataset, get_hdf5_value,\
-    VariableGrid, Expression, autocorrelation, chi_squared, psi_squared,\
+    VariableGrid, autocorrelation, chi_squared, psi_squared,\
     RectangularBinner, rect_bin, univariate_histogram, confidence_contour_2D,\
     bivariate_histogram, triangle_plot
 from pylinex.interpolator import Interpolator, LinearInterpolator,\

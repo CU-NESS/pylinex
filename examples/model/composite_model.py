@@ -8,8 +8,9 @@ Description: Example showing how to initialize, use, save, and load the
 """
 import os
 import numpy as np
-from pylinex import PolynomialBasis, BasisModel, Expression,\
-    CompositeModel, load_model_from_hdf5_file
+from distpy import Expression
+from pylinex import PolynomialBasis, BasisModel, CompositeModel,\
+    load_model_from_hdf5_file
 
 num_channels = 11
 x_values = np.linspace(-1, 1, num_channels)

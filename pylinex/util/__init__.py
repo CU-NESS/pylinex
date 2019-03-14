@@ -12,7 +12,6 @@ from distpy import int_types, float_types, real_numerical_types,\
     univariate_histogram, confidence_contour_2D, bivariate_histogram,\
     triangle_plot
 from pylinex.util.VariableGrid import VariableGrid
-from pylinex.util.Expression import Expression
 from pylinex.util.Correlation import autocorrelation, chi_squared, psi_squared
 from pylinex.util.RectangularBinner import RectangularBinner, rect_bin
 

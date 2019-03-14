@@ -7,7 +7,8 @@ Description: File containing class representing a model which is described
              entirely by Expression object(s).
 """
 import numpy as np
-from ..util import Expression, sequence_types
+from distpy import Expression
+from ..util import sequence_types
 from .LoadableModel import LoadableModel
 
 try:

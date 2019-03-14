@@ -8,7 +8,8 @@ Description: Example showing how to use the ExpressionModel class, including
 """
 import os
 import numpy as np
-from pylinex import Basis, BasisModel, Expression, ExpressionModel,\
+from distpy import Expression
+from pylinex import Basis, BasisModel, ExpressionModel,\
     load_model_from_hdf5_file
 
 num_channels = 2

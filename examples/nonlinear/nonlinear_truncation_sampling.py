@@ -9,12 +9,12 @@ Description: Example script showing simple case of sampling a
 import os
 import numpy as np
 import matplotlib.pyplot as pl
-from distpy import DiscreteUniformDistribution, InfiniteUniformDistribution,\
-    DistributionSet, GaussianJumpingDistribution, GridHopJumpingDistribution,\
-    JumpingDistributionSet
-from pylinex import Expression, FourierBasis, BasisSet, Fitter,\
-    GaussianLoglikelihood, NonlinearTruncationLoglikelihood,\
-    LikelihoodDistributionHarmonizer, Sampler, BurnRule, NLFitter
+from distpy import Expression, DiscreteUniformDistribution,\
+    InfiniteUniformDistribution, DistributionSet, GaussianJumpingDistribution,\
+    GridHopJumpingDistribution, JumpingDistributionSet
+from pylinex import FourierBasis, BasisSet, Fitter, GaussianLoglikelihood,\
+    NonlinearTruncationLoglikelihood, LikelihoodDistributionHarmonizer,\
+    Sampler, BurnRule, NLFitter
 
 seed = 0
 np.random.seed(seed)

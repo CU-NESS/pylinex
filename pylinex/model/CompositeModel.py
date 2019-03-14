@@ -7,7 +7,7 @@ Description: File containing class representing a model consisting of submodels
              combined through the use of an Expression object.
 """
 import numpy as np
-from ..util import Expression
+from distpy import Expression
 from .CompoundModel import CompoundModel
 
 class CompositeModel(CompoundModel):
