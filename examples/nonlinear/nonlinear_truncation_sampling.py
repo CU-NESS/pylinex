@@ -88,7 +88,7 @@ jumping_distribution_set.add_distribution(GaussianJumpingDistribution(\
 file_name = 'TEST_NONLINEAR_TRUNCATION_SAMPLER.hdf5'
 nwalkers = 64
 steps_per_checkpoint = 100
-num_checkpoints = 1000
+num_checkpoints = 25
 verbose = True
 restart_mode = None
 proposal_covariance_reduction_factor = 1

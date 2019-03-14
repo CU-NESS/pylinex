@@ -51,7 +51,7 @@ data = true_curve + noise
 variances = np.sqrt(np.diag(covariance))
 expected_variances =\
     ((noise_level / np.sqrt(smaller_num_channels)) * np.ones(num_models))
-assert(np.all(np.abs(inferred_parameters - true_parameters) <\
+assert(np.all(np.abs(mean - true_parameters) <\
     np.abs(true_parameters / 10)))
 assert(np.all(np.abs(variances - expected_variances) <\
     (expected_variances / 10)))
