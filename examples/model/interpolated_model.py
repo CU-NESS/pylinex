@@ -6,6 +6,7 @@ Date: 24 Mar 2018
 Description: Example showing how to initialize and use the InterpolatedModel
              class.
 """
+from __future__ import division
 import numpy as np
 from distpy import GaussianDistribution, DistributionSet
 from pylinex import GaussianModel, InterpolatedModel
@@ -30,8 +31,8 @@ loose_gaussian = GaussianDistribution(-100, 1000)
 tight_gaussian = GaussianDistribution(-100, 100)
 loose_prior_set.add_distribution(loose_gaussian, 'amplitude')
 tight_prior_set.add_distribution(tight_gaussian, 'amplitude')
-loose_gaussian = GaussianDistribution(nchannels / 2, 10)
-tight_gaussian = GaussianDistribution(nchannels / 2, 1)
+loose_gaussian = GaussianDistribution(nchannels // 2, 10)
+tight_gaussian = GaussianDistribution(nchannels // 2, 1)
 loose_prior_set.add_distribution(loose_gaussian, 'center')
 tight_prior_set.add_distribution(tight_gaussian, 'center')
 loose_gaussian = GaussianDistribution(10, 4)

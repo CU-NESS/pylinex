@@ -5,6 +5,7 @@ Date: 24 Mar 2018
 
 Description: Example showing another example of using the Sampler class.
 """
+from __future__ import division
 import os
 import numpy as np
 import matplotlib.pyplot as pl
@@ -42,7 +43,7 @@ if not os.path.exists(file_name):
         jumping_distribution_set, guess_distribution_set,\
         prior_distribution_set=guess_distribution_set,\
         steps_per_checkpoint=steps_per_checkpoint, nthreads=nthreads)
-    sampler.run_checkpoints(iterations / steps_per_checkpoint)
+    sampler.run_checkpoints(iterations // steps_per_checkpoint)
     sampler.close()
 
 burn_rule = BurnRule(min_checkpoints=5, desired_fraction=0.5)
@@ -62,6 +63,8 @@ print('true_mean={}'.format(true_mean))
 print('burned_mean={}'.format(burned_mean))
 print('true_covariance={}'.format(true_covariance))
 print('burned_covariance={}'.format(burned_covariance))
+
+
 
 pl.figure()
 pl.plot(x_chain.T)

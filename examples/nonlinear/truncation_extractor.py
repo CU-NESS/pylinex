@@ -1,3 +1,13 @@
+"""
+File: examples/nonlinear/truncation_extractor.py
+Author: Keith Tauscher
+Date: 20 Mar 2019
+
+Description: Example showing the use of the TruncationExtractor specialty
+             class, which runs an MCMC over the discrete space of truncations
+             of bases of a linear model.
+"""
+from __future__ import division
 import os
 import numpy as np
 import matplotlib.pyplot as pl

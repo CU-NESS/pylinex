@@ -1241,8 +1241,139 @@ class NLFitter(object):
         else:
             return ax
     
+    def plot_reconstructions(self, number, parameters=None, model=None,\
+        true_curve=None, subtract_truth=False, x_values=None,\
+        ax=None, xlabel=None, ylabel=None, title=None, fontsize=28,\
+        scale_factor=1., matplotlib_function='plot',\
+        return_reconstructions=False, breakpoints=None, show=False, **kwargs):
+        """
+        Plots a given number of reconstructions using given parameters
+        evaluated by the given model.
+        
+        number: the number of reconstructions to create
+        parameters: if None (default), all parameters are used
+                    if string, parameter which match the regular expression
+                               given by parameters are used
+                    if list of ints, the parameters with these indices are used
+                    if list of strings, these parameters are used
+        model: if None (default), the full model in the loglikelihood is used
+               otherwise, the model with which to create reconstructions from
+                          parameters
+        true_curve: true form of the quantity being reconstructed
+        subtract_truth: if True, true_curve is subtracted from all plotted
+                                 curve(s)
+        x_values: the array to use as the x_values of all plots.
+                  If None, x_values start at 0 and increment up in steps of 1
+        ax: the Axes instance on which to plot the confidence intervals
+        xlabel: string to place on x axis
+        ylabel: string to place on y axis
+        title: title to place on the Axes with this plot
+        scale_factor: factor by which to multiply reconstructions before
+                      plotting
+        matplotlib_function: either 'plot' or 'scatter'
+        return_reconstructions: allows user to access reconstructions used
+        breakpoints: either None (default), integer index of a breakpoint (the
+                     first point of the next segment) or list of such integers
+        show: if True, matplotlib.pyplot.show() is called before this function
+                       returns
+        **kwargs: extra keyword arguments are passed to the
+                  matplotlib.pyplot.plot function
+        
+        returns: (reconstructions if return_reconstructions else None) if show
+                 is True, otherwise
+                 ((ax, reconstructions) if return_reconstructions else None)
+                 where ax is an Axes instance with plot
+        """
+        reconstructions =\
+            self.reconstructions(number, parameters=parameters, model=model)
+        if ax is None:
+            fig = pl.figure()
+            ax = fig.add_subplot(111)
+        if (parameters is None) and (model is None) and (true_curve is None):
+            true_curve = self.data * scale_factor
+        num_channels = reconstructions.shape[-1]
+        if x_values is None:
+            x_values = np.arange(num_channels)
+        to_plot = reconstructions * scale_factor
+        if subtract_truth:
+            if true_curve is None:
+                raise NotImplementedError("Cannot subtract truth if true " +\
+                    "curve is None.")
+            else:
+                to_plot = to_plot - true_curve[np.newaxis,:]
+        random_what = ('biases' if subtract_truth else 'reconstructions')
+        kwargs_copy = {parameter: kwargs[parameter] for parameter in kwargs}
+        if 'label' not in kwargs_copy:
+            kwargs_copy['label'] = '{0:d} {1!s}'.format(number, random_what)
+        if matplotlib_function == 'plot':
+            if breakpoints is None:
+                breakpoints = num_channels
+            if type(breakpoints) in int_types:
+                breakpoints = (breakpoints % num_channels)
+                if breakpoints == 0:
+                    breakpoints = np.array([0, num_channels])
+                else:
+                    breakpoints = np.array([0, breakpoints, num_channels])
+            elif type(breakpoints) in sequence_types:
+                breakpoints = np.sort(np.mod(breakpoints, num_channels))
+                if breakpoints[0] != 0:
+                    breakpoints = np.concatenate([[0], breakpoints])
+                breakpoints = np.concatenate([breakpoints, [num_channels]])
+            for (isegment, (start, end)) in\
+                enumerate(zip(breakpoints[:-1], breakpoints[1:])):
+                ax.plot(x_values[start:end],\
+                    reconstructions[0,start:end] * scale_factor, **kwargs_copy)
+                if (isegment == 0) and ('label' in kwargs_copy):
+                    del kwargs_copy['label']
+                ax.plot(x_values[start:end],\
+                    reconstructions[1:,start:end].T * scale_factor,\
+                    **kwargs_copy)
+        elif matplotlib_function == 'scatter':
+            for index in range(number):
+                ax.scatter(x_values, to_plot[index,:], **kwargs_copy)
+                if (index == 0) and ('label' in kwargs_copy):
+                    del kwargs_copy['label']
+        else:
+            raise RuntimeError("matplotlib_function was neither 'plot' or " +\
+                "'scatter'")
+        if true_curve is not None:
+            if subtract_truth:
+                ax.plot(x_values, np.zeros_like(true_curve), color='k',\
+                    label='input')
+            elif matplotlib_function == 'plot':
+                for (isegment, (start, end)) in\
+                    enumerate(zip(breakpoints[:-1], breakpoints[1:])):
+                    ax.plot(x_values[start:end], true_curve[start:end],\
+                        color='k',\
+                        label=('input' if (isegment == 0) else None))
+            elif matplotlib_function == 'scatter':
+                ax.scatter(x_values, true_curve, color='k', label='input')
+            else:
+                raise RuntimeError("matplotlib_function was neither 'plot' " +\
+                    "or 'scatter'")
+        ax.legend(fontsize=fontsize)
+        ax.set_xlim((x_values[0], x_values[-1]))
+        if title is None:
+            title = '{0:d} random {1!s}'.format(number, random_what)
+        ax.set_title(title, size=fontsize)
+        if xlabel is not None:
+            ax.set_xlabel(xlabel, size=fontsize)
+        if ylabel is not None:
+            ax.set_ylabel(ylabel, size=fontsize)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+            which='major')
+        ax.tick_params(width=1.5, length=4.5, which='minor')
+        if show:
+            pl.show()
+            if return_reconstructions:
+                return reconstructions
+        elif return_reconstructions:
+            return (ax, reconstructions)
+        else:
+            return ax
+    
     def plot_reconstruction_confidence_intervals(self, number, probabilities,\
-        parameters, model, true_curve=None, x_values=None,\
+        parameters=None, model=None, true_curve=None, x_values=None,\
         matplotlib_function='fill_between', ax=None, figsize=(12,9),\
         alphas=None, xlabel=None, ylabel=None, title=None, fontsize=28,\
         scale_factor=1., show=False, return_reconstructions=False,\
@@ -1933,13 +2064,19 @@ class NLFitter(object):
                np.mean(trimmed_acceptance_fraction, axis=0)
         else:
             title = '$f_{acc}$ by walker'
+        if len(steps) == 1:
+            if trimmed_acceptance_fraction.ndim == 1:
+                ax.scatter(steps, trimmed_acceptance_fraction)
+            else:
+                for index in range(len(trimmed_acceptance_fraction)):
+                    ax.scatter(steps, trimmed_acceptance_fraction[index])
+        else:
+            ax.plot(steps, trimmed_acceptance_fraction.T)
         if log_scale:
             ylim = (1e-3, 1)
-            ax.semilogy(steps, trimmed_acceptance_fraction.T)
+            ax.set_yscale('log')
         else:
             ylim = (0, 1)
-            ax.plot(steps, trimmed_acceptance_fraction.T)
-        ax.set_ylim(ylim)
         loaded_so_far = 0
         ax.plot([1, 1], ylim, color='k', linestyle='--')
         for these_checkpoints_to_load in self.checkpoints_to_load:
@@ -1955,6 +2092,7 @@ class NLFitter(object):
         ax.set_xlabel('Checkpoint #', size=fontsize)
         ax.set_ylabel('$f_{acc}$', size=fontsize)
         ax.set_xlim((steps[0] - 0.5, steps[-1] + 0.5))
+        ax.set_ylim(ylim)
         ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
             which='major')
         ax.tick_params(labelsize=fontsize, width=1.5, length=4.5,\

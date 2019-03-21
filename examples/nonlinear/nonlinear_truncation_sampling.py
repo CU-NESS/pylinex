@@ -6,6 +6,7 @@ Date: 17 Dec 2018
 Description: Example script showing simple case of sampling a
              NonlinearTruncationLoglikelihood object.
 """
+from __future__ import division
 import os
 import numpy as np
 import matplotlib.pyplot as pl

@@ -5,6 +5,7 @@ Date: 22 Sep 2018
 
 Description: Example script showing the use of the RectangularBinner class.
 """
+from __future__ import division
 import numpy as np
 import matplotlib.pyplot as pl
 from pylinex import RectangularBinner

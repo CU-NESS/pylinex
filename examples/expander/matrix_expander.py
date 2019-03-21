@@ -6,6 +6,7 @@ Date: 10 Sep 2017
 Description: Example showing how to use a MatrixExpander object to perform
              Fourier transforms of data.
 """
+from __future__ import division
 import os
 import numpy as np
 import numpy.random as rand

@@ -5,6 +5,7 @@ Date: 10 Sep 2017
 
 Description: Example showing how to use the ModulationExpander class.
 """
+from __future__ import division
 import os
 import numpy as np
 from pylinex import ModulationExpander, load_expander_from_hdf5_file

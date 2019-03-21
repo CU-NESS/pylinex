@@ -5,6 +5,7 @@ Date: 10 Sep 2017
 
 Description: Example showing how to use RepeatExpander class.
 """
+from __future__ import division
 import os
 import numpy as np
 import numpy.random as rand

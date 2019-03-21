@@ -6,6 +6,7 @@ Date: 24 Mar 2018
 Description: Example showing how to use the GaussianModel class, including how
              to save and load them to and from hdf5 files.
 """
+from __future__ import division
 import os
 import numpy as np
 from pylinex import GaussianModel, load_model_from_hdf5_file

@@ -6,6 +6,7 @@ Date: 24 Mar 2018
 Description: Example showing how to initialize and use a LinearInterpolator
              object.
 """
+from __future__ import division
 import time
 import numpy as np
 import matplotlib.pyplot as pl

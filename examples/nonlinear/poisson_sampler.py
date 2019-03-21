@@ -78,9 +78,16 @@ try:
     alphas = [0.4, 0.2]
     parameter_regex = '.*'
     signals = fitter.plot_reconstruction_confidence_intervals(number,\
-        probabilities, parameter_regex, model, true_curve=data,\
-        x_values=x_values, ax=ax, alphas=alphas,\
+        probabilities, parameters=parameter_regex, model=model,\
+        true_curve=data, x_values=x_values, ax=ax, alphas=alphas,\
         title='68% and 95% confidence intervals', show=False)
+    fig = pl.figure(figsize=(12,9))
+    ax = fig.add_subplot(111)
+    number = 100
+    ax = fitter.plot_reconstructions(number, parameters=parameter_regex,\
+        model=model, true_curve=data, x_values=x_values, ax=ax, alpha=0.05,\
+        color='r', show=False)
+    ax.scatter(x_values, data, color='k', label='data')
     fitter.close()
 except:
     try:

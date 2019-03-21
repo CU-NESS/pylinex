@@ -25,7 +25,7 @@ nthreads = 1 # to test multithreading, set to > 1
 file_name = 'TESTING_SAMPLER_CLASS.hdf5'
 num_channels = 100
 num_iterations = 100
-quarter_ncheckpoints = 10
+quarter_ncheckpoints = 25
 steps_per_checkpoint = 10
 x_values = np.linspace(99, 101, num_channels)
 error = np.ones_like(x_values) * 0.1
@@ -105,7 +105,8 @@ try:
     fig = fitter.triangle_plot(parameters='.*', plot_type='contourf',\
         reference_value_mean=np.array([true_amplitude, true_center,\
         true_scale]), reference_value_covariance=(model, error),\
-        figsize=(12, 12), contour_confidence_levels=[0.40, 0.95], show=False)
+        figsize=(12, 12), contour_confidence_levels=[0.40, 0.95],\
+        kwargs_2D={'reference_alpha': 0.5}, show=False)
     fig.subplots_adjust(left=0.2)
     fitter.close()
     burn_rule = BurnRule(min_checkpoints=10, desired_fraction=0.5)
@@ -117,10 +118,16 @@ try:
     probabilities = [0.68, 0.95]
     alphas = [0.4, 0.2]
     parameter_regex = '.*'
-    signals = fitter.plot_reconstruction_confidence_intervals(number,\
-        probabilities, parameter_regex, model, true_curve=input_data,\
-        x_values=x_values, ax=ax, alphas=alphas,\
+    ax = fitter.plot_reconstruction_confidence_intervals(number,\
+        probabilities, parameters=parameter_regex, model=model,\
+        true_curve=input_data, x_values=x_values, ax=ax, alphas=alphas,\
         title='68% and 95% confidence intervals', show=False)
+    fig = pl.figure(figsize=(12,9))
+    ax = fig.add_subplot(111)
+    number = 100
+    ax = fitter.plot_reconstructions(number,\
+        parameters=parameter_regex, model=model, true_curve=input_data,\
+        x_values=x_values, ax=ax, alpha=0.05, color='r', show=False)
     fitter.close()
 except:
     if remove_file:

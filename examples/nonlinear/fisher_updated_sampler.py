@@ -98,6 +98,13 @@ try:
         x_values=x_values, ax=ax, alphas=alphas,\
         title='68% and 95% confidence intervals', show=False)
     ax.scatter(x_values, input_data, color='b')
+    fig = pl.figure(figsize=(12,9))
+    ax = fig.add_subplot(111)
+    number = 100
+    ax = fitter.plot_reconstructions(number,\
+        parameters=parameter_regex, model=model, true_curve=input_curve,\
+        x_values=x_values, ax=ax, alpha=0.05, color='r', show=False)
+    ax.scatter(x_values, input_data, color='k', label='data')
     fitter.close()
 except:
     os.remove(file_name)
