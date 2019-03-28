@@ -21,7 +21,7 @@ class Interpolator(object):
     Delaunay mesh.
     """
     def __init__(self, inputs, outputs, transform_list=None,\
-        scale_to_cube=False, save_memory=False):
+        scale_to_cube=False, save_memory=False, initialize_prior=False):
         """
         transform_list: TransformList to apply to the variables before passing
                         them to the Delaunay module in scipy
@@ -40,7 +40,8 @@ class Interpolator(object):
         # computing self.prior initializes UniformPrior over (transformed and
         # scaled to cube) inputs and, in the process, the Delauanay mesh
         # underlying the interpolation scheme
-        self.prior
+        if initialize_prior:
+            self.prior
     
     def _transform_inputs(self):
         """

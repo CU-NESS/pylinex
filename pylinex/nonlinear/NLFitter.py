@@ -1377,7 +1377,7 @@ class NLFitter(object):
         matplotlib_function='fill_between', ax=None, figsize=(12,9),\
         alphas=None, xlabel=None, ylabel=None, title=None, fontsize=28,\
         scale_factor=1., show=False, return_reconstructions=False,\
-        breakpoints=None, **kwargs):
+        breakpoints=None, error_expansion_factors=1., **kwargs):
         """
         Plots reconstruction confidence intervals with the given model,
         parameters, and confidence levels.
@@ -1413,6 +1413,12 @@ class NLFitter(object):
         return_reconstructions: allows user to access reconstructions used
         breakpoints: either None (default), integer index of a breakpoint (the
                      first point of the next segment) or list of such integers
+        error_expansion_factors: factors by which to multiply error bars.
+                                 Should either be a constant or an array of
+                                 len(breakpoints)+1, which is equal to 1 when
+                                 breakpoints isn't given. It should be a single
+                                 number, not an array, if matplotlib_function
+                                 is 'fill_between'
         **kwargs: extra keyword arguments to pass to matplotlib_function
         
         returns: (reconstructions if return_reconstructions else None) if show
@@ -1455,21 +1461,28 @@ class NLFitter(object):
                 if breakpoints[0] != 0:
                     breakpoints = np.concatenate([[0], breakpoints])
                 breakpoints = np.concatenate([breakpoints, [num_channels]])
+            error_expansion_factors =\
+                error_expansion_factors * np.ones((len(breakpoints) - 1,))
         for (iinterval, interval) in enumerate(intervals):
             pconfidence = int(round(probabilities[iinterval] * 100))
             confidence_label = '{:d}% confidence'.format(pconfidence)
             if matplotlib_function == 'fill_between':
-                for (isegment, (start, end)) in\
-                    enumerate(zip(breakpoints[:-1], breakpoints[1:])):
-                    ax.fill_between(x_values[start:end],\
-                        interval[0][start:end] * scale_factor,\
-                        interval[1][start:end] * scale_factor,\
-                        alpha=alphas[iinterval],\
+                for (isegment, (start, end, error_expansion_factor)) in\
+                    enumerate(zip(breakpoints[:-1], breakpoints[1:],\
+                    error_expansion_factors)):
+                    center =\
+                        (interval[0][start:end] + interval[1][start:end]) / 2
+                    half_width =\
+                        (interval[1][start:end] - interval[0][start:end]) / 2
+                    ax.fill_between(x_values[start:end], (center -\
+                        (error_expansion_factor * half_width)) * scale_factor,\
+                        (center + (error_expansion_factor * half_width)) *\
+                        scale_factor, alpha=alphas[iinterval],\
                         label=(confidence_label if (isegment == 0) else None),\
                         **kwargs)
             elif matplotlib_function == 'errorbar':
-                error =\
-                    [((endpoint - mean_reconstruction) * scale_factor * sign)\
+                error = [((endpoint - mean_reconstruction) * scale_factor *\
+                    sign * error_expansion_factors)\
                     for (sign, endpoint) in zip((-1, 1), interval)]
                 ax.errorbar(x_values, mean_reconstruction * scale_factor,\
                     yerr=error, alpha=alphas[iinterval],\

@@ -92,7 +92,7 @@ steps_per_checkpoint = 100
 num_checkpoints = 25
 verbose = True
 restart_mode = None
-proposal_covariance_reduction_factor = 1
+desired_acceptance_fraction = 0.25
 
 try:
     sampler = Sampler(file_name, nwalkers, loglikelihood,\
@@ -101,8 +101,7 @@ try:
         prior_distribution_set=prior_distribution_set,\
         steps_per_checkpoint=steps_per_checkpoint, verbose=verbose,\
         restart_mode=restart_mode,\
-        proposal_covariance_reduction_factor=\
-        proposal_covariance_reduction_factor)
+        desired_acceptance_fraction=desired_acceptance_fraction)
     sampler.run_checkpoints(num_checkpoints, silence_error=True)
     sampler.close()
     burn_rule = BurnRule(min_checkpoints=1, desired_fraction=1)

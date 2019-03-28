@@ -317,7 +317,8 @@ class Loglikelihood(Savable, Loadable):
         maximum_likelihood_parameters, transform_list=None,\
         max_standard_deviations=np.inf,\
         prior_to_impose_in_transformed_space=None,\
-        larger_differences=1e-5, smaller_differences=1e-6):
+        larger_differences=1e-5, smaller_differences=1e-6,\
+        covariance_reduction_factor=1):
         """
         Finds the parameter distribution assuming maximum_likelihood_parameters
         contains a reasonable approximation of the true maximum likelihood
@@ -367,6 +368,8 @@ class Loglikelihood(Savable, Loadable):
                              parameters are shifted during each approximation
                              of the gradient. Only used if hessian is not
                              explicitly computable
+        covariance_reduction_factor: factor by which to decrease the magnitude
+                                     of the covariance distribution: default 1
         
         returns: DistributionSet object containing GaussianDistribution object
                  approximating distribution in transformed space
@@ -378,7 +381,8 @@ class Loglikelihood(Savable, Loadable):
             maximum_likelihood_parameters, transform_list=transform_list,\
             max_standard_deviations=max_standard_deviations,\
             larger_differences=larger_differences,\
-            smaller_differences=smaller_differences)
+            smaller_differences=smaller_differences) /\
+            covariance_reduction_factor
         distribution = GaussianDistribution(mean, covariance)
         if prior_to_impose_in_transformed_space is not None:
             distribution = WindowedDistribution(distribution,\

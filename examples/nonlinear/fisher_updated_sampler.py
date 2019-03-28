@@ -18,6 +18,7 @@ from pylinex import GaussianModel, GaussianLoglikelihood, BurnRule, Sampler,\
 seed = 1234567890
 np.random.seed(seed)
 
+desired_acceptance_fraction = 0.25
 nwalkers = 20
 nthreads = 1 # to test multithreading, set to > 1
 file_name = 'TESTING_SAMPLER_CLASS.hdf5'
@@ -49,11 +50,11 @@ guess_distribution_set.add_distribution(\
     UniformDistribution(-1.25, -0.75), 'scale', 'log10')
 
 jumping_distribution_set = JumpingDistributionSet()
-jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-1),\
+jumping_distribution_set.add_distribution(GaussianJumpingDistribution(0.1),\
     'amplitude')
-jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-1),\
+jumping_distribution_set.add_distribution(GaussianJumpingDistribution(0.1),\
     'center')
-jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-1),\
+jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-2),\
     'scale', 'log10')
 
 #nwalkers = 2 * loglikelihood.num_parameters
@@ -70,11 +71,13 @@ try:
         jumping_distribution_set=None, guess_distribution_set=None,\
         prior_distribution_set=None, nthreads=nthreads,\
         steps_per_checkpoint=steps_per_checkpoint,\
-        restart_mode='fisher_update')
+        restart_mode='fisher_update',\
+        desired_acceptance_fraction=desired_acceptance_fraction)
     sampler.run_checkpoints(half_ncheckpoints)
     sampler.close()
     fitter = NLFitter(file_name)
-    fitter.plot_acceptance_fraction(log_scale=True, ax=None, show=False)
+    fitter.plot_acceptance_fraction_four_types()
+    fitter.plot_lnprobability_both_types()
     fitter.plot_chain(show=False, amplitude=true_amplitude,\
         center=true_center, scale=true_scale, figsize=(8,8))
     fig = fitter.triangle_plot(parameters='.*', plot_type='contourf',\

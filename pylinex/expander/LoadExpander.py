@@ -10,6 +10,7 @@ from ..util import get_hdf5_value
 from .NullExpander import NullExpander
 from .PadExpander import PadExpander
 from .AxisExpander import AxisExpander
+from .IndexExpander import IndexExpander
 from .RepeatExpander import RepeatExpander
 from .ModulationExpander import ModulationExpander
 from .MatrixExpander import MatrixExpander
@@ -37,6 +38,14 @@ def load_expander_from_hdf5_group(group):
         pads_after = group.attrs['pads_after']
         pad_value = group.attrs['pad_value']
         return PadExpander(pads_before, pads_after, pad_value)
+    elif class_name == 'IndexExpander':
+        expanded_shape = tuple(group.attrs['expanded_shape'])
+        axis = group.attrs['axis']
+        indices = get_hdf5_value(group['indices'])
+        modulating_factors = get_hdf5_value(group['modulating_factors'])
+        pad_value = group.attrs['pad_value']
+        return IndexExpander(expanded_shape, axis, indices,\
+            modulating_factors=modulating_factors, pad_value=pad_value)
     elif class_name == 'AxisExpander':
         old_shape = tuple(group.attrs['old_shape'])
         new_axis_position = group.attrs['new_axis_position']

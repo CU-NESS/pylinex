@@ -20,6 +20,7 @@ remove_file = True
 seed = 1234567890
 np.random.seed(seed)
 
+desired_acceptance_fraction = 0.25
 nwalkers = 30
 nthreads = 1 # to test multithreading, set to > 1
 file_name = 'TESTING_SAMPLER_CLASS.hdf5'
@@ -83,13 +84,16 @@ try:
     sampler = Sampler(file_name, nwalkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
         prior_distribution_set=prior_distribution_set, nthreads=nthreads,\
-        steps_per_checkpoint=steps_per_checkpoint, restart_mode='update')
+        steps_per_checkpoint=steps_per_checkpoint, restart_mode='update',\
+        desired_acceptance_fraction=desired_acceptance_fraction)
     sampler.run_checkpoints(quarter_ncheckpoints)
     sampler.close()
     sampler = Sampler(file_name, nwalkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
         prior_distribution_set=prior_distribution_set, nthreads=nthreads,\
-        steps_per_checkpoint=steps_per_checkpoint, restart_mode='reinitialize')
+        steps_per_checkpoint=steps_per_checkpoint,\
+        restart_mode='reinitialize',\
+        desired_acceptance_fraction=desired_acceptance_fraction)
     sampler.run_checkpoints(quarter_ncheckpoints)
     sampler.close()
     sampler = Sampler(file_name, nwalkers, loglikelihood,\
@@ -99,7 +103,8 @@ try:
     sampler.run_checkpoints(quarter_ncheckpoints)
     sampler.close()
     fitter = NLFitter(file_name)
-    fitter.plot_acceptance_fraction(log_scale=True, ax=None, show=False)
+    fitter.plot_acceptance_fraction_four_types()
+    fitter.plot_lnprobability_both_types()
     fitter.plot_chain(show=False, amplitude=true_amplitude,\
         center=true_center, scale=true_scale)
     fig = fitter.triangle_plot(parameters='.*', plot_type='contourf',\

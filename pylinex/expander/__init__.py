@@ -11,6 +11,7 @@ from pylinex.expander.Expander import Expander
 from pylinex.expander.NullExpander import NullExpander
 from pylinex.expander.PadExpander import PadExpander
 from pylinex.expander.AxisExpander import AxisExpander
+from pylinex.expander.IndexExpander import IndexExpander
 from pylinex.expander.RepeatExpander import RepeatExpander
 from pylinex.expander.ModulationExpander import ModulationExpander
 from pylinex.expander.MatrixExpander import MatrixExpander

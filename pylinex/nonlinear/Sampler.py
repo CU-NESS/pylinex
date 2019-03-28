@@ -33,7 +33,7 @@ class Sampler(object):
         jumping_distribution_set=None, guess_distribution_set=None,\
         prior_distribution_set=None, steps_per_checkpoint=100, verbose=True,\
         restart_mode=None, nthreads=1, args=[], kwargs={},\
-        use_ensemble_sampler=False, proposal_covariance_reduction_factor=1.):
+        use_ensemble_sampler=False, desired_acceptance_fraction=0.25):
         """
         Initializes a new sampler with the given file_name, loglikelihood,
         jumping distribution set, and guess distribution set.
@@ -101,19 +101,18 @@ class Sampler(object):
         use_ensemble_sampler: if True, EnsembleSampler of emcee is used
                               otherwise, MetropolisHastingsSampler from distpy
                                          is used
-        proposal_covariance_reduction_factor: only used if this is a restart,
-                                              restart_mode=='reinitialize', and
-                                              jumping_distribution_set is None
+        desired_acceptance_fraction: only used if this is a restart,
+                                     restart_mode in ['update', 'reinitialize']
+                                     and jumping_distribution_set is None
         """
         self.use_ensemble_sampler = use_ensemble_sampler
         self.nthreads = nthreads
-        self.proposal_covariance_reduction_factor =\
-            proposal_covariance_reduction_factor
         self.restart_mode = restart_mode
         self.verbose = verbose
         self.nwalkers = nwalkers
         self.steps_per_checkpoint = steps_per_checkpoint
         self.loglikelihood = loglikelihood
+        self.desired_acceptance_fraction = desired_acceptance_fraction
         self.jumping_distribution_set = jumping_distribution_set
         self.guess_distribution_set = guess_distribution_set
         self.prior_distribution_set = prior_distribution_set
@@ -173,29 +172,43 @@ class Sampler(object):
             raise TypeError("use_ensemble_sampler was set to a non-bool.")
     
     @property
+    def desired_acceptance_fraction(self):
+        """
+        Property storing the desired acceptance fraction upon restarting. Only
+        used if restart_mode in ['update', 'reinitialize'] and
+        jumping_distribution_set given at initialization is None.
+        """
+        if not hasattr(self, '_desired_acceptance_fraction'):
+            raise AttributeError("desired_acceptance_fraction was " +\
+                "referenced before it was set.")
+        return self._desired_acceptance_fraction
+    
+    @desired_acceptance_fraction.setter
+    def desired_acceptance_fraction(self, value):
+        """
+        Setter for the desired_acceptance_fraction.
+        
+        value: must be a single number between 0 and 1, exclusive
+        """
+        if (type(value) in real_numerical_types) and (value > 0) and\
+            (value < 1):
+            self._desired_acceptance_fraction = value
+        else:
+            raise TypeError("desired_acceptance_fraction was not between 0 " +\
+                "and 1, exclusive.")
+    
+    @property
     def proposal_covariance_reduction_factor(self):
         """
         Property storing the proposal_covariance_reduction_factor used if this
-        is a restart, restart_mode=='reinitialize', and
-        self.jumping_distribution_set is None
+        is a restart, restart_mode in ['update', 'reinitialize'], and
+        jumping_distribution_set given at initialization is None.
         """
         if not hasattr(self, '_proposal_covariance_reduction_factor'):
-            raise AttributeError("proposal_covariance_reduction_factor was " +\
-                "referenced before it was set.")
+            self._proposal_covariance_reduction_factor =\
+                (1 / (np.power(self.desired_acceptance_fraction,\
+                (-2) / self.loglikelihood.num_parameters) - 1))
         return self._proposal_covariance_reduction_factor
-    
-    @proposal_covariance_reduction_factor.setter
-    def proposal_covariance_reduction_factor(self, value):
-        """
-        Setter for the proposal_covariance_reduction_factor.
-        
-        value: must be a single positive number
-        """
-        if (type(value) in real_numerical_types) and (value > 0):
-            self._proposal_covariance_reduction_factor = value
-        else:
-            raise TypeError("proposal_covariance_reduction_factor was not " +\
-                "a positive number.")
     
     @property
     def restart_mode(self):

@@ -35,6 +35,7 @@ from .RestrictedModel import RestrictedModel
 from .ExpandedModel import ExpandedModel
 from .ScaledModel import ScaledModel
 from .SlicedModel import SlicedModel
+from .InterpolatedModel import InterpolatedModel
 
 # These are the model classes where it's valid to load the model using
 # XXXXX.load_from_hdf5_group(group) or XXXXX.load(hdf5_file_name). Other
@@ -43,7 +44,7 @@ self_loadable_model_classes =\
 [\
     'BasisModel', 'ConstantModel', 'ExpressionModel', 'GaussianModel',\
     'SinusoidalModel', 'TanhModel', 'TruncatedBasisHyperModel',\
-    'LorentzianModel', 'FixedModel'\
+    'LorentzianModel', 'FixedModel', 'InterpolatedModel'\
 ]
 
 # Model classes which are simple wrappers around exactly one other Model class

@@ -69,7 +69,7 @@ steps_per_checkpoint = 500
 num_checkpoints = 20
 verbose = True
 restart_mode = 'continue'
-proposal_covariance_reduction_factor = 1
+desired_acceptance_fraction = 0.25
 
 try:
     sampler = Sampler(file_name, nwalkers, loglikelihood,\
@@ -77,8 +77,8 @@ try:
         guess_distribution_set=guess_distribution_set,\
         prior_distribution_set=prior_distribution_set,\
         steps_per_checkpoint=steps_per_checkpoint, verbose=verbose,\
-        restart_mode=restart_mode, proposal_covariance_reduction_factor=\
-        proposal_covariance_reduction_factor)
+        restart_mode=restart_mode,\
+        desired_acceptance_fraction=desired_acceptance_fraction)
     sampler.run_checkpoints(num_checkpoints)
     sampler.close()
     fitter = NLFitter(file_name)

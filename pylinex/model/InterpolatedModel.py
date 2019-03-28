@@ -7,10 +7,11 @@ Description: File containing class representing a model based on
              multidimensional linear interpolation on a Delaunay mesh.
 """
 import numpy as np
-from distpy import cast_to_transform_list, DistributionSet
-from ..util import int_types, sequence_types
+from distpy import cast_to_transform_list, TransformList, DistributionSet
+from ..util import int_types, sequence_types, create_hdf5_dataset,\
+    get_hdf5_value
 from ..interpolator import LinearInterpolator, QuadraticInterpolator
-from ..expander import Expander, NullExpander
+from ..expander import Expander, NullExpander, load_expander_from_hdf5_group
 from ..basis import TrainedBasis, effective_training_set_rank
 from .Model import Model
 
@@ -57,6 +58,7 @@ class InterpolatedModel(Model):
                   transformation from the former space to the latter can be
                   supplied. If None, the two spaces are identical.
         error: the error used to define the inner product when performing SVD
+               (only used if should_compress is True)
         interpolation_method: either 'linear' or 'quadratic'
         """
         # the order of these things is very important
@@ -324,7 +326,7 @@ class InterpolatedModel(Model):
                 self.num_basis_vectors = effective_training_set_rank(\
                     self._training_outputs, self.error, method='abs',\
                     number_of_modes_to_consider=None, level=0.1)
-            elif self.num_basis_vectors >= self._training_outputs.shape[1]:
+            elif self.num_basis_vectors > self._training_outputs.shape[1]:
                 raise ValueError("The given number of basis vectors " +\
                     "implies no compression! This doesn't make sense. You " +\
                     "might as well just set should_compress to False.")
@@ -471,14 +473,58 @@ class InterpolatedModel(Model):
         interpolated = self.expander(interpolated)
         return np.reshape(interpolated, (-1,) + ((self.num_parameters,) * 2))
     
-    def fill_hdf5_group(self, group):
+    def fill_hdf5_group(self, group, training_inputs_link=None,\
+        training_outputs_link=None):
         """
         Fills the given hdf5 file group with information about this model. It
         isn't implemented yet, though.
         
         group: hdf5 file group to fill with information about this model
         """
-        raise NotImplementedError("InterpolatedModel can't be saved yet.")
+        group.attrs['class'] = 'InterpolatedModel'
+        group.attrs['parameter_names'] = self.parameters
+        create_hdf5_dataset(group, 'training_inputs',\
+            data=self.training_inputs, link=training_inputs_link)
+        create_hdf5_dataset(group, 'training_outputs',\
+            data=self.training_outputs, link=training_outputs_link)
+        group.attrs['should_compress'] = self.compressed
+        self.transform_list.fill_hdf5_group(\
+            group.create_group('transform_list'))
+        group.attrs['scale_to_cube'] = self.scale_to_cube
+        if self.num_basis_vectors is not None:
+            group.attrs['num_basis_vectors'] = self.num_basis_vectors
+        self.expander.fill_hdf5_group(group.create_group('expander'))
+        if self.error is not None:
+            group.attrs['error'] = self.error
+        group.attrs['interpolation_method'] = self.interpolation_method
+    
+    @staticmethod
+    def load_from_hdf5_group(group):
+        """
+        Loads an InterpolatedModel from the given hdf5 group.
+        
+        group: hdf5 file group which has had an InterpolatedModel saved to it
+        """
+        parameter_names = [name for name in group.attrs['parameter_names']]
+        training_inputs = get_hdf5_value(group['training_inputs'])
+        training_outputs = get_hdf5_value(group['training_outputs'])
+        should_compress = group.attrs['should_compress']
+        transform_list =\
+            TransformList.load_from_hdf5_group(group['transform_list'])
+        scale_to_cube = group.attrs['scale_to_cube']
+        if 'num_basis_vectors' in group.attrs:
+            num_basis_vectors = group.attrs['num_basis_vectors']
+        else:
+            num_basis_vectors = None
+        expander = load_expander_from_hdf5_group(group['expander'])
+        if 'error' in group.attrs:
+            error = group.attrs['error']
+        interpolation_method = group.attrs['interpolation_method']
+        return InterpolatedModel(parameter_names, training_inputs,\
+            training_outputs, should_compress=should_compress,\
+            transform_list=transform_list, scale_to_cube=scale_to_cube,\
+            num_basis_vectors=num_basis_vectors, expander=expander,\
+            error=error, interpolation_method=interpolation_method)
     
     def __eq__(self, other):
         """
@@ -491,7 +537,7 @@ class InterpolatedModel(Model):
         """
         if not isinstance(other, InterpolatedModel):
             return False
-        # TODO
+        
         raise NotImplementedError("__eq__ not finished yet for the " +\
             "InterpolatedModel class!")
     

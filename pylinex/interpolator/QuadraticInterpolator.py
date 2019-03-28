@@ -27,13 +27,12 @@ class QuadraticInterpolator(Interpolator):
                  is a 2D numpy.ndarray of shape (npoints, output_dimension),
                  and npoints is (input_dimension+1)(input_dimension+2)/2
         """
-        distances =\
-            np.sum((self.delaunay.points - point[np.newaxis,:]) ** 2, axis=1)
+        distances = np.sum((self.inputs - point[np.newaxis,:]) ** 2, axis=1)
         npoints =\
             ((self.input_dimension + 1) * (self.input_dimension + 2) // 2)
         points = np.argsort(distances)[:npoints]
         values = self.outputs[points,:]
-        points = self.delaunay.points[points,:]
+        points = self.inputs[points,:]
         return (points, values)
     
     def value_gradient_and_hessian(self, point, transformed_space=False):
