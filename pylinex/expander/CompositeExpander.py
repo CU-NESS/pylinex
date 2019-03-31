@@ -20,7 +20,7 @@ class CompositeExpander(Expander):
         objects.
         
         expanders: sequence of 1 or more Expander objects which are mutually
-                   incompatible.
+                   compatible.
         """
         self.expanders = expanders
     

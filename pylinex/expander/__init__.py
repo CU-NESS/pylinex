@@ -19,4 +19,5 @@ from pylinex.expander.CompositeExpander import CompositeExpander
 from pylinex.expander.ShapedExpander import ShapedExpander
 from pylinex.expander.LoadExpander import load_expander_from_hdf5_group
 from pylinex.expander.ExpanderSet import ExpanderSet
+from pylinex.expander.ExpanderList import ExpanderList
 
