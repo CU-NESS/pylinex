@@ -6,12 +6,14 @@ Date: 22 Feb 2019
 Description: File containing a function which plots a three panel figure
              summarizing a given training set.
 """
+import numpy as np
 import matplotlib.pyplot as pl
 from .TrainedBasis import TrainedBasis
 
 def plot_training_set_with_modes(training_set, num_modes, error=None,\
-    x_values=None, curve_slice=slice(None), alpha=1., fontsize=24, xlabel='',\
-    extra_ylabel_string='', title='', show=False):
+    x_values=None, curve_slice=slice(None), subtract_mean=False, alpha=1.,\
+    fontsize=24, xlabel='', extra_ylabel_string='', title='', figsize=(12,20),\
+    show=False):
     """
     Plots a three panel figure summarizing the given training set. The top
     panel shows the training set itself. The middle panel shows the basis
@@ -28,12 +30,15 @@ def plot_training_set_with_modes(training_set, num_modes, error=None,\
               and residuals. If None, set to np.arange(training_set.shape[1])
     curve_slice: slice to apply to the first axis of training_set and residuals
                  when they are plotted in the top and bottom panels
+    subtract_mean: if True (default: False), mean of training set is subtracted
+                                             in top panel
     alpha: opacity of curves plotted in training set and residuals panels
     fontsize: size of fonts for labels and title
     xlabel: string label describing x_values
     extra_ylabel_string: string to add to end of ylabel of each panel (usually
                          a space and a units string)
     title: title to put on top of Figure
+    figsize: size of figure on which to plot 3 panels
     show: if True, matplotlib.pyplot.show() is called before this function
           returns
     
@@ -44,12 +49,15 @@ def plot_training_set_with_modes(training_set, num_modes, error=None,\
     xlim = (x_values[0], x_values[-1])
     basis = TrainedBasis(training_set, num_modes, error=error)
     residuals = training_set - basis(basis.training_set_fit_coefficients)
-    fig = pl.figure(figsize=(12, 20))
+    fig = pl.figure(figsize=figsize)
     ax = fig.add_subplot(311)
-    ax.plot(x_values, training_set[curve_slice,:].T, alpha=alpha)
+    ax.plot(x_values, (training_set[curve_slice,:] -\
+        (np.mean(training_set[curve_slice,:], axis=0, keepdims=True)\
+        if subtract_mean else 0)).T, alpha=alpha)
     ax.set_xlim(xlim)
     ax.set_title(title, size=fontsize)
-    ax.set_ylabel('Training set{!s}'.format(extra_ylabel_string),\
+    ax.set_ylabel('Training set{0!s}{1!s}'.format(\
+        ' - mean' if subtract_mean else '', extra_ylabel_string),\
         size=fontsize)
     ax.tick_params(labelsize=fontsize, length=7.5, width=2.5, which='major',\
         labelbottom=False, direction='inout')
