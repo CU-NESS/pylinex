@@ -108,7 +108,7 @@ class BurnRule(Savable, Loadable):
         
         value: either None (default, corresponding to 1) or a positive integer
         """
-        if value is None:
+        if type(value) is type(None):
             value = 1
         if type(value) in int_types:
             self._thin = value

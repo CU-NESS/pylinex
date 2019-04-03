@@ -165,7 +165,7 @@ class InterpolatedModel(Model):
         
         value: 1D numpy.ndarray of same length as expanded training output
         """
-        if value is None:
+        if type(value) is type(None):
             self._error = None
         else:
             value = np.array(value)
@@ -192,7 +192,7 @@ class InterpolatedModel(Model):
         
         value: must be either None or an Expander object
         """
-        if value is None:
+        if type(value) is type(None):
             self._expander = NullExpander()
         elif isinstance(value, Expander):
             self._expander = value
@@ -322,7 +322,7 @@ class InterpolatedModel(Model):
                 "training_outputs was not the same as the number of inputs " +\
                 "in the given training_inputs.")
         if self.compressed:
-            if self.num_basis_vectors is None:
+            if type(self.num_basis_vectors) is type(None):
                 self.num_basis_vectors = effective_training_set_rank(\
                     self._training_outputs, self.error, method='abs',\
                     number_of_modes_to_consider=None, level=0.1)
@@ -355,7 +355,7 @@ class InterpolatedModel(Model):
         value: if None, not used (only allowed when should_compress is True)
                otherwise, must be a positive integer
         """
-        if value is None:
+        if type(value) is type(None):
             self._num_basis_vectors = None
         elif type(value) in int_types:
             if value > 0:
@@ -491,10 +491,10 @@ class InterpolatedModel(Model):
         self.transform_list.fill_hdf5_group(\
             group.create_group('transform_list'))
         group.attrs['scale_to_cube'] = self.scale_to_cube
-        if self.num_basis_vectors is not None:
+        if type(self.num_basis_vectors) is not type(None):
             group.attrs['num_basis_vectors'] = self.num_basis_vectors
         self.expander.fill_hdf5_group(group.create_group('expander'))
-        if self.error is not None:
+        if type(self.error) is not type(None):
             group.attrs['error'] = self.error
         group.attrs['interpolation_method'] = self.interpolation_method
     

@@ -54,14 +54,15 @@ class LeastSquareFitter(object):
                 bounds are used
         """
         self.file_name = file_name
-        if (self.file_name is not None) and os.path.exists(self.file_name):
+        if (type(self.file_name) is not type(None)) and\
+            os.path.exists(self.file_name):
             self.load_setup_and_iterations()
         else:
             self.loglikelihood = loglikelihood
             self.prior_set = prior_set
             self.transform_list = transform_list
             self.bounds = bounds
-            if self.file_name is not None:
+            if type(self.file_name) is not type(None):
                 self.save_setup()
     
     def load_setup_and_iterations(self):
@@ -138,9 +139,9 @@ class LeastSquareFitter(object):
         for (iparameter, parameter) in enumerate(self.parameters):
             subgroup = group.create_group(parameter)
             (lower_bound, upper_bound) = self.bounds[iparameter]
-            if lower_bound is not None:
+            if type(lower_bound) is not type(None):
                 subgroup.attrs['lower'] = lower_bound
-            if upper_bound is not None:
+            if type(upper_bound) is not type(None):
                 subgroup.attrs['upper'] = upper_bound
         group = hdf5_file.create_group('iterations')
         group.attrs['num_iterations'] = self.num_iterations
@@ -180,7 +181,7 @@ class LeastSquareFitter(object):
         value: either None or the filesystem location at which to place an hdf5
                file
         """
-        if (value is None) or isinstance(value, basestring):
+        if (type(value) is type(None)) or isinstance(value, basestring):
             self._file_name = value
         else:
             raise TypeError("file_name was set to neither None nor a string.")
@@ -439,7 +440,7 @@ class LeastSquareFitter(object):
         Property which returns an estimate of the parameter distribution if a
         mean and covariance estimate has been found.
         """
-        if self.covariance_estimate is None:
+        if type(self.covariance_estimate) is type(None):
             return None
         else:
             return GaussianDistribution(self.argmin, self.covariance_estimate)
@@ -560,7 +561,7 @@ class LeastSquareFitter(object):
             self.covariance_estimates.append(covariance_estimate)
         else:
             self.covariance_estimates.append(None)
-        if self.file_name is not None:
+        if type(self.file_name) is not type(None):
             self.save_iteration()
     
     def save_iteration(self):
@@ -573,7 +574,7 @@ class LeastSquareFitter(object):
         subgroup.attrs['success'] = self.successes[-1]
         subgroup.attrs['min_value'] = self.mins[-1]
         subgroup.create_dataset('argmin', data=self.argmins[-1])
-        if self.covariance_estimates[-1] is not None:
+        if type(self.covariance_estimates[-1]) is not type(None):
             subgroup.create_dataset('covariance_estimate',\
                 data=self.covariance_estimates[-1])
         self.increment_index()
@@ -630,16 +631,16 @@ class LeastSquareFitter(object):
         
         returns: None if show is True, Axes instance with plot otherwise
         """
-        if ax is None:
+        if type(ax) is type(None):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         if self.num_successes != 0:
-            if model is None:
+            if type(model) is type(None):
                 model = self.loglikelihood.model
                 parameter_indices = slice(None)
             if only_best:
                 curve = model(self.argmin[parameter_indices])
-                if channels is None:
+                if type(channels) is type(None):
                     channels = np.arange(len(curve))
                 ax.plot(channels, curve * scale_factor, label=label,\
                     **plot_kwargs)
@@ -647,7 +648,7 @@ class LeastSquareFitter(object):
                 curves = np.array([model(argmin[parameter_indices])\
                     for (success, argmin) in zip(self.successes, self.argmins)\
                     if success])
-                if channels is None:
+                if type(channels) is type(None):
                     channels = np.arange(curves.shape[1])
                 ax.plot(channels, curves[0] * scale_factor, label=label,\
                     **plot_kwargs)
@@ -655,16 +656,16 @@ class LeastSquareFitter(object):
                     ax.plot(channels, curves[1:].T * scale_factor,\
                         **plot_kwargs)
             ax.set_xlim((channels[0], channels[-1]))
-            if xlabel is not None:
+            if type(xlabel) is not type(None):
                 ax.set_xlabel(xlabel, size=fontsize)
-            if ylabel is not None:
+            if type(ylabel) is not type(None):
                 ax.set_ylabel(ylabel, size=fontsize)
-            if title is not None:
+            if type(title) is not type(None):
                 ax.set_title(title, size=fontsize)
             ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
                 which='major')
             ax.tick_params(width=1.5, length=4.5, which='minor')
-            if label is not None:
+            if type(label) is not type(None):
                 ax.legend(fontsize=fontsize)
         if show:
             pl.show()
@@ -697,7 +698,7 @@ class LeastSquareFitter(object):
         
         returns: None if show is True, Axes instance with plot otherwise
         """
-        if ax is None:
+        if type(ax) is type(None):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         if use_transforms:
@@ -707,7 +708,7 @@ class LeastSquareFitter(object):
         to_sample = np.array(to_sample)[np.isfinite(np.array(self.mins)),:]
         parameter_index = self.loglikelihood.model.parameters.index(parameter)
         parameter_sample = to_sample[:,parameter_index]
-        multidimensional = (parameter2 is not None)
+        multidimensional = (type(parameter2) is not type(None))
         if multidimensional:
             parameter2_index =\
                 self.loglikelihood.model.parameters.index(parameter2)
@@ -715,16 +716,16 @@ class LeastSquareFitter(object):
             ax.hist2d(parameter_sample, parameter2_sample, **hist_kwargs)
         else:
             ax.hist(parameter_sample, **hist_kwargs)
-        if xlabel is None:
+        if type(xlabel) is type(None):
             xlabel = parameter
         ax.set_xlabel(xlabel, size=fontsize)
-        if ylabel is None:
+        if type(ylabel) is type(None):
             if multidimensional:
                 ylabel = parameter2
             else:
                 ylabel = '# of occurrences'
         ax.set_ylabel(ylabel, size=fontsize)
-        if title is None:
+        if type(title) is type(None):
             title = 'Least square fit parameter histogram'
         ax.set_title(title, size=fontsize)
         if 'label' in hist_kwargs:
@@ -756,18 +757,18 @@ class LeastSquareFitter(object):
  
         returns: None if show is True, Axes instance containing plot otherwise
         """
-        if ax is None:
+        if type(ax) is type(None):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         # '-' below necessary because, internally, -loglikelihood was minimized
         to_sample = -np.array(self.mins)
         to_sample = to_sample[np.isfinite(to_sample)]
         ax.hist(to_sample, **hist_kwargs)
-        if xlabel is not None:
+        if type(xlabel) is not type(None):
             ax.set_xlabel(xlabel, size=fontsize)
-        if ylabel is not None:
+        if type(ylabel) is not type(None):
             ax.set_ylabel(ylabel, size=fontsize)
-        if title is not None:
+        if type(title) is not type(None):
             ax.set_title(title, size=fontsize)
         if 'label' in hist_kwargs:
             ax.legend(fontsize=fontsize)

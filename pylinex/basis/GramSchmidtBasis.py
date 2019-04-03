@@ -24,7 +24,7 @@ def orthonormal_basis(seed_vectors, error=None):
     returns: a set of basis vectors. a numpy.ndarray of the same shape as the
              seed vectors
     """
-    if error is None:
+    if type(error) is type(None):
         error = np.ones_like(seed_vectors[0])
     inverse_error = 1 / error
     covariance = np.diag(error ** 2)

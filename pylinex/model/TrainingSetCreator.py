@@ -89,7 +89,7 @@ class TrainingSetCreator(object):
         
         value: either None for no seed or a 32-bit unsigned integer
         """
-        if (value is None) or (type(value) in int_types):
+        if (type(value) is type(None)) or (type(value) in int_types):
             self._seed = value
         else:
             raise TypeError("seed was set to neither None nor an integer.")
@@ -254,7 +254,7 @@ class TrainingSetCreator(object):
                 self._file.create_group('parameters')
                 self._file.create_group('curves')
                 self._file.attrs['next_index'] = 0
-                if self.seed is not None:
+                if type(self.seed) is not type(None):
                     self._file.attrs['seed'] = self.seed
         return self._file
     

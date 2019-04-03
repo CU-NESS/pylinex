@@ -165,7 +165,7 @@ class ExtractionPlotter(object):
         
         returns: the numpy.ndarray grid associated with the given name
         """
-        if name is None:
+        if type(name) is type(None):
             return get_hdf5_value(self.file[\
                 'meta_fitter/grids/{!s}'.format(self.quantity_to_minimize)])
         else:
@@ -279,7 +279,7 @@ class ExtractionPlotter(object):
         """
         group_name = 'meta_fitter/optimal_fitter'
         if self.multiple_data_curves:
-            if icurve is None:
+            if type(icurve) is type(None):
                 raise ValueError("Since multiple data curves are included " +\
                     "in this Extractor, an index of the data curve for " +\
                     "which the basis_sum is desired is required to be " +\
@@ -640,7 +640,7 @@ class ExtractionPlotter(object):
         returns: 1D numpy.ndarray containing "true" value of desired curve
                  (with noise added if name not in true_curves)
         """
-        if name is None:
+        if type(name) is type(None):
             if self.multiple_data_curves:
                 return self.data[icurve]
             else:
@@ -690,7 +690,7 @@ class ExtractionPlotter(object):
         
         returns: None if show is True, Axes instance containing plot otherwise
         """
-        if ax is None:
+        if type(ax) is type(None):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         residual = self.data - self.channel_mean
@@ -701,19 +701,19 @@ class ExtractionPlotter(object):
                 raise TypeError("Since there are multiple data curves " +\
                     "stored in this ExtractionPlotter, icurve must be set " +\
                     "to an integer.")
-        if channels is None:
+        if type(channels) is type(None):
             channels = np.arange(len(residual))
-        if label is not None:
+        if type(label) is not type(None):
             rms = np.sqrt(np.mean(np.power(residual, 2))) * scale_factor
             label = label.format(rms=rms)
         ax.plot(channels, residual * scale_factor, label=label, **plot_kwargs)
-        if xlabel is not None:
+        if type(xlabel) is not type(None):
             ax.set_xlabel(xlabel, size=fontsize)
-        if ylabel is not None:
+        if type(ylabel) is not type(None):
             ax.set_ylabel(ylabel, size=fontsize)
-        if title is not None:
+        if type(title) is not type(None):
             ax.set_title(title, size=fontsize)
-        if label is not None:
+        if type(label) is not type(None):
             ax.legend(fontsize=fontsize)
         ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
             which='major')
@@ -759,7 +759,7 @@ class ExtractionPlotter(object):
         
         returns: None if show is True, Axes instance containing plot otherwise
         """
-        if ax is None:
+        if type(ax) is type(None):
             fig = pl.figure(figsize=figsize)
             ax = fig.add_subplot(111)
         if subtract_truth or plot_truth:
@@ -775,7 +775,7 @@ class ExtractionPlotter(object):
             raise ValueError("error_to_plot wasn't recognized. It should " +\
                 "be either 'posterior' or 'likelihood'.")
         fitter_group_name = 'meta_fitter/'
-        if quantity_to_minimize is not None:
+        if type(quantity_to_minimize) is not type(None):
             fitter_group_name =\
                 fitter_group_name + '{!s}_'.format(quantity_to_minimize)
         fitter_group_name = fitter_group_name + 'optimal_fitter'
@@ -786,7 +786,7 @@ class ExtractionPlotter(object):
         basis_sum =\
             BasisSum.load_from_hdf5_group(self.file[basis_sum_group_name])
         posterior_group_name = '{!s}/posterior'.format(fitter_group_name)
-        if name is None:
+        if type(name) is type(None):
             basis = basis_sum.basis
         else:
             basis = basis_sum[name].basis
@@ -807,7 +807,7 @@ class ExtractionPlotter(object):
         channel_error = scale_factor * channel_error
         if plot_truth or subtract_truth:
             true_curve = scale_factor * true_curve
-        if channels is None:
+        if type(channels) is type(None):
             channels = np.arange(len(channel_error))
         if subtract_truth:
             mean_to_plot = channel_mean - true_curve
@@ -819,7 +819,7 @@ class ExtractionPlotter(object):
         if subtract_truth and (error_to_plot == 'likelihood'):
             ax.fill_between(channels, -nsigma[0] * channel_error,\
                 nsigma[0] * channel_error, color=color, alpha=0.5)
-            if nsigma[1] is not None:
+            if type(nsigma[1]) is not type(None):
                 ax.fill_between(channels, -nsigma[1] * channel_error,\
                     nsigma[1] * channel_error, color=color, alpha=0.3)
         else:
@@ -827,7 +827,7 @@ class ExtractionPlotter(object):
                 mean_to_plot - (nsigma[0] * channel_error),\
                 mean_to_plot + (nsigma[0] * channel_error), color=color,\
                 alpha=0.5)
-            if nsigma[1] is not None:
+            if type(nsigma[1]) is not type(None):
                 ax.fill_between(channels,\
                     mean_to_plot - (nsigma[1] * channel_error),\
                     mean_to_plot + (nsigma[1] * channel_error), color=color,\
@@ -837,11 +837,11 @@ class ExtractionPlotter(object):
         if plot_truth and (not subtract_truth):
             ax.plot(channels, true_curve, color='k', linewidth=1)
         ax.set_yscale(yscale)
-        if title is not None:
+        if type(title) is not type(None):
             ax.set_title(title, size=fontsize)
-        if xlabel is not None:
+        if type(xlabel) is not type(None):
             ax.set_xlabel(xlabel, size=fontsize)
-        if ylabel is not None:
+        if type(ylabel) is not type(None):
             ax.set_ylabel(ylabel, size=fontsize)
         ax.set_xlim((channels[0], channels[-1]))
         ax.tick_params(labelsize=fontsize, width=2.5, length=7.5)
@@ -894,9 +894,9 @@ class ExtractionPlotter(object):
             ax = fig.add_subplot(nrows, ncols, iplot + 1)
             group_name =\
                 'meta_fitter/fitters/{}_{}/posterior'.format(icol, irow)
-            if name is not None:
+            if type(name) is not type(None):
                 group_name = group_name + '/{!s}'.format(name)
-            if name is None:
+            if type(name) is type(None):
                 channel_mean = self.channel_mean
             else:
                 channel_mean = self.channel_means[name]
@@ -942,7 +942,7 @@ class ExtractionPlotter(object):
         """
         grid = self[name]
         if self.multiple_data_curves:
-            if icurve is None:
+            if type(icurve) is type(None):
                 raise ValueError("Since the hdf5 file given to this " +\
                     "plotter contains many data curves, a value of icurve " +\
                     "must be provided.")
@@ -978,10 +978,10 @@ class ExtractionPlotter(object):
                             self.training_set_rank_indices[basis_name][1])
                         break
                 (xrank_index, yrank_index) = rank_indices
-                if xrank_index is not None:
+                if type(xrank_index) is not type(None):
                     pl.plot([xrank_index - 0.5] * 2, ylim, color='r',\
                         linestyle='--')
-                if yrank_index is not None:
+                if type(yrank_index) is not type(None):
                     pl.plot(xlim, [yrank_index - 0.5] * 2, color='r',\
                         linestyle='--')
             except:
@@ -1012,7 +1012,7 @@ class ExtractionPlotter(object):
         show: if True, matplotlib.pyplot.show() is called before this function
               returns
         """
-        if ax is None:
+        if type(ax) is type(None):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         minimization_grid = self[quantity_to_minimize]
@@ -1098,13 +1098,13 @@ class ExtractionPlotter(object):
             raise NotImplementedError("Only one data curve is included in " +\
                 "this ExtractionPlotter, so a histogram doesn't make much " +\
                 "sense.")
-        if ax is None:
+        if type(ax) is type(None):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         if type(quantity_to_minimize) in sequence_types:
             bins_to_return = []
             for (iquantity, quantity) in enumerate(quantity_to_minimize):
-                if color is None:
+                if type(color) is type(None):
                     this_color = None
                 elif type(color) in sequence_types:
                     this_color = color[iquantity]
@@ -1191,7 +1191,7 @@ class ExtractionPlotter(object):
         
         returns: None if show is True, Axes instance containing plot otherwise
         """
-        if ax is None:
+        if type(ax) is type(None):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         bins = self.plot_histogram('normalized_bias_statistic',\
@@ -1264,10 +1264,10 @@ class ExtractionPlotter(object):
         returns: tuple of indices describing the grid pixel which minimizes the
                  quantity for the given input data curve
         """
-        if quantity_name is None:
+        if type(quantity_name) is type(None):
             quantity_name = self.quantity_to_minimize
         grid = self.get_grid(quantity_name)
-        if icurve is not None:
+        if type(icurve) is not type(None):
             grid = grid[...,icurve]
         return np.unravel_index(np.argmin(grid), grid.shape)
     
@@ -1293,7 +1293,7 @@ class ExtractionPlotter(object):
             if self.multiple_data_curves:
                 new_statistics = {}
                 group_name = 'meta_fitter'
-                if minimized_quantity is None:
+                if type(minimized_quantity) is type(None):
                     group_name = '{!s}/optimal_fitters/data_curve_'.format(\
                         group_name)
                 else:
@@ -1336,7 +1336,7 @@ class ExtractionPlotter(object):
                     new_statistics
             else:
                  group_name = 'meta_fitter'
-                 if minimized_quantity is None:
+                 if type(minimized_quantity) is type(None):
                      group_name = '{!s}/optimal_fitter'.format(group_name)
                  else:
                      group_name = '{0!s}/{1!s}_optimal_fitter'.format(\
@@ -1368,7 +1368,7 @@ class ExtractionPlotter(object):
         
         returns: 1D array of the given statistics
         """
-        if quantity_to_minimize is None:
+        if type(quantity_to_minimize) is type(None):
             quantity_to_minimize = self.quantity_to_minimize
         grid = get_hdf5_value(self.file['meta_fitter/grids/{!s}'.format(\
             quantity_to_minimize)])
@@ -1376,7 +1376,7 @@ class ExtractionPlotter(object):
         for dimension in self.dimensions:
             for name in dimension:
                 rank_index = self.training_set_rank_indices[name][1]
-                if rank_index is None:
+                if type(rank_index) is type(None):
                     restriction_slice.append(slice(None))
                 else:
                     restriction_slice.append(slice(rank_index + 1))

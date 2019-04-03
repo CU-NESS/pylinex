@@ -26,7 +26,7 @@ class AttributeQuantity(Quantity, Savable, Loadable):
               otherwise, can be any string
         """
         self.attribute_name = attribute_name
-        if name is None:
+        if type(name) is type(None):
             name = self.attribute_name
         Quantity.__init__(self, name)
     

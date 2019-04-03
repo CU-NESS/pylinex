@@ -59,7 +59,7 @@ class DirectSumModel(SumModel):
         returns: (mean, covariance) where mean and covariance are those of the
                  parameter distribution
         """
-        if error is None:
+        if type(error) is type(None):
             error = np.ones_like(data)
         expander_dict = {name: expander\
             for (name, expander) in zip(self.names, self.expanders)}

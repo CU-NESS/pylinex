@@ -124,7 +124,7 @@ class RenamedModel(Model):
                     is freshly saved here
         """
         group.attrs['class'] = 'RenamedModel'
-        if model_link is None:
+        if type(model_link) is type(None):
             self.model.fill_hdf5_group(group.create_group('model'))
         else:
             group['model'] = model_link

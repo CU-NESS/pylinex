@@ -164,7 +164,7 @@ class ScaledModel(Model):
         returns: (parameter_mean, parameter_covariance) which are 1D and 2D
                  arrays respectively
         """
-        if error is None:
+        if type(error) is type(None):
             error = np.ones_like(data)
         data_to_fit = data / self.scale_factor
         error_to_fit = error / self.scale_factor

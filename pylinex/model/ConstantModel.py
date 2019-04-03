@@ -133,7 +133,7 @@ class ConstantModel(LoadableModel):
                  doesn't really mean anything (especially if error is far from
                  1 in magnitude)
         """
-        if error is None:
+        if type(error) is type(None):
             error = 1
         if type(error) in numerical_types:
             error = np.ones(self.num_channels) * error

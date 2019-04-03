@@ -80,7 +80,7 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         self.expanders = expanders
         self.dimensions = dimensions
         if ('bias_score' in compiled_quantity) or\
-            ((self.num_curves_to_score is not None) and\
+            ((type(self.num_curves_to_score) is not type(None)) and\
             (self.num_curves_to_score == 0)):
             self.compiled_quantity = compiled_quantity
         else:
@@ -155,7 +155,7 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
                           curves, all curves are returned as if None was passed
                           as value
         """
-        if value is None:
+        if type(value) is type(None):
             self._num_curves_to_score = None
         elif type(value) in int_types:
             if value >= 0:
@@ -324,7 +324,7 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             if num_training_sets == self.num_bases:
                 if all([isinstance(ts, np.ndarray) for ts in value]):
                     if all([(ts.ndim == 2) for ts in value]):
-                        if (self.num_curves_to_score is None) or\
+                        if (type(self.num_curves_to_score) is type(None)) or\
                             (self.num_curves_to_score == 0):
                             self._training_sets = [ts for ts in value]
                         else:
@@ -434,7 +434,7 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
                allowed if length of training set corresponding to element is
                num_channels) or an Expander object
         """
-        if value is None:
+        if type(value) is type(None):
             value = [NullExpander()] * self.num_bases
         if type(value) in sequence_types:
             num_expanders = len(value)

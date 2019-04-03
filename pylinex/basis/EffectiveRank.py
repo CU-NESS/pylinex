@@ -49,7 +49,7 @@ def effective_training_set_rank(training_set, noise_level, method='abs',\
     returns: integer number of modes necessary to fit every curve in the
              training set to within noise_level
     """
-    if number_of_modes_to_consider is None:
+    if type(number_of_modes_to_consider) is type(None):
         number_of_modes_to_consider = np.min(training_set.shape)
     svd_basis = TrainedBasis(training_set, number_of_modes_to_consider,\
         error=noise_level)

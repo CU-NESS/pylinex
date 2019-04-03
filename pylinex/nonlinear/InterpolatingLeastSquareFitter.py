@@ -124,7 +124,7 @@ class InterpolatingLeastSquareFitter(object):
         value: must be greater than input_dimension+1 to have enough points to
                define hyperplanes
         """
-        if value is None:
+        if type(value) is type(None):
             self._ntrain = self.training_inputs.shape[0]
         elif type(value) in int_types:
             if value > self.input_dimension + 1:
@@ -314,7 +314,7 @@ class InterpolatingLeastSquareFitter(object):
         
         value: must be an Expander object
         """
-        if value is None:
+        if type(value) is type(None):
             self._expander = NullExpander()
         elif isinstance(value, Expander):
             self._expander = value
@@ -350,7 +350,7 @@ class InterpolatingLeastSquareFitter(object):
         value: if None, not used (only allowed when should_compress is True)
                otherwise, must be a positive integer
         """
-        if value is None:
+        if type(value) is type(None):
             self._num_basis_vectors = None
         elif type(value) in int_types:
             if value > 0:
@@ -408,7 +408,7 @@ class InterpolatingLeastSquareFitter(object):
         value: callable to call on loglikelihood before it is passed to a
                LeastSquareFitter. Can be None if no such function exists
         """
-        if (value is None) or callable(value):
+        if (type(value) is type(None)) or callable(value):
             self._loglikelihood_callable = value
         else:
             raise TypeError("loglikelihood_callable was neither None nor a " +\
@@ -446,7 +446,7 @@ class InterpolatingLeastSquareFitter(object):
             error=self.error, interpolation_method=self.interpolation_method)
         loglikelihood =\
             GaussianLoglikelihood(data, self.error, interpolated_model)
-        if self.loglikelihood_callable is not None:
+        if type(self.loglikelihood_callable) is not type(None):
             loglikelihood = self.loglikelihood_callable(loglikelihood)
         least_square_fitter = LeastSquareFitter(loglikelihood,\
             interpolated_model.prior_set, transform_list=self.transform_list)

@@ -170,7 +170,7 @@ class ExpandedModel(Model):
         returns: (parameter_mean, parameter_covariance) which are 1D and 2D
                  arrays respectively
         """
-        if error is None:
+        if type(error) is type(None):
             error = np.ones_like(data)
         smaller_data = self.expander.invert(data, error)
         smaller_error = self.expander.contract_error(error)

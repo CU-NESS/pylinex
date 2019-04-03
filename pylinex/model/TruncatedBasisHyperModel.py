@@ -84,7 +84,7 @@ class TruncatedBasisHyperModel(LoadableModel):
                otherwise, must be an integer satisfying
                           1<=value<basis.num_basis_vectors
         """
-        if value is None:
+        if type(value) is type(None):
             self._min_terms = 1
         elif type(value) in int_types:
             if value <= 0:
@@ -116,7 +116,7 @@ class TruncatedBasisHyperModel(LoadableModel):
                otherwise, must be an int satisfying
                           min_terms<value<=basis.num_basis_vectors
         """
-        if value is None:
+        if type(value) is type(None):
             self._max_terms = self.basis.num_basis_vectors
         elif type(value) in int_types:
             if value < self.min_terms:
@@ -152,7 +152,7 @@ class TruncatedBasisHyperModel(LoadableModel):
         value: if None (default for __init__), set to max_terms
                otherwise, integer between min_terms and max_terms (inclusive)
         """
-        if value is None:
+        if type(value) is type(None):
             self._default_num_terms = self.max_terms
         elif type(value) in int_types:
             if (value >= self.min_terms) and (value <= self.max_terms):
@@ -316,7 +316,7 @@ class TruncatedBasisHyperModel(LoadableModel):
                  is given, parameter_covariance doesn't really mean anything
                  (especially if error is far from 1 in magnitude)
         """
-        if error is None:
+        if type(error) is type(None):
             error = 1
         if type(error) in numerical_types:
             error = error * np.ones_like(data)

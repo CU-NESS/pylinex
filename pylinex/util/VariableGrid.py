@@ -87,7 +87,7 @@ class VariableGrid(object):
                     variable_range_lengths = []
                     for name in dimension:
                         previous_idimension = self._dimensions_by_name[name]
-                        if previous_idimension is None:
+                        if type(previous_idimension) is type(None):
                             self._dimensions_by_name[name] = idimension
                         else:
                             raise KeyError(("Variable, {0!s}, was given in " +\
@@ -119,7 +119,7 @@ class VariableGrid(object):
                 else:
                     raise type_error
             for name in self._dimensions_by_name:
-                if self._dimensions_by_name[name] is None:
+                if type(self._dimensions_by_name[name]) is type(None):
                     raise KeyError("The grid didn't use the variable, '" +\
                                    name + "'.")
         else:

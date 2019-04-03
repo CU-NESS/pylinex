@@ -44,7 +44,7 @@ def plot_training_set_with_modes(training_set, num_modes, error=None,\
     
     returns: if show is False, returns Figure object, otherwise None
     """
-    if x_values is None:
+    if type(x_values) is type(None):
         x_values = np.arange(training_set.shape[1])
     xlim = (x_values[0], x_values[-1])
     basis = TrainedBasis(training_set, num_modes, error=error)

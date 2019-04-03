@@ -107,18 +107,18 @@ class Forecaster(object):
                     "existing file. If you wish to rerun, move or delete " +\
                     "existing file.").format(self.file_name))
         else:
-            if input_curve_sets is None:
+            if type(input_curve_sets) is type(None):
                 curve_sets = training_sets
             else:
                 curve_sets = []
                 for (index, input_curve_set) in enumerate(input_curve_sets):
-                    if input_curve_set is None:
+                    if type(input_curve_set) is type(None):
                         curve_sets.append(training_sets[index])
                     else:
                         curve_sets.append(input_curve_set)
             (data, curve_set_indices) = self.make_data_curves(\
                 num_curves_to_create, curve_sets, expanders, error, seed=seed)
-            if target_subbasis_name is not None:
+            if type(target_subbasis_name) is not type(None):
                 iname = names.index(target_subbasis_name)
                 input_targets = curve_sets[iname][curve_set_indices[iname]]
                 compiled_quantity = compiled_quantity +\
@@ -130,7 +130,7 @@ class Forecaster(object):
                 expanders=expanders, num_curves_to_score=num_curves_to_score,\
                 use_priors_in_fit=use_priors_in_fit, verbose=verbose)
             hdf5_file = h5py.File(self.file_name, 'w')
-            if target_subbasis_name is not None:
+            if type(target_subbasis_name) is not type(None):
                 hdf5_file.attrs['target'] = target_subbasis_name
             group = hdf5_file.create_group('input_curves')
             for (name, curve_set, indices) in\
@@ -195,9 +195,9 @@ class Forecaster(object):
                  ncurves corresponding to the indices in the given curve_sets
         """
         nsets = len(curve_sets)
-        if expanders is None:
+        if type(expanders) is type(None):
             expanders = [NullExpander()] * nsets
-        if seed is not None:
+        if type(seed) is not type(None):
             np.random.seed(seed)
         curve_set_indices = []
         for curve_set in curve_sets:
@@ -304,7 +304,7 @@ class Forecaster(object):
                        returns
         """
         self.close()
-        if ax is None:
+        if type(ax) is type(None):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         def plot_single_histogram(qtm, this_color=None, bins=None, label=None):
@@ -318,7 +318,7 @@ class Forecaster(object):
                 histtype='step', cumulative=True, normed=True,\
                 color=this_color, label=label, **kwargs)
             return bins
-        if quantity_to_minimize is None:
+        if type(quantity_to_minimize) is type(None):
             bins = plot_single_histogram(\
                 self.plotter.quantity_to_minimize, this_color=color,\
                 bins=bins, label=label)

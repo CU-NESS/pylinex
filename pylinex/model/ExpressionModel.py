@@ -119,7 +119,7 @@ class ExpressionModel(LoadableModel):
         value: list of expressions which each yield gradients of shape
                (num_channels,)
         """
-        if value is None:
+        if type(value) is type(None):
             self._gradient_expressions = None
             return
         value = np.array(value)
@@ -153,7 +153,7 @@ class ExpressionModel(LoadableModel):
         value: list of lists of expressions which each yield hessians of shape
                (num_channels,)
         """
-        if value is None:
+        if type(value) is type(None):
             self._hessian_expressions = None
             return
         value = np.array(value)
@@ -187,7 +187,8 @@ class ExpressionModel(LoadableModel):
         are given.
         """
         if not hasattr(self, '_gradient_computable'):
-            self._gradient_computable = (self.gradient_expressions is not None)
+            self._gradient_computable =\
+                (type(self.gradient_expressions) is not type(None))
         return self._gradient_computable
     
     def gradient(self, parameters):
@@ -214,7 +215,8 @@ class ExpressionModel(LoadableModel):
         are given.
         """
         if not hasattr(self, '_hessian_computable'):
-            self._hessian_computable = (self.hessian_expressions is not None)
+            self._hessian_computable =\
+                (type(self.hessian_expressions) is not type(None))
         return self._hessian_computable
     
     def hessian(self, parameters):
@@ -254,12 +256,12 @@ class ExpressionModel(LoadableModel):
         for (iparameter, parameter) in enumerate(self.parameters):
             subgroup.attrs['{}'.format(iparameter)] = parameter
         self.expression.fill_hdf5_group(group.create_group('expression'))
-        if self.gradient_expressions is not None:
+        if type(self.gradient_expressions) is not type(None):
             subgroup = group.create_group('gradient_expressions')
             for iparameter in range(self.num_parameters):
                 self.gradient_expressions[iparameter].fill_hdf5_group(\
                     subgroup.create_group('{}'.format(iparameter)))
-        if self.hessian_expressions is not None:
+        if type(self.hessian_expressions) is not type(None):
             subgroup = group.create_group('hessian_expressions')
             for ipar1 in range(self.num_parameters):
                 for ipar2 in range(ipar1 + 1):
@@ -281,8 +283,8 @@ class ExpressionModel(LoadableModel):
             return False
         if self.expression != other.expression:
             return False
-        if self.gradient_expressions is None:
-            if other.gradient_expressions is not None:
+        if type(self.gradient_expressions) is type(None):
+            if type(other.gradient_expressions) is not type(None):
                 return False
         else:
             try:
@@ -291,8 +293,8 @@ class ExpressionModel(LoadableModel):
                     return False
             except:
                 return False
-        if self.hessian_expressions is None:
-            if other.hessian_expressions is not None:
+        if type(self.hessian_expressions) is type(None):
+            if type(other.hessian_expressions) is not type(None):
                 return False
         else:
             try:

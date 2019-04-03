@@ -179,7 +179,7 @@ class DistortedModel(Model):
             for (iname, name) in enumerate(self.parameters):
                 transform = self.transform_list[iname]
                 (lower_bound, upper_bound) = self.model.bounds[name]
-                if lower_bound is None:
+                if type(lower_bound) is type(None):
                     lower_bound = -np.inf
                 try:
                     lower_bound = transform.apply_inverse(lower_bound)
@@ -188,7 +188,7 @@ class DistortedModel(Model):
                 else:
                     if not np.isfinite(lower_bound):
                         lower_bound = None
-                if upper_bound is None:
+                if type(upper_bound) is type(None):
                     upper_bound = np.inf
                 try:
                     upper_bound = transform.apply_inverse(upper_bound)

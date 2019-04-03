@@ -26,7 +26,7 @@ class ConstantQuantity(Quantity, Savable, Loadable):
               ConstantQuantity)
         """
         self.constant = constant
-        if name is None:
+        if type(name) is type(None):
             name = "{!s}".format(self.constant)
         Quantity.__init__(self, name)
     

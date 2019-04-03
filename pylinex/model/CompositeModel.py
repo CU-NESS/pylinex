@@ -89,7 +89,7 @@ class CompositeModel(CompoundModel):
         value: list of expressions which yield gradients of shape
                (nchannel, num_parameters)
         """
-        if value is None:
+        if type(value) is type(None):
             self._gradient_expressions = None
             return
         value = np.array(value)
@@ -126,7 +126,7 @@ class CompositeModel(CompoundModel):
         
         value: list of lists of expressions (shape: (len(names), len(names)))
         """
-        if value is None:
+        if type(value) is type(None):
             self._hessian_expressions = None
             return
         value = np.array(value)
@@ -176,7 +176,8 @@ class CompositeModel(CompoundModel):
         the gradient of every submodel is computable.
         """
         if not hasattr(self, '_gradient_computable'):
-            self._gradient_computable = (self.gradient_expressions is not None)
+            self._gradient_computable =\
+                (type(self.gradient_expressions) is not type(None))
             for model in self.models:
                 self._gradient_computable =\
                     (self._gradient_computable and model.gradient_computable)
@@ -218,8 +219,8 @@ class CompositeModel(CompoundModel):
         """
         if not hasattr(self, '_hessian_computable'):
             self._hessian_computable =\
-                ((self.gradient_expressions is not None) and\
-                (self.hessian_expressions is not None))
+                ((type(self.gradient_expressions) is not type(None)) and\
+                (type(self.hessian_expressions) is not type(None)))
             for model in self.models:
                 self._hessian_computable = (self._hessian_computable and\
                     (model.gradient_computable and model.hessian_computable))
@@ -276,12 +277,12 @@ class CompositeModel(CompoundModel):
             subsubgroup = subgroup.create_group('{}'.format(iname))
             subsubgroup.attrs['name'] = name
             self.models[iname].fill_hdf5_group(subsubgroup)
-        if self.gradient_expressions is not None:
+        if type(self.gradient_expressions) is not type(None):
             subgroup = group.create_group('gradient_expressions')
             for iname in range(len(self.names)):
                 self.gradient_expressions[iname].fill_hdf5_group(\
                     subgroup.create_group('{}'.format(iname)))
-        if self.hessian_expressions is not None:
+        if type(self.hessian_expressions) is not type(None):
             subgroup = group.create_group('hessian_expressions')
             for iname1 in range(len(self.names)):
                 for iname2 in range(iname1 + 1):
@@ -306,8 +307,8 @@ class CompositeModel(CompoundModel):
             return False
         if self.expression != other.expression:
             return False
-        if self.gradient_expressions is None:
-            if other.gradient_expressions is not None:
+        if type(self.gradient_expressions) is type(None):
+            if type(other.gradient_expressions) is not type(None):
                 return False
         else:
             try:
@@ -316,8 +317,8 @@ class CompositeModel(CompoundModel):
                     return False
             except:
                 return False
-        if self.hessian_expressions is None:
-            if other.hessian_expressions is not None:
+        if type(self.hessian_expressions) is type(None):
+            if type(other.hessian_expressions) is not type(None):
                 return False
         else:
             try:

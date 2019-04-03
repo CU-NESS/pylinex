@@ -172,7 +172,7 @@ class TransformedModel(Model):
         returns: (parameter_mean, parameter_covariance)
         """
         data_to_fit = self.transform.apply_inverse(data)
-        if error is None:
+        if type(error) is type(None):
             error_to_fit = np.ones_like(data)
         else:
             error_to_fit =\

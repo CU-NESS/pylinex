@@ -78,11 +78,11 @@ class RestrictedModel(Model):
                         maxima = []
                         for element in value:
                             (minimum, maximum) = element
-                            if minimum is None:
+                            if type(minimum) is type(None):
                                 minima.append(-np.inf)
                             else:
                                 minima.append(minimum)
-                            if maximum is None:
+                            if type(maximum) is type(None):
                                 maxima.append(np.inf)
                             else:
                                 maxima.append(maximum)
@@ -181,7 +181,7 @@ class RestrictedModel(Model):
                     fresh in this function
         """
         group.attrs['class'] = 'RestrictedModel'
-        if model_link is None:
+        if type(model_link) is type(None):
             self.model.fill_hdf5_group(group.create_group('model'))
         else:
             group['model'] = model_link

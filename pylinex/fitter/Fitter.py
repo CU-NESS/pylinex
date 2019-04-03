@@ -294,7 +294,7 @@ class Fitter(Savable):
         
         value: 1D vector of positive numbers with which to weight the fit
         """
-        if value is None:
+        if type(value) is type(None):
             self._error = np.ones(self.num_channels)
         else:
             value = np.array(value)
@@ -1240,7 +1240,7 @@ class Fitter(Savable):
         
         returns: single float number
         """
-        if name is None:
+        if type(name) is type(None):
             return self.log_prior_covariance_determinant
         if not hasattr(self, '_subbasis_log_prior_covariance_determinants'):
             self._subbasis_log_prior_covariance_determinants = {}
@@ -1282,7 +1282,7 @@ class Fitter(Savable):
         if not hasattr(self,\
             '_subbasis_parameter_covariance_determinant_ratios'):
             self._subbasis_parameter_covariance_determinant_ratios = {}
-        if name is None:
+        if type(name) is type(None):
             self._subbasis_parameter_covariance_determinant_ratios[name] =\
                 np.exp(\
                 self.subbasis_log_parameter_covariance_determinant_ratios_sum)
@@ -1305,7 +1305,7 @@ class Fitter(Savable):
                  the subbasis (which may or may not be different than the
                  length of the expanded basis vectors).
         """
-        if name is None:
+        if type(name) is type(None):
             return self.channel_error
         if not hasattr(self, '_subbasis_channel_errors'):
             self._subbasis_channel_errors = {}
@@ -1402,15 +1402,15 @@ class Fitter(Savable):
                  between the estimate of the data's contribution from the given
                  subbasis and the given true curve
         """
-        if name is None:
-            if true_curve is None:
+        if type(name) is type(None):
+            if type(true_curve) is type(None):
                 return self.channel_bias
             else:
                 raise ValueError("true_curve should only be given to " +\
                                  "subbasis_channel_bias if the name of a " +\
                                  "subbasis is specified.")
         else:
-            if true_curve is None:
+            if type(true_curve) is type(None):
                 raise ValueError("true_curve must be given to " +\
                                  "subbasis_channel_bias if the name of a " +\
                                  "subbasis is specified.")
@@ -1492,7 +1492,7 @@ class Fitter(Savable):
         if len(self.basis_sum.names) != len(training_sets):
             raise ValueError("There must be the same number of basis sets " +\
                 "as training sets.")
-        if (bases_to_score is None) or (not bases_to_score):
+        if (type(bases_to_score) is type(None)) or (not bases_to_score):
             bases_to_score = self.basis_sum.names
         score = 0.
         expanders = [basis.expander for basis in self.basis_sum]
@@ -1508,7 +1508,7 @@ class Fitter(Savable):
                 result = fitter.subbasis_bias_statistic(\
                     name=basis_to_score, true_curve=true_curve)
                 score += np.sum(result)
-        if num_curves_to_score is None:
+        if type(num_curves_to_score) is type(None):
             num_curves_to_score =\
                 np.prod([ts.shape[0] for ts in training_sets])
         score = score / (num_curves_to_score * num_channels)
@@ -1580,9 +1580,9 @@ class Fitter(Savable):
             root_group.attrs['log_evidence_per_data_channel'] =\
                 self.log_evidence_per_data_channel
             group = root_group.create_group('prior')
-            if prior_mean_links is None:
+            if type(prior_mean_links) is type(None):
                 prior_mean_links = {name: None for name in self.names}
-            if prior_covariance_links is None:
+            if type(prior_covariance_links) is type(None):
                 prior_covariance_links = {name: None for name in self.names}
             for name in self.names:
                 key = '{!s}_prior'.format(name)
@@ -1606,7 +1606,7 @@ class Fitter(Savable):
         """
         def_kwargs = {'interpolation': None}
         def_kwargs.update(**kwargs)
-        if (fig is None) or (ax is None):
+        if (type(fig) is type(None)) or (type(ax) is type(None)):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         ax.imshow(self.overlap_matrix, **def_kwargs)
@@ -1629,7 +1629,7 @@ class Fitter(Savable):
         """
         def_kwargs = {'interpolation': None}
         def_kwargs.update(**kwargs)
-        if (fig is None) or (ax is None):
+        if (type(fig) is type(None)) or (type(ax) is type(None)):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         ax.imshow(self.parameter_covariance, **def_kwargs)
@@ -1662,9 +1662,9 @@ class Fitter(Savable):
         show: If True, matplotlib.pyplot.show() is called before this function
               returns.
         """
-        if self.multiple_data_curves and (which_data is None):
+        if self.multiple_data_curves and (type(which_data) is type(None)):
             which_data = 0
-        if name is None:
+        if type(name) is type(None):
             mean = self.channel_mean
             error = self.channel_error
         else:
@@ -1674,17 +1674,17 @@ class Fitter(Savable):
             colors = [colors] * 3
         if self.multiple_data_curves:
             mean = mean[which_data]
-        if (fig is None) or (ax is None):
+        if (type(fig) is type(None)) or (type(ax) is type(None)):
             fig = pl.figure()
             ax = fig.add_subplot(111)
-        if x_values is None:
+        if type(x_values) is type(None):
             x_values = np.arange(len(mean))
-        if (true_curve is None) and (name is None):
+        if (type(true_curve) is type(None)) and (type(name) is type(None)):
             if self.multiple_data_curves:
                 true_curve = self.data[which_data]
             else:
                 true_curve = self.data
-        if (true_curve is None) and subtract_truth:
+        if (type(true_curve) is type(None)) and subtract_truth:
             raise ValueError("Truth cannot be subtracted because it is not " +\
                              "known. Supply it as the true_curve argument " +\
                              "if you wish for it to be subtracted.")
@@ -1694,7 +1694,7 @@ class Fitter(Savable):
                 label='true')
         else:
             to_subtract = np.zeros_like(x_values)
-            if true_curve is not None:
+            if type(true_curve) is not type(None):
                 ax.plot(x_values, true_curve, color='k', linewidth=2,\
                     label='true')
         ax.plot(x_values, mean - to_subtract, color=colors[0], linewidth=2,\
@@ -1704,7 +1704,7 @@ class Fitter(Savable):
                 mean - to_subtract + (nsigma * error), alpha=full_error_alpha,\
                 color=colors[1])
         if show_noise_level:
-            if shorter_error is not None:
+            if type(shorter_error) is not type(None):
                 ax.fill_between(x_values,\
                     mean - to_subtract - (nsigma * shorter_error),\
                     mean - to_subtract + (nsigma * shorter_error),\
@@ -1721,7 +1721,7 @@ class Fitter(Savable):
         ax.set_yscale(yscale)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
-        if title is None:
+        if type(title) is type(None):
             if subtract_truth:
                 ax.set_title('Fit residual')
             else:
@@ -1749,7 +1749,7 @@ class Fitter(Savable):
         """
         def_kwargs = {'interpolation': None}
         def_kwargs.update(**kwargs)
-        if (fig is None) or (ax is None):
+        if (type(fig) is type(None)) or (type(ax) is type(None)):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         to_show = self.subbases_overlap_matrix(row_name=row_name,\
@@ -1778,7 +1778,7 @@ class Fitter(Savable):
         """
         def_kwargs = {'interpolation': None}
         def_kwargs.update(**kwargs)
-        if (fig is None) or (ax is None):
+        if (type(fig) is type(None)) or (type(ax) is type(None)):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         to_show = self.subbasis_parameter_covariances[name]

@@ -185,7 +185,7 @@ class RectangularBinner(Savable, Loadable):
         """
         shape = old_y_values.shape[:-1] + (len(self.bins_to_keep),)
         new_y_values = np.zeros(shape)
-        if weights is None:
+        if type(weights) is type(None):
             weights = np.ones_like(old_y_values)
         if return_weights:
             new_weights = np.zeros(shape)
@@ -220,7 +220,7 @@ class RectangularBinner(Savable, Loadable):
         """
         shape = old_error.shape[:-1] + (self.nbins_to_keep,)
         new_error = np.zeros(shape)
-        if weights is None:
+        if type(weights) is type(None):
             weights = np.ones_like(old_error)
         if return_weights:
             new_weights = np.zeros(shape)

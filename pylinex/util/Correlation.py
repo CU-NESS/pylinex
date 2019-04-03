@@ -38,7 +38,7 @@ def autocorrelation(curves, error=None, normalize_by_chi_squared=False):
     if curves.ndim == 1:
         curves = curves[np.newaxis,:]
     assert(curves.ndim == 2)
-    if error is None:
+    if type(error) is type(None):
         normalized_curves = curves
     else:
         normalized_curves = curves / error[np.newaxis,:]
@@ -111,7 +111,7 @@ def chi_squared(curves, error=None, return_null_hypothesis_error=False,\
     
     returns: single number, mean-square data value
     """
-    if error is None:
+    if type(error) is type(None):
         normed_curves = curves
     elif curves.ndim == 2:
         normed_curves = curves / error[np.newaxis,:]

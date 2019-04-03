@@ -43,10 +43,10 @@ class ExpanderList(Savable, Loadable):
                Expander objects
         """
         if type(value) in sequence_types:
-            if all([((element is None) or isinstance(element, Expander))\
-                for element in value]):
-                self._expanders =\
-                    [(NullExpander() if (element is None) else element)\
+            if all([((type(element) is type(None)) or\
+                isinstance(element, Expander)) for element in value]):
+                self._expanders = [(NullExpander()\
+                    if (type(element) is type(None)) else element)\
                     for element in value]
             else:
                 raise ValueError("Not all elements of the expanders " +\
@@ -85,7 +85,7 @@ class ExpanderList(Savable, Loadable):
             if should_sum:
                 result = None
                 for (expander, curves) in zip(self.expanders, unexpanded):
-                    if result is None:
+                    if type(result) is type(None):
                         result = expander(curves)
                     else:
                         result = result + expander(curves)
@@ -212,7 +212,7 @@ class ExpanderList(Savable, Loadable):
         
         expander: must be an Expander or None
         """
-        if expander is None:
+        if type(expander) is type(None):
             self.expanders.append(NullExpander())
         elif isinstance(expander, Expander):
             self.expanders.append(expander)
@@ -253,7 +253,7 @@ class ExpanderList(Savable, Loadable):
         """
         if isinstance(other, ExpanderList):
             return ExpanderList(*(self.expanders + other.expanders))
-        elif other is None:
+        elif type(other) is type(None):
             return ExpanderList(*(self.expanders + [NullExpander()]))
         elif isinstance(other, Expander):
             return ExpanderList(*(self.expanders + [other]))
@@ -273,7 +273,7 @@ class ExpanderList(Savable, Loadable):
         """
         if isinstance(other, ExpanderList):
             self.extend(other)
-        elif (other is None) or isinstance(other, Expander):
+        elif (type(other) is type(None)) or isinstance(other, Expander):
             self.append(other)
         else:
             raise TypeError("The only things which can be added to a " +\

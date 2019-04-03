@@ -231,7 +231,7 @@ class Sampler(object):
         """
         allowed_modes = ['continue', 'update', 'trimmed_update',\
             'reinitialize', 'trimmed_reinitialize', 'fisher_update']
-        if (value is None) or (value in allowed_modes):
+        if (type(value) is type(None)) or (value in allowed_modes):
             self._restart_mode = value
         else:
             raise ValueError("restart_mode was set to neither None, " +\
@@ -597,13 +597,13 @@ class Sampler(object):
         """
         self._pos = pos
         self._lnprob = lnprob
-        if self.prior_distribution_set is None:
+        if type(self.prior_distribution_set) is type(None):
             self.prior_distribution_set = prior_distribution_set
         elif (self.prior_distribution_set != prior_distribution_set):
             raise ValueError("prior_distribution_set changed since last " +\
                 "run, so restart_mode can't be 'continue'.")
         self.guess_distribution_set = guess_distribution_set
-        if self.jumping_distribution_set is None:
+        if type(self.jumping_distribution_set) is type(None):
             self.jumping_distribution_set = jumping_distribution_set
         elif (self.jumping_distribution_set != jumping_distribution_set):
             raise ValueError("jumping_distribution_set changed since last " +\
@@ -638,12 +638,12 @@ class Sampler(object):
         new_chunk_string = 'chunk{0:d}'.format(self.chunk_index)
         self._pos = pos
         self._lnprob = lnprob
-        if self.prior_distribution_set is None:
+        if type(self.prior_distribution_set) is type(None):
             self.prior_distribution_set = prior_distribution_set
         elif (self.prior_distribution_set != prior_distribution_set):
             raise ValueError("prior_distribution_set changed since last " +\
                 "run, so restart_mode can't be 'continue'.")
-        if self.prior_distribution_set is not None:
+        if type(self.prior_distribution_set) is not type(None):
             group = self.file['prior_distribution_sets']
             subgroup = group.create_group(new_chunk_string)
             self.prior_distribution_set.fill_hdf5_group(subgroup)
@@ -651,7 +651,7 @@ class Sampler(object):
         group = self.file['guess_distribution_sets']
         subgroup = group.create_group(new_chunk_string)
         self.guess_distribution_set.fill_hdf5_group(subgroup)
-        if self.jumping_distribution_set is None:
+        if type(self.jumping_distribution_set) is type(None):
             self.jumping_distribution_set =\
                 self._generate_reinitialized_jumping_distribution_set(\
                 jumping_distribution_set, last_saved_chunk_string,\
@@ -687,12 +687,12 @@ class Sampler(object):
         new_chunk_string = 'chunk{0:d}'.format(self.chunk_index)
         self._pos = pos
         self._lnprob = lnprob
-        if self.prior_distribution_set is None:
+        if type(self.prior_distribution_set) is type(None):
             self.prior_distribution_set = prior_distribution_set
         elif (self.prior_distribution_set != prior_distribution_set):
             raise ValueError("prior_distribution_set changed since last " +\
                 "run, so restart_mode can't be 'continue'.")
-        if self.prior_distribution_set is not None:
+        if type(self.prior_distribution_set) is not type(None):
             group = self.file['prior_distribution_sets']
             subgroup = group.create_group(new_chunk_string)
             self.prior_distribution_set.fill_hdf5_group(subgroup)
@@ -700,7 +700,7 @@ class Sampler(object):
         group = self.file['guess_distribution_sets']
         subgroup = group.create_group(new_chunk_string)
         self.guess_distribution_set.fill_hdf5_group(subgroup)
-        if self.jumping_distribution_set is None:
+        if type(self.jumping_distribution_set) is type(None):
             self.jumping_distribution_set =\
                 self._generate_fisher_updated_jumping_distribution_set(\
                 jumping_distribution_set, last_saved_chunk_string)
@@ -734,18 +734,18 @@ class Sampler(object):
         self.chunk_index = self.chunk_index + 1
         self.file.attrs['max_chunk_index'] = self.chunk_index
         new_chunk_string = 'chunk{0:d}'.format(self.chunk_index)
-        if self.prior_distribution_set is None:
+        if type(self.prior_distribution_set) is type(None):
             self.prior_distribution_set = prior_distribution_set
         if prior_distribution_set != self.prior_distribution_set:
             print("prior_distribution_set is changing, so " +\
                   "the distribution being explored is being " +\
                   "changed discontinuously!")
-        if self.prior_distribution_set is not None:
+        if type(self.prior_distribution_set) is not type(None):
             group = self.file['prior_distribution_sets']
             subgroup = group.create_group(new_chunk_string)
             self.prior_distribution_set.fill_hdf5_group(\
                 subgroup)
-        if self.jumping_distribution_set is None:
+        if type(self.jumping_distribution_set) is type(None):
             self.jumping_distribution_set =\
                 self._generate_reinitialized_jumping_distribution_set(\
                 jumping_distribution_set, last_saved_chunk_string,\
@@ -753,7 +753,7 @@ class Sampler(object):
         group = self.file['jumping_distribution_sets']
         subgroup = group.create_group(new_chunk_string)
         self.jumping_distribution_set.fill_hdf5_group(subgroup)
-        if self.guess_distribution_set is None:
+        if type(self.guess_distribution_set) is type(None):
             self.guess_distribution_set =\
                 self._generate_reinitialized_guess_distribution_set(\
                 guess_distribution_set, last_saved_chunk_string,\
@@ -1109,7 +1109,7 @@ class Sampler(object):
             self.prior_distribution_set.fill_hdf5_group(\
                 group.create_group('chunk0'))
         group = self.file.create_group('jumping_distribution_sets')
-        if self.jumping_distribution_set is not None:
+        if type(self.jumping_distribution_set) is not type(None):
             self.jumping_distribution_set.fill_hdf5_group(\
                 group.create_group('chunk0'))
         self.loglikelihood.fill_hdf5_group(\
@@ -1128,8 +1128,8 @@ class Sampler(object):
         restart = os.path.exists(self.file_name)
         if restart:
             self._setup_restarted_file()
-        elif (self.guess_distribution_set is not None) and\
-            ((self.jumping_distribution_set is not None) or\
+        elif (type(self.guess_distribution_set) is not type(None)) and\
+            ((type(self.jumping_distribution_set) is not type(None)) or\
             (self.use_ensemble_sampler)):
             self._setup_new_file()
         else:
@@ -1180,7 +1180,7 @@ class Sampler(object):
         
         value: must be a JumpingDistributionSet object
         """
-        if value is None:
+        if type(value) is type(None):
             self._jumping_distribution_set = value
         elif isinstance(value, JumpingDistributionSet):
             if set(value.params) == set(self.parameters):
@@ -1226,7 +1226,7 @@ class Sampler(object):
         
         value: must be a DistributionSet object
         """
-        if value is None:
+        if type(value) is type(None):
             self._guess_distribution_set = value
         elif isinstance(value, DistributionSet):
             if set(value.params) == set(self.parameters):
@@ -1260,7 +1260,8 @@ class Sampler(object):
         not.
         """
         if not hasattr(self, '_has_priors'):
-            self._has_priors = (self.prior_distribution_set is not None)
+            self._has_priors =\
+                (type(self.prior_distribution_set) is not type(None))
         return self._has_priors
     
     @property
@@ -1284,7 +1285,7 @@ class Sampler(object):
         
         value: must be a DistributionSet object
         """
-        if value is None:
+        if type(value) is type(None):
             self._prior_distribution_set = None
         elif isinstance(value, DistributionSet):
             if set(value.params) == set(self.parameters):
@@ -1424,7 +1425,7 @@ class Sampler(object):
             iterations = 0
             while len(self._pos) < self.nwalkers:
                 draw = self.guess_distribution_set.draw()
-                if (self.prior_distribution_set is None) or\
+                if (type(self.prior_distribution_set) is type(None)) or\
                     np.isfinite(self.prior_distribution_set.log_value(draw)):
                     self._pos.append(\
                         [draw[param] for param in self.parameters])

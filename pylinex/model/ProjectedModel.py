@@ -102,7 +102,7 @@ class ProjectedModel(Model):
         value: if None, all channels are equally important
                otherwise, a 1D array of length equal to number of channels
         """
-        if value is None:
+        if type(value) is type(None):
             self._error = np.ones(self.num_channels)
         elif type(value) in sequence_types:
             value = np.array(value)

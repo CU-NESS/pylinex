@@ -106,7 +106,7 @@ class NLFitter(object):
         value: if None, a BurnRule that never burns any of the chain is set
                otherwise, value must be a BurnRule object
         """
-        if value is None:
+        if type(value) is type(None):
             self._burn_rule =\
                 BurnRule(min_checkpoints=1, desired_fraction=1.)
         elif isinstance(value, BurnRule):
@@ -462,7 +462,7 @@ class NLFitter(object):
                                    is 'contour' or 'contourf'. Can be single
                                    number or sequence of numbers
         """
-        if source is None:
+        if type(source) is type(None):
             source =\
                 dict(zip(self.parameters, self.maximum_probability_parameters))
         parameter_indices = self.get_parameter_indices(parameters=parameters)
@@ -869,7 +869,7 @@ class NLFitter(object):
         
         returns: numpy.array of parameter indices
         """
-        if parameters is None:
+        if type(parameters) is type(None):
             # return indices of all parameters
             return np.arange(self.num_parameters)
         elif isinstance(parameters, basestring):
@@ -969,7 +969,7 @@ class NLFitter(object):
                  reconstructions created from the given model and parameters
         """
         parameter_sample = self.sample(number, parameters=parameters)
-        if model is None:
+        if type(model) is type(None):
             model = self.model
         return np.array([model(args) for args in parameter_sample])
     
@@ -1049,8 +1049,9 @@ class NLFitter(object):
         """
         reconstructions =\
             self.reconstructions(number, parameters=parameters, model=model)
-        if true_curve is None:
-            if (parameters is None) and (model is None):
+        if type(true_curve) is type(None):
+            if (type(parameters) is type(None)) and\
+                (type(model) is type(None)):
                 true_curve = self.data
             else:
                 raise NotImplementedError("The bias cannot be computed if " +\
@@ -1144,8 +1145,9 @@ class NLFitter(object):
         (intervals, reconstructions) =\
             self.reconstruction_confidence_intervals(number, probabilities,\
             parameters=parameters, model=model, return_reconstructions=True)
-        if true_curve is None:
-            if parameters is None and model is None:
+        if type(true_curve) is type(None):
+            if (type(parameters) is type(None)) and\
+                (type(model) is type(None)):
                 true_curve = self.data
             else:
                 raise NotImplementedError("The bias cannot be computed if " +\
@@ -1197,41 +1199,42 @@ class NLFitter(object):
         
         returns: None if show is True, otherwise Axes instance with plot
         """
-        if ax is None:
+        if type(ax) is type(None):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         parameter_indices = self.get_parameter_indices(parameters=parameters)
         maximum_probability_parameter_subset =\
             self.maximum_probability_parameters[parameter_indices]
-        if (parameters is None) and (model is None) and (true_curve is None):
+        if (type(parameters) is type(None)) and\
+            (type(model) is type(None)) and (type(true_curve) is type(None)):
             true_curve = self.data * scale_factor
-        if model is None:
+        if type(model) is type(None):
             model = self.model
         curve = model(maximum_probability_parameter_subset)
-        if x_values is None:
+        if type(x_values) is type(None):
             x_values = np.arange(len(curve))
             to_plot = curve * scale_factor
         if subtract_truth:
-            if true_curve is None:
+            if type(true_curve) is type(None):
                 raise NotImplementedError("Cannot subtract truth if true " +\
                     "curve is None.")
             else:
                 to_plot = to_plot - true_curve
         ax.plot(x_values, to_plot, color='r', label='Max probability')
-        if true_curve is not None:
+        if type(true_curve) is not type(None):
             if subtract_truth:
                 ax.plot(x_values, np.zeros_like(true_curve), color='k',\
                     label='input')
             else:
                 ax.plot(x_values, true_curve, color='k', label='input')
         ax.legend(fontsize=fontsize)
-        if title is None:
+        if type(title) is type(None):
             title = 'Maximum probability reconstruction{!s}'.format(\
                 ' bias' if subtract_truth else '')
         ax.set_title(title, size=fontsize)
-        if xlabel is not None:
+        if type(xlabel) is not type(None):
             ax.set_xlabel(xlabel, size=fontsize)
-        if ylabel is not None:
+        if type(ylabel) is not type(None):
             ax.set_ylabel(ylabel, size=fontsize)
         ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
             which='major')
@@ -1286,17 +1289,18 @@ class NLFitter(object):
         """
         reconstructions =\
             self.reconstructions(number, parameters=parameters, model=model)
-        if ax is None:
+        if type(ax) is type(None):
             fig = pl.figure()
             ax = fig.add_subplot(111)
-        if (parameters is None) and (model is None) and (true_curve is None):
+        if (type(parameters) is type(None)) and\
+            (type(model) is type(None)) and (type(true_curve) is type(None)):
             true_curve = self.data * scale_factor
         num_channels = reconstructions.shape[-1]
-        if x_values is None:
+        if type(x_values) is type(None):
             x_values = np.arange(num_channels)
         to_plot = reconstructions * scale_factor
         if subtract_truth:
-            if true_curve is None:
+            if type(true_curve) is type(None):
                 raise NotImplementedError("Cannot subtract truth if true " +\
                     "curve is None.")
             else:
@@ -1306,7 +1310,7 @@ class NLFitter(object):
         if 'label' not in kwargs_copy:
             kwargs_copy['label'] = '{0:d} {1!s}'.format(number, random_what)
         if matplotlib_function == 'plot':
-            if breakpoints is None:
+            if type(breakpoints) is type(None):
                 breakpoints = num_channels
             if type(breakpoints) in int_types:
                 breakpoints = (breakpoints % num_channels)
@@ -1336,7 +1340,7 @@ class NLFitter(object):
         else:
             raise RuntimeError("matplotlib_function was neither 'plot' or " +\
                 "'scatter'")
-        if true_curve is not None:
+        if type(true_curve) is not type(None):
             if subtract_truth:
                 ax.plot(x_values, np.zeros_like(true_curve), color='k',\
                     label='input')
@@ -1353,12 +1357,12 @@ class NLFitter(object):
                     "or 'scatter'")
         ax.legend(fontsize=fontsize)
         ax.set_xlim((x_values[0], x_values[-1]))
-        if title is None:
+        if type(title) is type(None):
             title = '{0:d} random {1!s}'.format(number, random_what)
         ax.set_title(title, size=fontsize)
-        if xlabel is not None:
+        if type(xlabel) is not type(None):
             ax.set_xlabel(xlabel, size=fontsize)
-        if ylabel is not None:
+        if type(ylabel) is not type(None):
             ax.set_ylabel(ylabel, size=fontsize)
         ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
             which='major')
@@ -1440,15 +1444,15 @@ class NLFitter(object):
         if type(probabilities) in real_numerical_types:
             probabilities = [probabilities]
             intervals = [intervals]
-            alphas = [0.3 if (alphas is None) else alphas]
-        if ax is None:
+            alphas = [0.3 if (type(alphas) is type(None)) else alphas]
+        if type(ax) is type(None):
             fig = pl.figure(figsize=figsize)
             ax = fig.add_subplot(111)
         num_channels = intervals[0][0].shape[0]
-        if x_values is None:
+        if type(x_values) is type(None):
             x_values = np.arange(num_channels)
         if matplotlib_function == 'fill_between':
-            if breakpoints is None:
+            if type(breakpoints) is type(None):
                 breakpoints = num_channels
             if type(breakpoints) in int_types:
                 breakpoints = (breakpoints % num_channels)
@@ -1489,7 +1493,7 @@ class NLFitter(object):
                     label=confidence_label, **kwargs)
             else:
                 raise ValueError("This error should never happen!")
-        if true_curve is not None:
+        if type(true_curve) is not type(None):
             if matplotlib_function == 'fill_between':
                 for (isegment, (start, end)) in\
                     enumerate(zip(breakpoints[:-1], breakpoints[1:])):
@@ -1502,12 +1506,12 @@ class NLFitter(object):
                 raise ValueError("This error should never happen!")
         ax.set_xlim((x_values[0], x_values[-1]))
         ax.legend(fontsize=fontsize)
-        if title is None:
+        if type(title) is type(None):
             title = 'Reconstruction confidence intervals'
         ax.set_title(title, size=fontsize)
-        if xlabel is not None:
+        if type(xlabel) is not type(None):
             ax.set_xlabel(xlabel, size=fontsize)
-        if ylabel is not None:
+        if type(ylabel) is not type(None):
             ax.set_ylabel(ylabel, size=fontsize)
         ax.tick_params(labelsize=fontsize, width=2.5, length=7.5)
         if show:
@@ -1543,9 +1547,9 @@ class NLFitter(object):
         """
         parameter_indices = self.get_parameter_indices(parameters=parameters)
         num_parameter_plots = len(parameter_indices)
-        if thin is None:
+        if type(thin) is type(None):
             thin = 1
-        if walkers is None:
+        if type(walkers) is type(None):
             walkers = np.arange(self.nwalkers)
         elif type(walkers) in int_types:
             walkers = np.arange(walkers)
@@ -1651,7 +1655,7 @@ class NLFitter(object):
         parameter_indices = self.get_parameter_indices(parameters=parameters)
         labels = [self.parameters[parameter_index]\
             for parameter_index in parameter_indices]
-        if parameter_renamer is not None:
+        if type(parameter_renamer) is not type(None):
             labels = [parameter_renamer(label) for label in labels]
         if apply_transforms:
             samples = [self.transform_list[parameter_index](\
@@ -1662,7 +1666,7 @@ class NLFitter(object):
                 self.chain[:,:,parameter_index][walkers,:][:,::thin].flatten()\
                 for parameter_index in parameter_indices]
         num_samples = len(samples)
-        if reference_value_covariance is not None:
+        if type(reference_value_covariance) is not type(None):
             if isinstance(reference_value_covariance, np.ndarray):
                 if reference_value_covariance.shape != ((num_samples,) * 2):
                     raise ValueError("reference_value_covariance was a " +\
@@ -1680,7 +1684,7 @@ class NLFitter(object):
                     (reference_value_covariance[0],\
                     reference_value_covariance[1],\
                     reference_value_covariance[2:])
-                if contour_confidence_levels is None:
+                if type(contour_confidence_levels) is type(None):
                     confidence_level = 0.95
                     print("WARNING: No contour_confidence_levels given in " +\
                         "triangle_plot even though it is necessary to " +\
@@ -1701,9 +1705,9 @@ class NLFitter(object):
                 reference_value_covariance =\
                     likelihood.parameter_covariance_fisher_formalism(\
                     reference_value_mean, **fisher_kwargs)
-        if (reference_value_mean is not None) and apply_transforms:
-            reference_value_mean =\
-                [(None if (reference is None) else transform(reference))\
+        if (type(reference_value_mean) is not type(None)) and apply_transforms:
+            reference_value_mean = [(None\
+                if (type(reference) is type(None)) else transform(reference))\
                 for (transform, reference) in\
                 zip(self.transform_list[parameter_indices],\
                 reference_value_mean)]
@@ -1747,16 +1751,16 @@ class NLFitter(object):
         returns: None if show is True, otherwise Axes instance with plot
         """
         parameter_index = self.get_parameter_index(parameter_index)
-        if thin is None:
+        if type(thin) is type(None):
             thin = 1
-        if walkers is None:
+        if type(walkers) is type(None):
             walkers = np.arange(self.nwalkers)
         elif type(walkers) in int_types:
             walkers = np.arange(walkers)
         if apply_transforms:
             sample = self.transform_list[parameter_index](\
                 self.chain[:,:,parameter_index])[walkers,:][:,::thin].flatten()
-            if reference_value is not None:
+            if type(reference_value) is not type(None):
                 reference_value =\
                     self.transform_list[parameter_index](reference_value)
         else:
@@ -1815,9 +1819,9 @@ class NLFitter(object):
         """
         parameter_index1 = self.get_parameter_index(parameter_index1)
         parameter_index2 = self.get_parameter_index(parameter_index2)
-        if thin is None:
+        if type(thin) is type(None):
             thin = 1
-        if walkers is None:
+        if type(walkers) is type(None):
             walkers = np.arange(self.nwalkers)
         elif type(walkers) in int_types:
             walkers = np.arange(walkers)
@@ -1829,14 +1833,15 @@ class NLFitter(object):
             transform_list = TransformList(\
                 self.transform_list[parameter_index1],\
                 self.transform_list[parameter_index2])
-            if reference_value_covariance is not None:
+            if type(reference_value_covariance) is not type(None):
                 reference_value_covariance =\
                     transform_list.transform_covariance(\
                     reference_value_covariance, reference_value_mean,\
                     axis=(0, 1))
-            if reference_value_mean is not None:
-                reference_value_mean = [None if (reference is None)\
-                    else transform(reference) for (transform, reference) in\
+            if type(reference_value_mean) is not type(None):
+                reference_value_mean = [None if\
+                    (type(reference) is type(None)) else transform(reference)\
+                    for (transform, reference) in\
                     zip(transform_list, reference_value_mean)]
         else:
             xsample =\
@@ -1869,13 +1874,13 @@ class NLFitter(object):
         
         returns: None if show is True, otherwise Axes instance with plot
         """
-        if walkers is None:
+        if type(walkers) is type(None):
             walkers = np.arange(self.nwalkers)
         elif type(walkers) in int_types:
             walkers = np.arange(walkers)
         trimmed_lnprobability = self.lnprobability[walkers,:]
         steps = np.arange(self.nsteps)
-        if ax is None:
+        if type(ax) is type(None):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         if log_scale:
@@ -1915,7 +1920,7 @@ class NLFitter(object):
         
         returns: matplotlib.Figure if show is False, otherwise None
         """
-        if fig is None:
+        if type(fig) is type(None):
             fig = pl.figure(figsize=(14,14))
         ax = fig.add_subplot(211)
         self.plot_lnprobability(walkers=walkers, log_scale=False,\
@@ -1947,7 +1952,7 @@ class NLFitter(object):
         
         returns: None if show is True, otherwise Axes instance with plot
         """
-        if ax is None:
+        if type(ax) is type(None):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         if normalize_by_variances:
@@ -1978,7 +1983,7 @@ class NLFitter(object):
         
         returns: None if show is True, otherwise Axes instance with plot
         """
-        if ax is None:
+        if type(ax) is type(None):
             fig = pl.figure(figsize=(12,9))
             ax = fig.add_subplot(111)
         x_values = np.arange(self.num_parameters) + 1
@@ -2029,7 +2034,7 @@ class NLFitter(object):
         
         returns: matplotlib.Figure if show is False, otherwise None
         """
-        if fig is None:
+        if type(fig) is type(None):
             fig = pl.figure(figsize=(14,14))
         ax = fig.add_subplot(211)
         self.plot_rescaling_factors(log_scale=False, fontsize=fontsize, ax=ax,\
@@ -2062,13 +2067,13 @@ class NLFitter(object):
         
         returns: None if show is True, otherwise Axes instance with plot
         """
-        if walkers is None:
+        if type(walkers) is type(None):
             walkers = np.arange(self.nwalkers)
         elif type(walkers) in int_types:
             walkers = np.arange(walkers)
         trimmed_acceptance_fraction = self.acceptance_fraction[walkers,:]
         steps = np.arange(trimmed_acceptance_fraction.shape[1]) + 1
-        if ax is None:
+        if type(ax) is type(None):
             fig = pl.figure(figsize=(12,9))
             ax = fig.add_subplot(111)
         if average:
@@ -2132,7 +2137,7 @@ class NLFitter(object):
         
         returns: Figure if show is False, None if show is True
         """
-        if fig is None:
+        if type(fig) is type(None):
             fig = pl.figure(figsize=(20, 16))
         ax = fig.add_subplot(221)
         self.plot_acceptance_fraction(walkers=walkers, average=False, ax=ax,\

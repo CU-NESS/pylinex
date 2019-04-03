@@ -379,7 +379,7 @@ class TruncationExtractor(Savable):
                allowed if length of training set corresponding to element is
                num_channels) or an Expander object
         """
-        if value is None:
+        if type(value) is type(None):
             value = [NullExpander()] * self.num_bases
         if type(value) in sequence_types:
             num_expanders = len(value)

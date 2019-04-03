@@ -45,7 +45,7 @@ class BinnedModel(Model):
         value: either None or a 1D array of same length as unbinned_x_values
                given to the RectangularBinner underlying this model
         """
-        if value is None:
+        if type(value) is type(None):
             self._weights = value
         elif type(value) in sequence_types:
             value = np.array(value)
@@ -143,7 +143,7 @@ class BinnedModel(Model):
         returns: array of shape (num_channels, num_parameters)
         """
         transposed_gradient = self.model.gradient(parameters).T
-        if self.weights is None:
+        if type(self.weights) is type(None):
             return self.binner(transposed_gradient).T
         else:
             return self.binner(transposed_gradient,\
@@ -167,7 +167,7 @@ class BinnedModel(Model):
         returns: array of shape (num_channels, num_parameters, num_parameters)
         """
         transposed_hessian = self.model.hessian(parameters).T
-        if self.weights is None:
+        if type(self.weights) is type(None):
             return self.binner(transposed_hessian).T
         else:
             return self.binner(transposed_hessian,\

@@ -146,7 +146,7 @@ class BasisModel(LoadableModel):
                  is given, parameter_covariance doesn't really mean anything
                  (especially if error is far from 1 in magnitude)
         """
-        if error is None:
+        if type(error) is type(None):
             error = 1
         if type(error) in numerical_types:
             error = error * np.ones_like(data)

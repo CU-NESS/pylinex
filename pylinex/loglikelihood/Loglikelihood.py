@@ -384,7 +384,7 @@ class Loglikelihood(Savable, Loadable):
             smaller_differences=smaller_differences) /\
             covariance_reduction_factor
         distribution = GaussianDistribution(mean, covariance)
-        if prior_to_impose_in_transformed_space is not None:
+        if type(prior_to_impose_in_transformed_space) is not type(None):
             distribution = WindowedDistribution(distribution,\
                 prior_to_impose_in_transformed_space)
         return\

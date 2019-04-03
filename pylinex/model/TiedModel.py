@@ -122,7 +122,7 @@ class TiedModel(Model):
         
         value: None or a string
         """
-        if (value is None) or isinstance(value, basestring):
+        if (type(value) is type(None)) or isinstance(value, basestring):
             self._shared_name = value
         else:
             raise TypeError("shared_name was set to neither None nor a " +\
@@ -135,7 +135,7 @@ class TiedModel(Model):
         together (including underscore if shared_name is not None).
         """
         if not hasattr(self, '_shared_prefix'):
-            if self.shared_name is None:
+            if type(self.shared_name) is type(None):
                 self._shared_prefix = ''
             else:
                 self._shared_prefix = '{!s}_'.format(self.shared_name)

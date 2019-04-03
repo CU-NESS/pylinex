@@ -166,7 +166,7 @@ class BasisSet(object):
             return self.component_bases[self.names.index(key)]
         elif isinstance(key, dict):
             return self.basis_subsets(**key)
-        elif key is None:
+        elif type(key) is type(None):
             return self
         elif type(key) in int_types:
             return self.component_bases[key]
@@ -283,9 +283,9 @@ class BasisSet(object):
         
         group: the hdf5 file group to fill
         """
-        if basis_links is None:
+        if type(basis_links) is type(None):
             basis_links = [None for name in self.names]
-        if expander_links is None:
+        if type(expander_links) is type(None):
             expander_links = [None for name in self.names]
         for (iname, name) in enumerate(self.names):
             basis_link = basis_links[iname]

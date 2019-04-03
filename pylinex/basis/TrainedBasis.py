@@ -22,7 +22,7 @@ def weighted_SVD(matrix, error=None, full_matrices=False):
     matrix a horizontal rectangular matrix
     error weighting applied to the dimension corresponding to the rows
     """
-    if error is None:
+    if type(error) is type(None):
         error = np.ones(matrix.shape[0])
     expanded_error = error[:,np.newaxis]
     to_svd = matrix / expanded_error
@@ -43,9 +43,9 @@ def weighted_SVD_basis(curves, error=None, Neigen=None):
     
     returns: 2D numpy.ndarray of shape (Neigen, Nchannel)
     """
-    if error is None:
+    if type(error) is type(None):
         error = np.ones(curves.shape[-1])
-    if Neigen is None:
+    if type(Neigen) is type(None):
         Neigen = curves.shape[-1]
     SVD_U, SVD_S, SVD_V = weighted_SVD(curves.T, error=error)
     total_importance = np.sum(SVD_S)
@@ -70,9 +70,9 @@ class TrainedBasis(Basis):
         expander: Expander object which expands from training set space to
                   final basis vector space
         """
-        if error is None:
+        if type(error) is type(None):
             error = np.ones(training_set.shape[-1])
-        if expander is None:
+        if type(expander) is type(None):
             expander = NullExpander()
         error = expander.contract_error(error)
         SVD_basis = weighted_SVD_basis(training_set,\
@@ -327,7 +327,7 @@ class TrainedBasis(Basis):
         title: string title of the plot (can have LaTeX inside)
         kwargs: extra keyword arguments to pass on to matplotlib.pyplot.scatter
         """
-        if plot_xs is None:
+        if type(plot_xs) is type(None):
             plot_xs = np.arange(self.num_basis_vectors)
         fig = pl.figure()
         ax = fig.add_subplot(111)

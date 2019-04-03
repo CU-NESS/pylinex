@@ -182,7 +182,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
         """
         grid_slice = ((slice(None),) * self.ndim)
         if self.data.ndim > 1:
-            if which_data is None:
+            if type(which_data) is type(None):
                 raise ValueError("which_data must be given if data is not 1D.")
             elif type(which_data) in int_types:
                 grid_slice = grid_slice + (which_data,)
@@ -219,7 +219,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
                 if key in self.priors:
                     self.priors[key].fill_hdf5_group(\
                         subgroup.create_group(name))
-        if expander_links is None:
+        if type(expander_links) is type(None):
             expander_links = []
             for ibasis in range(len(self.names)):
                 expander_links.append(\
@@ -378,7 +378,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
                              "MetaFitter can be plotted.")
         if self.ndim != 2:
             raise ValueError("Only 2D grids can be plotted.")
-        if (fig is None) or (ax is None):
+        if (type(fig) is type(None)) or (type(ax) is type(None)):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         def_kwargs = {'interpolation': 'none'}
@@ -390,9 +390,9 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
                 grid = np.max(grid) - grid
             norm = LogNorm()
         pl.imshow(grid.T, norm=norm, **def_kwargs)
-        if xticks is not None:
+        if type(xticks) is not type(None):
             pl.xticks(np.arange(self.shape[0]), xticks)
-        if yticks is not None:
+        if type(yticks) is not type(None):
             pl.yticks(np.arange(self.shape[1]), yticks)
         pl.colorbar()
         pl.xlabel(xlabel)
@@ -442,11 +442,11 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
         ncols = self.shape[0]
         xtick_locations = [((i + 0.5) / ncols) for i in range(ncols)]
         ytick_locations = [((i + 0.5) / nrows) for i in range(nrows)][-1::-1]
-        if xticks is None:
+        if type(xticks) is type(None):
             xtick_strings = ([''] * ncols)
         else:
             xtick_strings = xticks
-        if yticks is None:
+        if type(yticks) is type(None):
             ytick_strings = ([''] * nrows)
         else:
             ytick_strings = yticks

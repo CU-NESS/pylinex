@@ -81,14 +81,14 @@ class TrainingSetIterator(object):
                           self.training_sets of objects which are either None
                           or Expander objects
         """
-        if value is None:
+        if type(value) is type(None):
             self._expanders =\
                 [NullExpander() for i in range(self.num_training_sets)]
         elif type(value) in sequence_types:
             if len(value) == self.num_training_sets:
                 self._expanders = []
                 for element in value:
-                    if element is None:
+                    if type(element) is type(None):
                         self._expanders.append(NullExpander())
                     elif isinstance(element, Expander):
                         self._expanders.append(element)
@@ -425,7 +425,7 @@ class TrainingSetIterator(object):
                otherwise, value should be an int number of curves that the user
                           wishes for this iterator to return
         """
-        if value is None:
+        if type(value) is type(None):
             pass
         elif type(value) in int_types:
             if value > 0:
