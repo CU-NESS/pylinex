@@ -9,7 +9,8 @@ Description: Example showing how to use the LeastSquareFitter class to fit a
 import os
 import numpy as np
 import matplotlib.pyplot as pl
-from distpy import UniformDistribution, GaussianDistribution, DistributionSet
+from distpy import UniformDistribution, GaussianDistribution,\
+    KroneckerDeltaDistribution, DistributionSet
 from pylinex import GaussianModel, GaussianLoglikelihood, LeastSquareFitter,\
     autocorrelation
 
@@ -37,6 +38,14 @@ prior_set.add_distribution(UniformDistribution(-2, 2), 'amplitude')
 prior_set.add_distribution(UniformDistribution(-1, 1), 'center')
 prior_set.add_distribution(UniformDistribution(0, 1), 'scale')
 
+exactly_correct_prior_set = DistributionSet()
+exactly_correct_prior_set.add_distribution(KroneckerDeltaDistribution(1),\
+    'amplitude')
+exactly_correct_prior_set.add_distribution(KroneckerDeltaDistribution(0),\
+    'center')
+exactly_correct_prior_set.add_distribution(KroneckerDeltaDistribution(0.1),\
+    'scale')
+
 bounds = {'amplitude': (-10, 10), 'center': (-1, 1), 'scale': (0, 1)}
 
 try:
@@ -49,6 +58,11 @@ try:
     assert(least_square_fitter.num_iterations == num_iterations // 2)
     least_square_fitter.run(num_iterations // 2)
     assert(least_square_fitter.num_iterations == (num_iterations // 2) * 2)
+    least_square_fitter = LeastSquareFitter(loglikelihood=loglikelihood,\
+        prior_set=exactly_correct_prior_set, **bounds)
+    least_square_fitter.run(iterations=num_iterations,\
+        cutoff_loglikelihood=((-1) * num_channels))
+    assert(least_square_fitter.num_iterations == 1)
 except:
     os.remove(file_name)
     raise

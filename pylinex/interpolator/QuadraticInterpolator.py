@@ -61,6 +61,8 @@ class QuadraticInterpolator(Interpolator):
         matrix = np.concatenate((matrix, np.ones((npoints, 1))), axis=1)
         try:
             matrix = la.inv(matrix)
+        except KeyboardInterrupt:
+            raise
         except:
             print('matrix={}'.format(matrix))
             raise

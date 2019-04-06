@@ -561,33 +561,39 @@ class LeastSquareFitter(object):
             self.covariance_estimates.append(covariance_estimate)
         else:
             self.covariance_estimates.append(None)
-        if type(self.file_name) is not type(None):
-            self.save_iteration()
+        self.save_iteration()
     
     def save_iteration(self):
         """
         Saves the last iteration of this LeastSquareFitter to the file 
         """
-        hdf5_file = h5py.File(self.file_name, 'r+')
-        group = hdf5_file['iterations']
-        subgroup = group.create_group('{:d}'.format(self.num_iterations))
-        subgroup.attrs['success'] = self.successes[-1]
-        subgroup.attrs['min_value'] = self.mins[-1]
-        subgroup.create_dataset('argmin', data=self.argmins[-1])
-        if type(self.covariance_estimates[-1]) is not type(None):
-            subgroup.create_dataset('covariance_estimate',\
-                data=self.covariance_estimates[-1])
+        if type(self.file_name) is not type(None):
+            hdf5_file = h5py.File(self.file_name, 'r+')
+            group = hdf5_file['iterations']
+            subgroup = group.create_group('{:d}'.format(self.num_iterations))
+            subgroup.attrs['success'] = self.successes[-1]
+            subgroup.attrs['min_value'] = self.mins[-1]
+            subgroup.create_dataset('argmin', data=self.argmins[-1])
+            if type(self.covariance_estimates[-1]) is not type(None):
+                subgroup.create_dataset('covariance_estimate',\
+                    data=self.covariance_estimates[-1])
         self.increment_index()
-        group.attrs['num_iterations'] = self.num_iterations
-        hdf5_file.close()
+        if type(self.file_name) is not type(None):
+            group.attrs['num_iterations'] = self.num_iterations
+            hdf5_file.close()
     
-    def run(self, iterations=1, attempt_threshold=100, **kwargs):
+    def run(self, iterations=1, attempt_threshold=100,\
+        cutoff_loglikelihood=np.inf, **kwargs):
         """
         Runs the given number of iterations of this fitter.
         
         iterations: must be a positive integer
         attempt_threshold: number of times an iteration should recur before
                            failing
+        cutoff_loglikelihood: if an iteration of this LeastSquareFitter
+                              achieves a loglikelihood above this value, the
+                              LeastSquareFitter is stopped early
+                              default value is np.inf
         kwargs: Keyword arguments to pass on as options to
                 scipy.optimize.minimize(method='SLSQP'). They can include:
                     ftol : float, precision goal for the loglikelihood in the
@@ -598,6 +604,9 @@ class LeastSquareFitter(object):
                     maxiter : int, maximum number of iterations.
         """
         for index in range(iterations):
+            if (len(self.argmins) > 0) and\
+                (self.min < ((-1) * cutoff_loglikelihood)):
+                continue
             self.iteration(attempt_threshold=attempt_threshold, **kwargs)
     
     def plot_reconstructions(self, parameter_indices=slice(None), model=None,\
