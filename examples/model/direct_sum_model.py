@@ -13,7 +13,7 @@ import matplotlib.pyplot as pl
 from pylinex import PadExpander, ConstantModel, ExpandedModel, DirectSumModel,\
     load_model_from_hdf5_file
 
-
+seed = 0
 fontsize = 24
 
 smaller_num_channels = 100
@@ -22,6 +22,8 @@ larger_num_channels = num_models * smaller_num_channels
 channels = np.arange(larger_num_channels)
 noise_level = 1
 
+
+np.random.seed(seed)
 names = [chr(ord('A') + index) for index in range(num_models)]
 expanders = [PadExpander('{:d}*'.format(index),\
     '{:d}*'.format(num_models - index - 1)) for index in range(num_models)]
@@ -51,10 +53,7 @@ data = true_curve + noise
 variances = np.sqrt(np.diag(covariance))
 expected_variances =\
     ((noise_level / np.sqrt(smaller_num_channels)) * np.ones(num_models))
-assert(np.all(np.abs(mean - true_parameters) <\
-    np.abs(true_parameters / 10)))
-assert(np.all(np.abs(variances - expected_variances) <\
-    (expected_variances / 10)))
+assert(np.all(np.abs(mean - true_parameters) < np.abs(5 * expected_variances)))
 fit_curve = direct_sum_model(mean)
 
 fig = pl.figure(figsize=(12, 9))

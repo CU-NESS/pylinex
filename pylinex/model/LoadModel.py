@@ -8,7 +8,7 @@ Description: File containing a function which can load a Model object from an
 """
 import importlib
 import numpy as np
-from distpy import Expression, load_transform_from_hdf5_group, TransformList,\
+from distpy import Expression, load_transform_from_hdf5_group, TransformList
 from ..util import get_hdf5_value, RectangularBinner
 from ..expander import load_expander_from_hdf5_group
 from ..basis import Basis
