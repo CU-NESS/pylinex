@@ -8,7 +8,7 @@ Description: File containing a class representing a model which ties together
              their parameters equal.
 """
 import numpy as np
-from ..util import sequence_types
+from ..util import sequence_types, create_hdf5_dataset
 from .Model import Model
 from .SumModel import SumModel
 
@@ -303,7 +303,8 @@ class TiedModel(Model):
         """
         group.attrs['class'] = 'TiedModel'
         group.attrs['shared_name'] = self.shared_name
-        group.create_dataset('tied_parameters', data=self.tied_parameters)
+        create_hdf5_dataset(group, 'tied_parameters',\
+            data=self.tied_parameters)
         subgroup = group.create_group('models')
         for (iname, name) in enumerate(self.names):
             subsubgroup = subgroup.create_group('{}'.format(iname))

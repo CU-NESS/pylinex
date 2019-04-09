@@ -6,7 +6,7 @@ Date: 23 Mar 2018
 Description: File containing a class representing a model whose parameters have
              been renamed.
 """
-from ..util import sequence_types, create_hdf5_dataset
+from ..util import sequence_types
 from .Model import Model
 
 try:

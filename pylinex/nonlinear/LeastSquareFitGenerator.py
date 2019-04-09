@@ -157,7 +157,7 @@ class LeastSquareFitGenerator(object):
         else:
             raise TypeError("bounds was set to a non-dict.")
     
-    def fit(self, data, iterations=1):
+    def fit(self, data, iterations=1, cutoff_loglikelihood=np.inf):
         """
         Generates a LeastSquareFitter to fit the given data and runs it for the
         given number of iterations.
@@ -165,6 +165,10 @@ class LeastSquareFitGenerator(object):
         data: 1D vector of same length as the error array property
         iterations: the positive integer number of times to run the
                     LeastSquareFitter which this object/method generates
+        cutoff_loglikelihood: if an iteration of this LeastSquareFitter
+                              achieves a loglikelihood above this value, the
+                              LeastSquareFitter is stopped early
+                              default value is np.inf
         
         returns: LeastSquareFitter object which has been run for the given
                  number of iterations
@@ -172,6 +176,7 @@ class LeastSquareFitGenerator(object):
         loglikelihood = GaussianLoglikelihood(data, self.error, self.model)
         least_square_fitter =\
             LeastSquareFitter(loglikelihood, self.prior_set, **self.bounds)
-        least_square_fitter.run(iterations=iterations)
+        least_square_fitter.run(iterations=iterations,\
+            cutoff_loglikelihood=cutoff_loglikelihood)
         return least_square_fitter
 

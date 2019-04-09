@@ -131,7 +131,7 @@ class ExtractionPlotter(object):
                 subgroup = group['dimension_{}'.format(idim)]
                 this_dimension = {}
                 for key in subgroup:
-                    this_dimension[key] = subgroup[key][()]
+                    this_dimension[key] = get_hdf5_value(subgroup[key])
                 self._dimensions.append(this_dimension)
                 idim += 1
         return self._dimensions

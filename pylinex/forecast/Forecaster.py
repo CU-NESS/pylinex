@@ -19,7 +19,7 @@ import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as pl
 from distpy import ChiSquaredDistribution
-from ..util import sequence_types
+from ..util import sequence_types, create_hdf5_dataset, get_hdf5_value
 from ..expander import NullExpander
 from ..quantity import CompiledQuantity, FunctionQuantity
 from ..fitter import Extractor
@@ -135,7 +135,7 @@ class Forecaster(object):
             group = hdf5_file.create_group('input_curves')
             for (name, curve_set, indices) in\
                 zip(names, curve_sets, curve_set_indices):
-                group.create_dataset(name, data=curve_set[indices,:])
+                create_hdf5_dataset(group, name, data=curve_set[indices,:])
             extractor.fill_hdf5_group(hdf5_file, save_all_fitters=True,\
                 save_training_sets=False, save_channel_estimates=False)
             hdf5_file.close()
@@ -169,7 +169,7 @@ class Forecaster(object):
             self._input_curves = {}
             group = self.plotter.file['input_curves']
             for name in group:
-                self._input_curves[name] = group[name][()]
+                self._input_curves[name] = get_hdf5_value(group[name])
         return self._input_curves
     
     def make_data_curves(self, ncurves, curve_sets, expanders, error,\

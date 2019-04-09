@@ -8,7 +8,7 @@ Description: File containing a function which can load a Model object from an
 """
 import importlib
 import numpy as np
-from distpy import Expression, load_transform_from_hdf5_group, TransformList
+from distpy import Expression, load_transform_from_hdf5_group, TransformList,\
 from ..util import get_hdf5_value, RectangularBinner
 from ..expander import load_expander_from_hdf5_group
 from ..basis import Basis
@@ -107,7 +107,7 @@ def load_model_from_hdf5_group(group):
                 return DistortedModel(model, transform_list)
             elif class_name == 'ProjectedModel':
                 basis = Basis.load_from_hdf5_group(group['basis'])
-                error = group['error'][()]
+                error = get_hdf5_value(group['error'])
                 return ProjectedModel(model, basis, error=error)
             elif class_name == 'ScaledModel':
                 scale_factor = group.attrs['scale_factor']
@@ -156,8 +156,8 @@ def load_model_from_hdf5_group(group):
                 return DirectSumModel(names, models)
             elif class_name == 'TiedModel':
                 shared_name = group.attrs['shared_name']
-                tied_parameters =\
-                    [element for element in group['tied_parameters'][()]]
+                tied_parameters = [element\
+                    for element in get_hdf5_value(group['tied_parameters'])]
                 return TiedModel(names, models, shared_name, *tied_parameters)
             elif class_name == 'ProductModel':
                 return ProductModel(names, models)

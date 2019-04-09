@@ -8,7 +8,8 @@ Description: File containing a class and function which bins using a
 """
 from __future__ import division
 import numpy as np
-from distpy import Savable, Loadable, sequence_types
+from distpy import Savable, Loadable, sequence_types, create_hdf5_dataset,\
+    get_hdf5_value
 
 class RectangularBinner(Savable, Loadable):
     """
@@ -259,8 +260,9 @@ class RectangularBinner(Savable, Loadable):
         """
         Fills the given hdf5 file group with data about this RectangularBinner.
         """
-        group.create_dataset('unbinned_x_values', data=self.unbinned_x_values)
-        group.create_dataset('bin_edges', data=self.bin_edges)
+        create_hdf5_dataset(group, 'unbinned_x_values',\
+            data=self.unbinned_x_values)
+        create_hdf5_dataset(group, 'bin_edges', data=self.bin_edges)
     
     @staticmethod
     def load_from_hdf5_group(group):
@@ -271,8 +273,8 @@ class RectangularBinner(Savable, Loadable):
         
         returns: RectangularBinner whose info was saved in the given group
         """
-        unbinned_x_values = group['unbinned_x_values'][()]
-        bin_edges = group['bin_edges'][()]
+        unbinned_x_values = get_hdf5_value(group['unbinned_x_values'])
+        bin_edges = get_hdf5_value(group['bin_edges'])
         return RectangularBinner(unbinned_x_values, bin_edges)
     
     def __eq__(self, other):

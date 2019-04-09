@@ -8,7 +8,7 @@ Description: File containing a class representing a model which is a simple
 """
 import numpy as np
 import numpy.linalg as la
-from ..util import numerical_types, sequence_types
+from ..util import numerical_types, sequence_types, create_hdf5_dataset
 from ..basis import Basis
 from .Model import Model
 
@@ -193,7 +193,7 @@ class ProjectedModel(Model):
         group.attrs['class'] = 'ProjectedModel'
         self.model.fill_hdf5_group(group.create_group('model'))
         self.basis.fill_hdf5_group(group.create_group('basis'))
-        group.create_dataset('error', data=self.error)
+        create_hdf5_dataset(group, 'error', data=self.error)
     
     def __eq__(self, other):
         """

@@ -13,6 +13,7 @@ import numpy.linalg as la
 import matplotlib.pyplot as pl
 from scipy.optimize import minimize
 from distpy import TransformList, cast_to_transform_list, DistributionSet
+from ..util import create_hdf5_dataset, get_hdf5_value
 from ..loglikelihood import Loglikelihood, GaussianLoglikelihood,\
     load_loglikelihood_from_hdf5_group
 
@@ -101,12 +102,12 @@ class LeastSquareFitter(object):
             successes.append(subgroup.attrs['success'])
             min_value = subgroup.attrs['min_value']
             mins.append(min_value)
-            argmin = subgroup['argmin'][()]
+            argmin = get_hdf5_value(subgroup['argmin'])
             argmins.append(argmin)
             transformed_argmins.append(self.transform_list.apply(argmin))
             if 'covariance_estimate' in subgroup:
                 covariance_estimates.append(\
-                    subgroup['covariance_estimate'][()])
+                    get_hdf5_value(subgroup['covariance_estimate']))
             else:
                 covariance_estimates.append(None)
             reduced_chi_squared_statistics.append((2 * min_value) /\
@@ -573,9 +574,9 @@ class LeastSquareFitter(object):
             subgroup = group.create_group('{:d}'.format(self.num_iterations))
             subgroup.attrs['success'] = self.successes[-1]
             subgroup.attrs['min_value'] = self.mins[-1]
-            subgroup.create_dataset('argmin', data=self.argmins[-1])
+            create_hdf5_dataset(subgroup, 'argmin', data=self.argmins[-1])
             if type(self.covariance_estimates[-1]) is not type(None):
-                subgroup.create_dataset('covariance_estimate',\
+                create_hdf5_dataset(subgroup, 'covariance_estimate',\
                     data=self.covariance_estimates[-1])
         self.increment_index()
         if type(self.file_name) is not type(None):

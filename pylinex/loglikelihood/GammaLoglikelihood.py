@@ -7,7 +7,8 @@ Description: File containing a class which evaluates a likelihood whose data
              are Gamma-distributed.
 """
 import numpy as np
-from ..util import real_numerical_types, sequence_types
+from ..util import real_numerical_types, sequence_types, create_hdf5_dataset,\
+    get_hdf5_value
 from .LoglikelihoodWithData import LoglikelihoodWithData
 from .LoglikelihoodWithModel import LoglikelihoodWithModel
 
@@ -81,7 +82,7 @@ class GammaLoglikelihood(LoglikelihoodWithModel):
         group.attrs['class'] = 'GammaLoglikelihood'
         self.save_data(group, data_link=data_link)
         self.save_model(group, **model_links)
-        group.create_dataset('num_averaged', data=self.num_averaged)
+        create_hdf5_dataset(group, 'num_averaged', data=self.num_averaged)
     
     @staticmethod
     def load_from_hdf5_group(group):
@@ -100,7 +101,7 @@ class GammaLoglikelihood(LoglikelihoodWithModel):
                 "GammaLoglikelihood object.")
         data = LoglikelihoodWithData.load_data(group)
         model = LoglikelihoodWithModel.load_model(group)
-        num_averaged = group['num_averaged'][()]
+        num_averaged = get_hdf5_value(group['num_averaged'])
         return GammaLoglikelihood(data, model, num_averaged)
     
     def __call__(self, pars, return_negative=False):

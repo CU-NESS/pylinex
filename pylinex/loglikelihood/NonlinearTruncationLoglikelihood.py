@@ -8,7 +8,7 @@ Description: File containing a class which represents a DIC-like loglikelihood
              of bases as the parameters of the likelihood.
 """
 import numpy as np
-from ..util import create_hdf5_dataset, real_numerical_types, sequence_types
+from ..util import real_numerical_types, sequence_types
 from ..basis import Basis, BasisSet
 from ..fitter import Fitter
 from ..model import TruncatedBasisHyperModel, CompositeModel

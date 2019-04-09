@@ -14,7 +14,8 @@ from emcee import EnsembleSampler
 from distpy import GaussianDistribution, CustomDiscreteDistribution,\
     DistributionSet, GaussianJumpingDistribution, JumpingDistributionSet,\
     MetropolisHastingsSampler
-from ..util import bool_types, int_types, real_numerical_types, sequence_types
+from ..util import bool_types, int_types, real_numerical_types,\
+    sequence_types, create_hdf5_dataset, get_hdf5_value
 from ..loglikelihood import Loglikelihood
 
 try:
@@ -793,7 +794,7 @@ class Sampler(object):
         last_checkpoint_group =\
             last_checkpoint_group['{:d}'.format(self.checkpoint_index-1)]
         last_checkpoint_loglikelihood =\
-            last_checkpoint_group['lnprobability'][()]
+            get_hdf5_value(last_checkpoint_group['lnprobability'])
         walker_averaged_loglikelihood =\
             np.mean(last_checkpoint_loglikelihood, axis=-1)
         if trim_tails:
@@ -806,7 +807,7 @@ class Sampler(object):
                 np.ones_like(walker_averaged_loglikelihood)
         likelihood_based_weights = (likelihood_based_weights[:,np.newaxis] *\
             np.ones(last_checkpoint_loglikelihood.shape)).flatten()
-        last_checkpoint_chain = last_checkpoint_group['chain'][()]
+        last_checkpoint_chain = get_hdf5_value(last_checkpoint_group['chain'])
         last_checkpoint_chain_continuous =\
             last_checkpoint_chain[...,continuous_parameter_indices]
         flattened_shape = (-1, last_checkpoint_chain_continuous.shape[-1])
@@ -877,7 +878,7 @@ class Sampler(object):
         last_checkpoint_group =\
             last_checkpoint_group['{:d}'.format(self.checkpoint_index-1)]
         last_checkpoint_loglikelihood =\
-            last_checkpoint_group['lnprobability'][()]
+            get_hdf5_value(last_checkpoint_group['lnprobability'])
         walker_averaged_loglikelihood =\
             np.mean(last_checkpoint_loglikelihood, axis=-1)
         if trim_tails:
@@ -890,7 +891,7 @@ class Sampler(object):
                 np.ones_like(walker_averaged_loglikelihood)
         likelihood_based_weights = (likelihood_based_weights[:,np.newaxis] *\
             np.ones(last_checkpoint_loglikelihood.shape)).flatten()
-        last_checkpoint_chain = last_checkpoint_group['chain'][()]
+        last_checkpoint_chain = get_hdf5_value(last_checkpoint_group['chain'])
         last_checkpoint_chain_continuous =\
             last_checkpoint_chain[...,continuous_parameter_indices]
         flattened_shape = (-1, last_checkpoint_chain_continuous.shape[-1])
@@ -966,8 +967,9 @@ class Sampler(object):
             last_checkpoint_group =\
                 last_checkpoint_group['{:d}'.format(self.checkpoint_index-1)]
             last_checkpoint_loglikelihood =\
-                last_checkpoint_group['lnprobability'][()]
-            last_checkpoint_chain = last_checkpoint_group['chain'][()]
+                get_hdf5_value(last_checkpoint_group['lnprobability'])
+            last_checkpoint_chain =\
+                get_hdf5_value(last_checkpoint_group['chain'])
             maximum_likelihood_index = np.unravel_index(\
                 np.argmax(last_checkpoint_loglikelihood),\
                 last_checkpoint_loglikelihood.shape)
@@ -1033,11 +1035,11 @@ class Sampler(object):
                  values of the walkers' lnprobability
         """
         group = self.file['state']
-        pos = group['pos'][()]
-        lnprob = group['lnprob'][()]
+        pos = get_hdf5_value(group['pos'])
+        lnprob = get_hdf5_value(group['lnprob'])
         subgroup = group['rstate']
         alg = subgroup.attrs['algorithm']
-        keys = subgroup['keys'][()]
+        keys = get_hdf5_value(subgroup['keys'])
         rstate_pos = subgroup.attrs['pos']
         has_gauss = subgroup.attrs['has_gauss']
         cached_gaussian = subgroup.attrs['cached_gaussian']
@@ -1573,11 +1575,11 @@ class Sampler(object):
             del group['rstate'], group['pos'], group['lnprob']
         else:
             group = self.file.create_group('state')
-        group.create_dataset('pos', data=self.pos)
-        group.create_dataset('lnprob', data=self.lnprob)
+        create_hdf5_dataset(group, 'pos', data=self.pos)
+        create_hdf5_dataset(group, 'lnprob', data=self.lnprob)
         subgroup = group.create_group('rstate')
         subgroup.attrs['algorithm'] = self.rstate[0]
-        subgroup.create_dataset('keys', data=self.rstate[1])
+        create_hdf5_dataset(subgroup, 'keys', data=self.rstate[1])
         subgroup.attrs['pos'] = self.rstate[2]
         subgroup.attrs['has_gauss'] = self.rstate[3]
         subgroup.attrs['cached_gaussian'] = self.rstate[4]
@@ -1588,10 +1590,10 @@ class Sampler(object):
         """
         group = self.file['checkpoints/chunk{0:d}'.format(self.chunk_index)]
         subgroup = group.create_group('{}'.format(self.checkpoint_index))
-        subgroup.create_dataset('chain', data=self.sampler.chain)
-        subgroup.create_dataset('lnprobability',\
+        create_hdf5_dataset(subgroup, 'chain', data=self.sampler.chain)
+        create_hdf5_dataset(subgroup, 'lnprobability',\
             data=self.sampler.lnprobability)
-        subgroup.create_dataset('acceptance_fraction',\
+        create_hdf5_dataset(subgroup, 'acceptance_fraction',\
             data=self.sampler.acceptance_fraction)
         group.attrs['max_checkpoint_index'] = self.checkpoint_index
     

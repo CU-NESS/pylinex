@@ -6,7 +6,6 @@ Date: 13 Feb 2018
 Description: File containing function which loads Quantity objects from hdf5
              file groups.
 """
-from ..util import get_hdf5_value
 from .ConstantQuantity import ConstantQuantity
 from .AttributeQuantity import AttributeQuantity
 from .FunctionQuantity import FunctionQuantity

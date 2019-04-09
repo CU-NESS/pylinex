@@ -9,7 +9,7 @@ Description: File containing class which creates sets of curves given models
 from __future__ import division
 import os, time, h5py
 import numpy as np
-from ..util import bool_types, int_types
+from ..util import bool_types, int_types, create_hdf5_dataset, get_hdf5_value
 from distpy import DistributionSet
 from .Model import Model
 from .LoadModel import load_model_from_hdf5_group
@@ -283,9 +283,10 @@ class TrainingSetCreator(object):
                         curve = np.array([np.nan])
                     else:
                         raise
-                self.file['parameters'].create_dataset(curve_string,\
+                create_hdf5_dataset(self.file['parameters'], curve_string,\
                     data=parameter_draw)
-                self.file['curves'].create_dataset(curve_string, data=curve)
+                create_hdf5_dataset(self.file['curves'], curve_string,\
+                    data=curve)
                 completed += 1
                 self.file.attrs['next_index'] = completed
                 self.close()
@@ -340,7 +341,7 @@ class TrainingSetCreator(object):
         training_set = np.ndarray((de_facto_num_curves, num_channels))
         to_keep = []
         for icurve in range(de_facto_num_curves):
-            curve = group['curve_{:d}'.format(icurve)][()]
+            curve = get_hdf5_value(group['curve_{:d}'.format(icurve)])
             if np.any(np.isnan(curve)):
                 training_set[icurve,:] = np.nan
             else:
@@ -354,7 +355,8 @@ class TrainingSetCreator(object):
                 np.ndarray((de_facto_num_curves, self.model.num_parameters))
             group = self.file['parameters']
             for icurve in range(de_facto_num_curves):
-                parameters[icurve,:] = group['curve_{:d}'.format(icurve)][()]
+                parameters[icurve,:] =\
+                    get_hdf5_value(group['curve_{:d}'.format(icurve)])
             parameters = parameters[to_keep,:]
             parameters = {param: parameters[:,iparam]\
                 for (iparam, param) in enumerate(self.model.parameters)}
@@ -384,13 +386,15 @@ class TrainingSetCreator(object):
             de_facto_num_curves += 1
         to_keep = []
         for icurve in range(de_facto_num_curves):
-            if np.any(np.isnan(group['curve_{:d}'.format(icurve)][()])):
+            temp_curve_string = 'curve_{:d}'.format(icurve)
+            if np.any(np.isnan(get_hdf5_value(group[temp_curve_string]))):
                 to_keep.append(icurve)
         self.close()
         parameters = np.ndarray((len(to_keep), self.model.num_parameters))
         group = self.file['parameters']
         for (iicurve, icurve) in enumerate(to_keep):
-            parameters[iicurve,:] = group['curve_{:d}'.format(icurve)][()]
+            parameters[iicurve,:] =\
+                get_hdf5_value(group['curve_{:d}'.format(icurve)])
         parameters = {param: parameters[:,iparam]\
             for (iparam, param) in enumerate(self.model.parameters)}
         return (self.model, parameters)
@@ -424,7 +428,7 @@ class TrainingSetCreator(object):
         training_set = np.ndarray((num_curves, num_channels))
         to_keep = []
         for icurve in range(num_curves):
-            curve = group['curve_{:d}'.format(icurve)][()]
+            curve = get_hdf5_value(group['curve_{:d}'.format(icurve)])
             if np.any(np.isnan(curve)):
                 training_set[icurve,:] = np.nan
             else:
@@ -437,7 +441,8 @@ class TrainingSetCreator(object):
             parameters = np.ndarray((num_curves, model.num_parameters))
             group = hdf5_file['parameters']
             for icurve in range(num_curves):
-                parameters[icurve,:] = group['curve_{:d}'.format(icurve)][()]
+                parameters[icurve,:] =\
+                    get_hdf5_value(group['curve_{:d}'.format(icurve)])
             parameters = parameters[to_keep,:]
             parameters = {parameter: parameters[:,iparameter]\
                 for (iparameter, parameter) in enumerate(model.parameters)}
@@ -521,13 +526,15 @@ class TrainingSetCreator(object):
             num_curves += 1
         to_keep = []
         for icurve in range(num_curves):
-            if np.any(np.isnan(group['curve_{:d}'.format(icurve)][()])):
+            temp_curve_string = 'curve_{:d}'.format(icurve)
+            if np.any(np.isnan(get_hdf5_value(group[temp_curve_string]))):
                 to_keep.append(icurve)
         model = load_model_from_hdf5_group(hdf5_file['model'])
         parameters = np.ndarray((len(to_keep), model.num_parameters))
         group = hdf5_file['parameters']
         for (iicurve, icurve) in enumerate(to_keep):
-            parameters[iicurve,:] = group['curve_{:d}'.format(icurve)][()]
+            parameters[iicurve,:] =\
+                get_hdf5_value(group['curve_{:d}'.format(icurve)])
         parameters = {parameter: parameters[:,iparameter]\
             for (iparameter, parameter) in enumerate(model.parameters)}
         hdf5_file.close()

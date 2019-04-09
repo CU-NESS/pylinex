@@ -7,7 +7,7 @@ Description: File containing a simple Model which always yields a fixed curve.
              The model has no parameters
 """
 import numpy as np
-from ..util import sequence_types
+from ..util import sequence_types, create_hdf5_dataset, get_hdf5_value
 from .LoadableModel import LoadableModel
 
 class FixedModel(LoadableModel):
@@ -117,7 +117,7 @@ class FixedModel(LoadableModel):
         group: the hdf5 file group to fill with information about this model
         """
         group.attrs['class'] = 'FixedModel'
-        group.create_dataset('fixed_curve', data=self.fixed_curve)
+        create_hdf5_dataset(group, 'fixed_curve', data=self.fixed_curve)
     
     def quick_fit(self, data, error=None):
         """
@@ -163,5 +163,5 @@ class FixedModel(LoadableModel):
         
         returns: a FixedModel object
         """
-        return FixedModel(group['fixed_curve'][()])
+        return FixedModel(get_hdf5_value(group['fixed_curve']))
 

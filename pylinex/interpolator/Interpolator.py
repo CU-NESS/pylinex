@@ -7,7 +7,7 @@ Description: File containing class which performs many-dimensional
              interpolation with the aid of a Delaunay mesh.
 """
 import numpy as np
-from scipy.spatial import Delaunay
+from scipy.spatial import ConvexHull, Delaunay
 from distpy import AffineTransform, cast_to_transform_list, TransformList,\
     UniformTriangulationDistribution
 from ..util import sequence_types
@@ -94,6 +94,20 @@ class Interpolator(object):
         if not hasattr(self, '_delaunay'):
             self._delaunay = Delaunay(self.inputs)
         return self._delaunay
+    
+    @property
+    def convex_hull_delaunay(self):
+        """
+        Property storing the scipy.spatial.ConvexHull object storing the
+        ConvexHull.
+        """
+        if not hasattr(self, '_convex_hull_delaunay'):
+            convex_hull = ConvexHull(self.inputs)
+            convex_hull_vertices = convex_hull.points[convex_hull.vertices]
+            print("convex_hull_vertices.shape={}".format(\
+                convex_hull_vertices.shape))
+            self._convex_hull_delaunay = Delaunay(convex_hull_vertices)
+        return self._convex_hull_delaunay
     
     @property
     def inputs(self):
@@ -283,7 +297,8 @@ class Interpolator(object):
         which aren't on the convex hull of the points of the delaunay.
         """
         if not hasattr(self, '_prior'):
-            self._prior = UniformTriangulationDistribution(self.delaunay)
+            self._prior =\
+                UniformTriangulationDistribution(self.convex_hull_delaunay)
         return self._prior
     
     def __call__(self, point):
