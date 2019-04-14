@@ -360,11 +360,27 @@ class NLFitter(object):
         self._jumping_distribution_set =\
             JumpingDistributionSet.load_from_hdf5_group(\
             self.file['jumping_distribution_sets/chunk{:d}'.format(ichunk)])
+        if 'chunk{:d}'.format(ichunk) in self.file['prior_distribution_sets']:
+            self._prior_distribution_set =\
+                DistributionSet.load_from_hdf5_group(\
+                self.file['prior_distribution_sets/chunk{:d}'.format(ichunk)])
+        else:
+            self._prior_distribution_set = None
         self._chain = np.concatenate(chain_chunks, axis=1)
         self._lnprobability = np.concatenate(lnprobability_chunks, axis=1)
         self._acceptance_fraction =\
             np.concatenate(acceptance_fraction_chunks, axis=1)
         del chain_chunks, lnprobability_chunks, acceptance_fraction_chunks
+    
+    @property
+    def prior_distribution_set(self):
+        """
+        Property storing the prior distribution(s) used in the sampler
+        underlying this fitter.
+        """
+        if not hasattr(self, '_prior_distribution_set'):
+            self._load_checkpoints()
+        return self._prior_distribution_set
     
     @property
     def guess_distribution_set(self):

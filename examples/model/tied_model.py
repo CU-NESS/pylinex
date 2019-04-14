@@ -13,6 +13,7 @@ from pylinex import TiedModel, GaussianModel, GaussianLoglikelihood,\
     LeastSquareFitter
 
 fontsize = 24
+legend_fontsize = 12
 xs = np.linspace(-1, 1, 1000)
 noise_level = 0.1
 num_iterations = 10
@@ -43,7 +44,9 @@ prior_set.add_distribution(UniformDistribution(0.9, 1.1), 'shared_amplitude')
 prior_set.add_distribution(UniformDistribution(0.1, 0.2), 'shared_scale')
 prior_set.add_distribution(UniformDistribution(-1, -0.2), 'a_center')
 prior_set.add_distribution(UniformDistribution(0.2, 1), 'b_center')
-least_square_fitter = LeastSquareFitter(loglikelihood, prior_set)
+bounds = {'shared_amplitude': (None, None), 'shared_scale': (0, None),\
+    'a_center': (None, None), 'b_center': (None, None)}
+least_square_fitter = LeastSquareFitter(loglikelihood, prior_set, **bounds)
 least_square_fitter.run(iterations=num_iterations)
 argmin = least_square_fitter.successful_argmin
 fit_vector = tied_model(argmin)
@@ -62,7 +65,7 @@ ax.plot(xs, true_nonrandom_gradient[:,3], color='y',\
 ax.plot(xs, true_nonrandom_vector, color='k',\
     label='True: {!s}'.format(parameter_vector))
 ax.plot(xs, fit_vector, color='r', label='Fit: {!s}'.format(argmin))
-ax.legend(fontsize=fontsize)
+ax.legend(fontsize=legend_fontsize)
 ax.set_xlabel('x', size=fontsize)
 ax.set_xlim((xs[0], xs[-1]))
 ax.set_ylabel('y', size=fontsize)
