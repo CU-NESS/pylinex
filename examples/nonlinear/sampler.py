@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as pl
 from distpy import UniformDistribution, GaussianDistribution, DistributionSet,\
     GaussianJumpingDistribution, JumpingDistributionSet,\
-    InfiniteUniformDistribution
+    TruncatedGaussianDistribution
 from pylinex import GaussianModel, GaussianLoglikelihood, BurnRule, Sampler,\
     NLFitter
 
@@ -25,7 +25,6 @@ nwalkers = 30
 nthreads = 1 # to test multithreading, set to > 1
 file_name = 'TESTING_SAMPLER_CLASS.hdf5'
 num_channels = 100
-num_iterations = 100
 quarter_ncheckpoints = 25
 steps_per_checkpoint = 10
 x_values = np.linspace(99, 101, num_channels)
@@ -59,11 +58,12 @@ jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-2),\
     'scale', 'log10')
 
 prior_distribution_set = DistributionSet()
-prior_distribution_set.add_distribution(InfiniteUniformDistribution(),\
+prior_distribution_set.add_distribution(GaussianDistribution(1, 100),\
     'amplitude')
-prior_distribution_set.add_distribution(InfiniteUniformDistribution(),\
+prior_distribution_set.add_distribution(GaussianDistribution(100, 100),\
     'center')
-prior_distribution_set.add_distribution(InfiniteUniformDistribution(), 'scale')
+prior_distribution_set.add_distribution(\
+    TruncatedGaussianDistribution(0.1, 100, low=0), 'scale')
 
 #nwalkers = 2 * loglikelihood.num_parameters
 
@@ -104,7 +104,9 @@ try:
     sampler.close()
     fitter = NLFitter(file_name)
     fitter.plot_acceptance_fraction_four_types()
-    fitter.plot_lnprobability_both_types()
+    fitter.plot_lnprobability_both_types(which='posterior')
+    fitter.plot_lnprobability_both_types(which='likelihood')
+    fitter.plot_lnprobability_both_types(which='prior')
     fitter.plot_chain(show=False, amplitude=true_amplitude,\
         center=true_center, scale=true_scale)
     fig = fitter.triangle_plot(parameters='.*', plot_type='contourf',\

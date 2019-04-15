@@ -513,6 +513,39 @@ class NLFitter(object):
         return self._lnprobability
     
     @property
+    def lnprior(self):
+        """
+        Property storing the log of the prior probability at each sampling
+        point. Note that depending on the distributions included in the
+        prior_distribution_set, this may or may not be normalized, although in
+        either case, the normalization is consistent throughout the run.
+        """
+        if not hasattr(self, '_lnprior'):
+            (nwalkers, nsteps) = self.lnprobability.shape
+            self._lnprior = np.zeros((nwalkers, nsteps))
+            if type(self.prior_distribution_set) is not type(None):
+                for iwalker in range(nwalkers):
+                    for istep in range(nsteps):
+                        values = dict(zip(self.parameters,\
+                            self.chain[iwalker,istep,:]))
+                        self._lnprior[iwalker,istep] =\
+                            self.prior_distribution_set.log_value(values)
+        return self._lnprior
+    
+    @property
+    def lnlikelihood(self):
+        """
+        Property storing the values of the loglikelihood from each sampled
+        point. This is equal to the log of the posterior minus the log of the
+        prior. Note that the lnlikelihood property (this one) contains
+        numerical values at sampled points whereas the loglikelihood property
+        contains the Loglikelihood object used to evaluate points.
+        """
+        if not hasattr(self, '_lnlikelihood'):
+            self._lnlikelihood = self.lnprobability - self.lnprior
+        return self._lnlikelihood
+    
+    @property
     def maximum_probability_multi_index(self):
         """
         Property storing a tuple of the form (iwalker, istep) where iwalker and
@@ -522,6 +555,28 @@ class NLFitter(object):
             self._maximum_probability_multi_index = np.unravel_index(\
                 np.argmax(self.lnprobability), self.lnprobability.shape)
         return self._maximum_probability_multi_index
+    
+    @property
+    def maximum_prior_multi_index(self):
+        """
+        Property storing a tuple of the form (iwalker, istep) where iwalker and
+        istep describe the maximizing index of the lnprior array.
+        """
+        if not hasattr(self, '_maximum_prior_multi_index'):
+            self._maximum_prior_multi_index = np.unravel_index(\
+                np.argmax(self.lnprior), self.lnprior.shape)
+        return self._maximum_prior_multi_index
+    
+    @property
+    def maximum_likelihood_multi_index(self):
+        """
+        Property storing a tuple of the form (iwalker, istep) where iwalker and
+        istep describe the maximizing index of the lnlikelihood array.
+        """
+        if not hasattr(self, '_maximum_likelihood_multi_index'):
+            self._maximum_likelihood_multi_index = np.unravel_index(\
+                np.argmax(self.lnlikelihood), self.lnlikelihood.shape)
+        return self._maximum_likelihood_multi_index
     
     @property
     def maximum_probability_parameters(self):
@@ -546,6 +601,54 @@ class NLFitter(object):
                 {name: value for (name, value) in\
                 zip(self.parameters, self.maximum_probability_parameters)}
         return self._maximum_probability_parameter_dictionary
+    
+    @property
+    def maximum_prior_parameters(self):
+        """
+        Property storing the maximum prior set of parameters found by the
+        MCMC sampler upon which this NLFitter is based.
+        """
+        if not hasattr(self, '_maximum_prior_parameters'):
+            self._maximum_prior_parameters =\
+                self.chain[self.maximum_prior_multi_index]
+        return self._maximum_prior_parameters
+    
+    @property
+    def maximum_prior_parameter_dictionary(self):
+        """
+        Property storing the maximum prior parameters in the form of a
+        dictionary whose keys are the parameter names and whose values are the
+        maximum prior values.
+        """
+        if not hasattr(self, '_maximum_prior_parameter_dictionary'):
+            self._maximum_prior_parameter_dictionary =\
+                {name: value for (name, value) in\
+                zip(self.parameters, self.maximum_prior_parameters)}
+        return self._maximum_prior_parameter_dictionary
+    
+    @property
+    def maximum_likelihood_parameters(self):
+        """
+        Property storing the maximum likelihood set of parameters found by the
+        MCMC sampler upon which this NLFitter is based.
+        """
+        if not hasattr(self, '_maximum_likelihood_parameters'):
+            self._maximum_likelihood_parameters =\
+                self.chain[self.maximum_likelihood_multi_index]
+        return self._maximum_likelihood_parameters
+    
+    @property
+    def maximum_likelihood_parameter_dictionary(self):
+        """
+        Property storing the maximum likelihood parameters in the form of a
+        dictionary whose keys are the parameter names and whose values are the
+        maximum likelihood values.
+        """
+        if not hasattr(self, '_maximum_likelihood_parameter_dictionary'):
+            self._maximum_likelihood_parameter_dictionary =\
+                {name: value for (name, value) in\
+                zip(self.parameters, self.maximum_likelihood_parameters)}
+        return self._maximum_likelihood_parameter_dictionary
     
     @property
     def acceptance_fraction(self):
@@ -654,6 +757,25 @@ class NLFitter(object):
             self._flattened_lnprobability =\
                 np.concatenate(self.lnprobability.T, axis=0)
         return self._flattened_probability
+    
+    @property
+    def flattened_lnprior(self):
+        """
+        Property storing a flattened version of the lnprior array.
+        """
+        if not hasattr(self, '_flattened_lnprior'):
+            self._flattened_lnprior = np.concatenate(self.lnprior.T, axis=0)
+        return self._flattened_lnprior
+    
+    @property
+    def flattened_lnlikelihood(self):
+        """
+        Property storing a flattened version of the lnlikelihood array
+        """
+        if not hasattr(self, '_flattened_lnlikelihood'):
+            self._flattened_lnlikelihood =\
+                np.concatenate(self.lnlikelihood.T, axis=0)
+        return self._flattened_lnlikelihood
     
     @property
     def parameter_mean(self):
@@ -1078,7 +1200,8 @@ class NLFitter(object):
         return reconstructions - true_curve
     
     def reconstruction_confidence_intervals(self, number, probabilities,\
-        parameters=None, model=None, return_reconstructions=False):
+        parameters=None, model=None, reconstructions=None,\
+        return_reconstructions=False):
         """
         Computes confidence intervals on reconstructions of quantities created
         by applying the given model to the given parameters from this fitter's
@@ -1095,6 +1218,9 @@ class NLFitter(object):
         model: if None (default), full likelihood's model is used
                otherwise, the model with which to create reconstructions from
                           parameters
+        reconstructions: reconstructions to use, if they have already been
+                         calculated. In most cases, this should remain None
+                         (its default value)
         return_reconstructions: if True (default: False), returns
                                 reconstructions as well as intervals.
         
@@ -1105,8 +1231,9 @@ class NLFitter(object):
                  (value_when_return_reconstructions_is_False, reconstructions)
                  where reconstructions has shape (number, num_channels)
         """
-        reconstructions =\
-            self.reconstructions(number, parameters=parameters, model=model)
+        if type(reconstructions) is type(None):
+            reconstructions = self.reconstructions(number,\
+                parameters=parameters, model=model)
         sorted_channel_values = np.sort(reconstructions, axis=0)
         single_input = (type(probabilities) in real_numerical_types)
         if single_input:
@@ -1131,7 +1258,8 @@ class NLFitter(object):
         return return_value
     
     def bias_confidence_intervals(self, number, probabilities,\
-        parameters=None, model=None, true_curve=None):
+        parameters=None, model=None, true_curve=None, reconstructions=None,\
+        return_biases=False):
         """
         Computes confidence intervals on differences between reconstructions of
         quantities created by applying the given model to the given parameters
@@ -1149,6 +1277,9 @@ class NLFitter(object):
                otherwise, the model with which to create reconstructions from
                           parameters
         true_curve: curve to subtract from all reconstructions to compute bias
+        reconstructions: reconstructions to use, if they have already been
+                         calculated. In most cases, this should remain None
+                         (its default value)
         return_biases: if True (default: False), returns biases as well as
                        intervals.
         
@@ -1160,7 +1291,8 @@ class NLFitter(object):
         """
         (intervals, reconstructions) =\
             self.reconstruction_confidence_intervals(number, probabilities,\
-            parameters=parameters, model=model, return_reconstructions=True)
+            parameters=parameters, model=model,\
+            reconstructions=reconstructions, return_reconstructions=True)
         if type(true_curve) is type(None):
             if (type(parameters) is type(None)) and\
                 (type(model) is type(None)):
@@ -1261,9 +1393,9 @@ class NLFitter(object):
             return ax
     
     def plot_reconstructions(self, number, parameters=None, model=None,\
-        true_curve=None, subtract_truth=False, x_values=None,\
-        ax=None, xlabel=None, ylabel=None, title=None, fontsize=28,\
-        scale_factor=1., matplotlib_function='plot',\
+        true_curve=None, reconstructions=None, subtract_truth=False,\
+        x_values=None, ax=None, xlabel=None, ylabel=None, title=None,\
+        fontsize=28, scale_factor=1., matplotlib_function='plot',\
         return_reconstructions=False, breakpoints=None, show=False, **kwargs):
         """
         Plots a given number of reconstructions using given parameters
@@ -1279,6 +1411,9 @@ class NLFitter(object):
                otherwise, the model with which to create reconstructions from
                           parameters
         true_curve: true form of the quantity being reconstructed
+        reconstructions: reconstructions to use, if they have already been
+                         calculated. In most cases, this should remain None
+                         (its default value)
         subtract_truth: if True, true_curve is subtracted from all plotted
                                  curve(s)
         x_values: the array to use as the x_values of all plots.
@@ -1303,8 +1438,9 @@ class NLFitter(object):
                  ((ax, reconstructions) if return_reconstructions else None)
                  where ax is an Axes instance with plot
         """
-        reconstructions =\
-            self.reconstructions(number, parameters=parameters, model=model)
+        if type(reconstructions) is type(None):
+            reconstructions = self.reconstructions(number,\
+                parameters=parameters, model=model)
         if type(ax) is type(None):
             fig = pl.figure()
             ax = fig.add_subplot(111)
@@ -1393,11 +1529,12 @@ class NLFitter(object):
             return ax
     
     def plot_reconstruction_confidence_intervals(self, number, probabilities,\
-        parameters=None, model=None, true_curve=None, x_values=None,\
-        matplotlib_function='fill_between', ax=None, figsize=(12,9),\
-        alphas=None, xlabel=None, ylabel=None, title=None, fontsize=28,\
-        scale_factor=1., show=False, return_reconstructions=False,\
-        breakpoints=None, error_expansion_factors=1., **kwargs):
+        parameters=None, model=None, reconstructions=None, true_curve=None,\
+        x_values=None, matplotlib_function='fill_between', ax=None,\
+        figsize=(12,9), alphas=None, xlabel=None, ylabel=None, title=None,\
+        fontsize=28, scale_factor=1., show=False,\
+        return_reconstructions=False, breakpoints=None,\
+        error_expansion_factors=1., **kwargs):
         """
         Plots reconstruction confidence intervals with the given model,
         parameters, and confidence levels.
@@ -1413,6 +1550,9 @@ class NLFitter(object):
         model: if None (default), full model is used
                otherwise, the model with which to create reconstructions from
                           parameters
+        reconstructions: reconstructions to use, if they have already been
+                         calculated. In most cases, this should remain None
+                         (its default value)
         true_curve: true form of the quantity being reconstructed
         x_values: the array to use as the x_values of all plots.
                   If None, x_values start at 0 and increment up in steps of 1
@@ -1455,7 +1595,8 @@ class NLFitter(object):
                 available_matplotlib_functions))
         (intervals, reconstructions) =\
             self.reconstruction_confidence_intervals(number, probabilities,\
-            parameters=parameters, model=model, return_reconstructions=True)
+            parameters=parameters, model=model,\
+            reconstructions=reconstructions, return_reconstructions=True)
         mean_reconstruction = np.mean(reconstructions, axis=0)
         if type(probabilities) in real_numerical_types:
             probabilities = [probabilities]
@@ -1872,7 +2013,7 @@ class NLFitter(object):
             contour_confidence_levels=contour_confidence_levels, **kwargs)
     
     def plot_lnprobability(self, walkers=None, log_scale=False,\
-        title='Log probability', fontsize=24, ax=None, show=False):
+        which='posterior', fontsize=24, ax=None, show=False):
         """
         Plots the log probability values accessed by this MCMC chain.
         
@@ -1882,7 +2023,7 @@ class NLFitter(object):
         log_scale: if False (default), everything is plotted on linear scale
                    if True, difference from maximum likelihood is plotted on a
                             log scale (on y-axis)
-        title: string title to put on top of Axes
+        which: one of 'posterior' (default), 'likelihood', or 'prior'
         fontsize: size of fonts for labels and title
         ax: Axes instance on which to plot the log_probability chain
         show: if True, matplotlib.pyplot.show() is called before this function
@@ -1894,7 +2035,15 @@ class NLFitter(object):
             walkers = np.arange(self.nwalkers)
         elif type(walkers) in int_types:
             walkers = np.arange(walkers)
-        trimmed_lnprobability = self.lnprobability[walkers,:]
+        if which == 'posterior':
+            trimmed_lnprobability = self.lnprobability[walkers,:]
+        elif which == 'likelihood':
+            trimmed_lnprobability = self.lnlikelihood[walkers,:]
+        elif which == 'prior':
+            trimmed_lnprobability = self.lnprior[walkers,:]
+        else:
+            raise ValueError("'which' argument of plot_lnprobability was " +\
+                "neither 'posterior', 'likelihood', and 'prior'.")
         steps = np.arange(self.nsteps)
         if type(ax) is type(None):
             fig = pl.figure()
@@ -1907,7 +2056,7 @@ class NLFitter(object):
             ax.plot(steps, trimmed_lnprobability.T)
             ax.set_ylabel('$\ln(p)$', size=fontsize)
         ax.set_xlim((steps[0], steps[-1]))
-        ax.set_title(title, size=fontsize)
+        ax.set_title('Log {!s}'.format(which), size=fontsize)
         ax.set_xlabel('Step number', size=fontsize)
         ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
             which='major')
@@ -1919,7 +2068,7 @@ class NLFitter(object):
             return ax
     
     def plot_lnprobability_both_types(self, walkers=None,\
-        title='Log probability', fontsize=24, fig=None, show=False):
+        which='posterior', fontsize=24, fig=None, show=False):
         """
         Plots both types of lnprobability plots on a single matplotlib.Figure
         
@@ -1940,10 +2089,14 @@ class NLFitter(object):
             fig = pl.figure(figsize=(14,14))
         ax = fig.add_subplot(211)
         self.plot_lnprobability(walkers=walkers, log_scale=False,\
-            title=title, fontsize=fontsize, ax=ax, show=False)
+            which=which, fontsize=fontsize, ax=ax, show=False)
+        ax.set_xlabel('')
+        ax.set_xticklabels([])
         ax = fig.add_subplot(212)
         self.plot_lnprobability(walkers=walkers, log_scale=True,\
-            title='', fontsize=fontsize, ax=ax, show=False)
+            which=which, fontsize=fontsize, ax=ax, show=False)
+        ax.set_title('')
+        fig.subplots_adjust(hspace=0)
         if show:
             pl.show()
         else:
@@ -2195,11 +2348,23 @@ class NLFitter(object):
             fontsize=fontsize, fig=None, show=False)
         acceptance_fraction_figure = self.plot_acceptance_fraction_four_types(\
             walkers=walkers, fig=None, fontsize=fontsize, show=False)
-        log_probability_figure = self.plot_lnprobability_both_types(\
-            walkers=walkers, fontsize=fontsize, fig=None, show=False)
+        log_posterior_figure = self.plot_lnprobability_both_types(\
+            which='posterior', walkers=walkers, fontsize=fontsize, fig=None,\
+            show=False)
+        if type(self.prior_distribution_set) is not type(None):
+            log_likelihood_figure = self.plot_lnprobability_both_types(\
+                which='likelihood', walkers=walkers, fontsize=fontsize,\
+                fig=None, show=False)
+            log_prior_figure = self.plot_lnprobability_both_types(\
+                which='prior', walkers=walkers, fontsize=fontsize, fig=None,\
+                show=False)
         if show:
             pl.show()
         else:
-            return (convergence_figure, acceptance_fraction_figure,\
-                log_probability_figure)
+            return_value = (convergence_figure, acceptance_fraction_figure,\
+                log_posterior_figure)
+            if type(self.prior_distribution_set) is not type(None):
+                return_value = return_value +\
+                    (log_likelihood_figure, log_prior_figure)
+            return return_value
 
