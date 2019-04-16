@@ -212,6 +212,31 @@ class GaussianLoglikelihood(LoglikelihoodWithModel):
         else:
             return logL_value
     
+    def chi_squared(self, parameters):
+        """
+        Computes the (non-reduced) chi squared statistic. It should follow a
+        chi squared distribution with the correct number of degrees of freedom.
+        
+        parameters: the parameter values at which to evaluate chi squared
+        
+        returns: single number statistic equal to the negative of twice the
+                 loglikelihood
+        """
+        return ((-2.) * self(parameters, return_negative=False))
+    
+    def chi_squared_z_score(self, parameters):
+        """
+        Computes the z-score of the chi squared value computed at the given
+        parameters.
+        
+        parameters: the parameter values at which to evaluate chi squared
+        
+        returns: single value which should be roughly Gaussian with mean 0 and
+                 stdv 1 if degrees_of_freedom is very large.
+        """
+        return (self.chi_squared(parameters) - self.degrees_of_freedom) /\
+            np.sqrt(2 * self.degrees_of_freedom)
+    
     def reduced_chi_squared(self, parameters):
         """
         Computes the reduced chi squared statistic. It should follow a
@@ -224,8 +249,7 @@ class GaussianLoglikelihood(LoglikelihoodWithModel):
                  GaussianLoglikelihood object (since additive constant
                  corresponding to normalization constant is not included)
         """
-        return ((-2.) * self(parameters, return_negative=False)) /\
-            self.degrees_of_freedom
+        return self.chi_squared(parameters) / self.degrees_of_freedom
     
     def fisher_information_no_hessian(self, maximum_likelihood_parameters,\
         transform_list=None, differences=1e-6):
