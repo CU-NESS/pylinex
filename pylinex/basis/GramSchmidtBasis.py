@@ -76,7 +76,7 @@ def orthonormal_harmonic_basis(num_points, max_degree, error=None):
         if is_sin:
             return np.sin(((index + 1) / 2.) * xs)
         else:
-            return np.cos(((index + 1) / 2.) * xs)
+            return np.cos((index / 2.) * xs)
     seed_vectors = np.array([vector(i) for i in range(num_basis)])
     return orthonormal_basis(seed_vectors, error=error)
 

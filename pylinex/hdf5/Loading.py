@@ -83,5 +83,5 @@ def load_loglikelihood_from_hdf5_file(file_name):
     hdf5_file = h5py.File(file_name, 'r')
     loglikelihood = load_loglikelihood_from_hdf5_group(hdf5_file)
     hdf5_file.close()
-    return model
+    return loglikelihood
 
