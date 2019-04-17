@@ -9,7 +9,7 @@ Description: File which contains class which generates LeastSquareFitter
              produces and runs LeastSquareFitter objects.
 """
 import numpy as np
-from distpy import DistributionSet
+from distpy import DistributionSet, cast_to_transform_list
 from ..util import sequence_types
 from ..model import Model
 from ..loglikelihood import GaussianLoglikelihood
@@ -21,7 +21,7 @@ class LeastSquareFitGenerator(object):
     Basically, the class is a wrapper around an error curve and a model. Given
     data curves, it produces and runs LeastSquareFitter objects.
     """
-    def __init__(self, error, model, prior_set, **bounds):
+    def __init__(self, error, model, prior_set, transform_list=None, **bounds):
         """
         Initializes a LeastSquareFitGenerator object with the given error
         array, Model object, and a prior DistributionSet object.
@@ -30,6 +30,11 @@ class LeastSquareFitGenerator(object):
         model: Model object with which to fit each data curve
         prior_set: DistributionSet object which describes distribution of
                    parameters of model
+        transform_list: TransformList (or something which can be cast to a
+                        TransformList object) describing how to find
+                        transformed_argmin and covariance estimate in the
+                        transform space. Note that this DOES NOT perform the
+                        least square fit in transformed space
         **bounds: keyword arguments are interpreted as parameter bounds. The
                   keywords are the parameter names and the values should be
                   2-tuples of the form (min, max) where either can be None.
@@ -37,7 +42,32 @@ class LeastSquareFitGenerator(object):
         self.error = error
         self.model = model
         self.prior_set = prior_set
+        self.transform_list = transform_list
         self.bounds = bounds
+    
+    @property
+    def transform_list(self):
+        """
+        Property storing a TransformList object storing Transforms which define
+        the space in which covariance estimates are returned.
+        """
+        if not hasattr(self, '_transform_list'):
+            raise AttributeError("transform_list referenced before it was " +\
+                "set.")
+        return self._transform_list
+    
+    @transform_list.setter
+    def transform_list(self, value):
+        """
+        Setter for the TransformList which defines the space in which
+        covariance estimates are returned.
+        
+        value: must be a TransformList or something castable to a TransformList
+               with a length given by the number of parameters in the vector to
+               be optimized.
+        """
+        self._transform_list = cast_to_transform_list(value,\
+            num_transforms=self.model.num_parameters)
     
     @property
     def error(self):
@@ -157,7 +187,8 @@ class LeastSquareFitGenerator(object):
         else:
             raise TypeError("bounds was set to a non-dict.")
     
-    def fit(self, data, iterations=1, cutoff_loglikelihood=np.inf):
+    def fit(self, data, iterations=1, cutoff_loglikelihood=np.inf,\
+        file_name=None):
         """
         Generates a LeastSquareFitter to fit the given data and runs it for the
         given number of iterations.
@@ -169,13 +200,17 @@ class LeastSquareFitGenerator(object):
                               achieves a loglikelihood above this value, the
                               LeastSquareFitter is stopped early
                               default value is np.inf
+        file_name: if given (default None), this is a path to a file to which
+                   the least square fitter to be saved (or from which it should
+                   be loaded)
         
         returns: LeastSquareFitter object which has been run for the given
                  number of iterations
         """
         loglikelihood = GaussianLoglikelihood(data, self.error, self.model)
-        least_square_fitter =\
-            LeastSquareFitter(loglikelihood, self.prior_set, **self.bounds)
+        least_square_fitter = LeastSquareFitter(loglikelihood=loglikelihood,\
+            prior_set=self.prior_set, transform_list=self.transform_list,\
+            file_name=file_name, **self.bounds)
         least_square_fitter.run(iterations=iterations,\
             cutoff_loglikelihood=cutoff_loglikelihood)
         return least_square_fitter
