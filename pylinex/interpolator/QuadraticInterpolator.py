@@ -16,25 +16,6 @@ class QuadraticInterpolator(Interpolator):
     Class which performs many-dimensional quadratic interpolation with the aid
     of a Delaunay mesh.
     """
-    def find_nearest_points(self, point):
-        """
-        Finds the nearest points
-        
-        point: 1D numpy.ndarray of parameters
-        
-        returns: tuple of form (points, values) where points is a 2D
-                 numpy.ndarray of shape (npoints, input_dimension) and values
-                 is a 2D numpy.ndarray of shape (npoints, output_dimension),
-                 and npoints is (input_dimension+1)(input_dimension+2)/2
-        """
-        distances = np.sum((self.inputs - point[np.newaxis,:]) ** 2, axis=1)
-        npoints =\
-            ((self.input_dimension + 1) * (self.input_dimension + 2) // 2)
-        points = np.argsort(distances)[:npoints]
-        values = self.outputs[points,:]
-        points = self.inputs[points,:]
-        return (points, values)
-    
     def value_gradient_and_hessian(self, point, transformed_space=False):
         """
         Computes the value, its gradient, and its hessian, of this
@@ -48,9 +29,9 @@ class QuadraticInterpolator(Interpolator):
         """
         original_point = point.copy()
         point = self.combined_transform_list.apply(point, axis=0)
-        (points, values) = self.find_nearest_points(point)
         npoints =\
             (((self.input_dimension + 1) * (self.input_dimension + 2)) // 2)
+        (points, values) = self.find_nearest_points(point, npoints)
         points = points - point[np.newaxis,:]
         matrix = points ** 2
         for index in range(self.input_dimension):

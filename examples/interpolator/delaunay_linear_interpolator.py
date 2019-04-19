@@ -1,7 +1,7 @@
 """
-File: examples/interpolator/linear_interpolator.py
+File: examples/interpolator/delaunay_linear_interpolator.py
 Author: Keith Tauscher
-Date: 19 Apr 2019
+Date: 24 Mar 2018
 
 Description: Example showing how to initialize and use a LinearInterpolator
              object.
@@ -10,23 +10,25 @@ from __future__ import division
 import time
 import numpy as np
 import matplotlib.pyplot as pl
-from pylinex import LinearInterpolator
+from pylinex import DelaunayLinearInterpolator
 
 fontsize = 'xx-large'
 seed = 0
-ninputs = 1000
-npoints = 100000
-ndim = 7
-inputs = np.random.uniform(0.5, 1, size=(ninputs, ndim))
+npoints = 10000
+ndim = 3
+input_arrays = [np.linspace(0, 1, 30)] * ndim
+input_arrays = np.meshgrid(*input_arrays)
+input_arrays = [input_array.flatten() for input_array in input_arrays]
+inputs = np.stack(input_arrays, axis=1)
 outputs = np.prod(inputs, axis=1)
 
-interpolator = LinearInterpolator(inputs, outputs, scale_to_cube=True)
+interpolator = DelaunayLinearInterpolator(inputs, outputs, scale_to_cube=True)
 
 np.random.seed(seed)
 
 
 points_to_interpolate =\
-    np.random.uniform(0.65, 0.85, size=(npoints, ndim))
+    np.random.uniform(0.25, 0.75, size=(npoints, ndim))
 absolute_errors = np.ndarray(npoints)
 relative_errors = np.ndarray(npoints)
 times = np.ndarray(npoints)

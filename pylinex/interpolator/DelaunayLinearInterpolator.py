@@ -1,18 +1,16 @@
 """
-File: pylinex/util/LinearInterpolator.py
+File: pylinex/util/DelaunayLinearInterpolator.py
 Author: Keith Tauscher
-Date: 19 Apr 2019
+Date: 21 Jan 2018
 
 Description: File containing class which performs many-dimensional linear
-             interpolation. This is for use when Delaunay meshes of input space
-             are computationally prohibitive (otherwise, you should use the
-             DelaunayLinearInterpolator class).
+             interpolation with the aid of a Delaunay mesh.
 """
 import numpy as np
 import numpy.linalg as la
 from .Interpolator import Interpolator
 
-class LinearInterpolator(Interpolator):
+class DelaunayLinearInterpolator(Interpolator):
     """
     Class which performs many-dimensional linear interpolation with the aid of
     a Delaunay mesh.
@@ -34,8 +32,13 @@ class LinearInterpolator(Interpolator):
         """
         original_point = point
         point = self.combined_transform_list.apply(point, axis=0)
-        npoints = self.input_dimension + 1
-        (points, values) = self.find_nearest_points(point, npoints)
+        isimplex = self.delaunay.find_simplex(point)
+        if isimplex == -1:
+            raise ValueError("point is not within the convex hull of the " +\
+                "training inputs given.")
+        simplex = self.delaunay.simplices[isimplex]
+        points = self.delaunay.points[simplex,:]
+        values = self.outputs[simplex,:]
         if self.save_memory:
             gradient =\
                 np.ndarray((self.output_dimension, self.input_dimension))

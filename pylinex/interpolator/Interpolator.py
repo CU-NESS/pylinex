@@ -360,4 +360,21 @@ class Interpolator(object):
                  possibilities depend on whether output_dimension is 1 or not)
         """
         raise shouldnt_instantiate_interpolator_error
+    
+    def find_nearest_points(self, point, npoints):
+        """
+        Finds the nearest points
+        
+        point: 1D numpy.ndarray of parameters
+        npoints: number of points to look for
+        
+        returns: tuple of form (points, values) where points is a 2D
+                 numpy.ndarray of shape (npoints, input_dimension) and values
+                 is a 2D numpy.ndarray of shape (npoints, output_dimension)
+        """
+        distances = np.sum((self.inputs - point[np.newaxis,:]) ** 2, axis=1)
+        points = np.argsort(distances)[:npoints]
+        values = self.outputs[points,:]
+        points = self.inputs[points,:]
+        return (points, values)
 

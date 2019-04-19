@@ -15,8 +15,8 @@ from pylinex.util import int_types, float_types, real_numerical_types,\
     VariableGrid, autocorrelation, chi_squared, psi_squared,\
     RectangularBinner, rect_bin, univariate_histogram, confidence_contour_2D,\
     bivariate_histogram, triangle_plot
-from pylinex.interpolator import Interpolator, LinearInterpolator,\
-    QuadraticInterpolator
+from pylinex.interpolator import Interpolator, DelaunayLinearInterpolator,\
+    LinearInterpolator, QuadraticInterpolator
 from pylinex.quantity import Quantity, ConstantQuantity, AttributeQuantity,\
     FunctionQuantity, CompiledQuantity, CalculatedQuantity, QuantityFinder,\
     load_quantity_from_hdf5_group

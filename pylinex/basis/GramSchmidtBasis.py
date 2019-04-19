@@ -7,6 +7,7 @@ Description: File containing subclass of Basis which implements a set of basis
              vectors created through a Gram-Schmidt orthogonalization
              procedure.
 """
+from __future__ import division
 import numpy as np
 from ..expander import NullExpander
 from .Basis import Basis
@@ -72,11 +73,12 @@ def orthonormal_harmonic_basis(num_points, max_degree, error=None):
     xs = np.linspace(-np.pi, np.pi, num_points)
     num_basis = (2 * max_degree) + 1
     def vector(index):
+        scaled_xs = (((index + 1) // 2) * xs)
         is_sin = bool(index % 2)
         if is_sin:
-            return np.sin(((index + 1) / 2.) * xs)
+            return np.sin(scaled_xs)
         else:
-            return np.cos((index / 2.) * xs)
+            return np.cos(scaled_xs)
     seed_vectors = np.array([vector(i) for i in range(num_basis)])
     return orthonormal_basis(seed_vectors, error=error)
 

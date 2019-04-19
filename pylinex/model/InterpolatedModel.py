@@ -10,7 +10,8 @@ import numpy as np
 from distpy import cast_to_transform_list, TransformList, DistributionSet
 from ..util import int_types, sequence_types, create_hdf5_dataset,\
     get_hdf5_value
-from ..interpolator import LinearInterpolator, QuadraticInterpolator
+from ..interpolator import LinearInterpolator, QuadraticInterpolator,\
+    DelaunayLinearInterpolator
 from ..expander import Expander, NullExpander, load_expander_from_hdf5_group
 from ..basis import TrainedBasis, effective_training_set_rank
 from .Model import Model
@@ -91,7 +92,7 @@ class InterpolatedModel(Model):
         
         value: either 'linear' or 'quadratic'
         """
-        if value in ['linear', 'quadratic']:
+        if value in ['delaunay_linear', 'linear', 'quadratic']:
             self._interpolation_method = value
         else:
             raise ValueError("interpolation_method was neither linear nor " +\
@@ -387,7 +388,12 @@ class InterpolatedModel(Model):
         interpolation at the heart of this model.
         """
         if not hasattr(self, '_interpolator'):
-            if self.interpolation_method == 'linear':
+            if self.interpolation_method == 'delaunay_linear':
+                self._interpolator =\
+                    DelaunayLinearInterpolator(self.training_inputs,\
+                    self.training_outputs, transform_list=self.transform_list,\
+                    scale_to_cube=self.scale_to_cube)
+            elif self.interpolation_method == 'linear':
                 self._interpolator = LinearInterpolator(self.training_inputs,\
                     self.training_outputs, transform_list=self.transform_list,\
                     scale_to_cube=self.scale_to_cube)

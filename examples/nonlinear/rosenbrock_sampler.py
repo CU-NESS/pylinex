@@ -56,7 +56,7 @@ else:
         guess_distribution_set=guess_distribution_set,\
         prior_distribution_set=None, nthreads=nthreads,\
         steps_per_checkpoint=steps_per_checkpoint, restart_mode=None)
-sampler.run_checkpoints(ncheckpoints)
+sampler.run_checkpoints(ncheckpoints, silence_error=True)
 sampler.close()
 fitter = NLFitter(file_name)
 fitter.plot_acceptance_fraction(log_scale=True, ax=None, show=False)
