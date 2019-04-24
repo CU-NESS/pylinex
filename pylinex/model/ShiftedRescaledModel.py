@@ -66,9 +66,11 @@ class ShiftedRescaledModel(LoadableModel):
         
         center: central x_value of scaled Lorentzian
         scale: the scale of the x values
-               if scale==1, then same width as standard Lorentzian
         """
-        return ((self.x_values - center) / scale)
+        if scale == 0:
+            return np.inf * np.sign(self.x_values - center)
+        else:
+            return ((self.x_values - center) / scale)
     
     def __call__(self, pars):
         """

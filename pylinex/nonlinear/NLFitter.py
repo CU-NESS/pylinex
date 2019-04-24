@@ -1530,10 +1530,10 @@ class NLFitter(object):
     
     def plot_reconstruction_confidence_intervals(self, number, probabilities,\
         parameters=None, model=None, reconstructions=None, true_curve=None,\
-        x_values=None, matplotlib_function='fill_between', ax=None,\
-        figsize=(12,9), alphas=None, xlabel=None, ylabel=None, title=None,\
-        fontsize=28, scale_factor=1., show=False,\
-        return_reconstructions=False, breakpoints=None,\
+        subtract_truth=False, x_values=None, ax=None,\
+        matplotlib_function='fill_between', figsize=(12,9), alphas=None,\
+        xlabel=None, ylabel=None, title=None, fontsize=28, scale_factor=1.,\
+        show=False, return_reconstructions=False, breakpoints=None,\
         error_expansion_factors=1., **kwargs):
         """
         Plots reconstruction confidence intervals with the given model,
@@ -1635,32 +1635,40 @@ class NLFitter(object):
                         (interval[0][start:end] + interval[1][start:end]) / 2
                     half_width =\
                         (interval[1][start:end] - interval[0][start:end]) / 2
-                    ax.fill_between(x_values[start:end], (center -\
-                        (error_expansion_factor * half_width)) * scale_factor,\
-                        (center + (error_expansion_factor * half_width)) *\
-                        scale_factor, alpha=alphas[iinterval],\
+                    ax.fill_between(x_values[start:end], ((center -\
+                        (error_expansion_factor * half_width)) *\
+                        scale_factor) -\
+                        (true_curve[start:end] if subtract_truth else 0),\
+                        ((center + (error_expansion_factor * half_width)) *\
+                        scale_factor) -\
+                        (true_curve[start:end] if subtract_truth else 0),\
+                        alpha=alphas[iinterval],\
                         label=(confidence_label if (isegment == 0) else None),\
                         **kwargs)
             elif matplotlib_function == 'errorbar':
                 error = [((endpoint - mean_reconstruction) * scale_factor *\
                     sign * error_expansion_factors)\
                     for (sign, endpoint) in zip((-1, 1), interval)]
-                ax.errorbar(x_values, mean_reconstruction * scale_factor,\
-                    yerr=error, alpha=alphas[iinterval],\
-                    label=confidence_label, **kwargs)
+                ax.errorbar(x_values, (mean_reconstruction * scale_factor) -\
+                    (true_curve if subtract_truth else 0), yerr=error,\
+                    alpha=alphas[iinterval], label=confidence_label, **kwargs)
             else:
                 raise ValueError("This error should never happen!")
         if type(true_curve) is not type(None):
-            if matplotlib_function == 'fill_between':
-                for (isegment, (start, end)) in\
-                    enumerate(zip(breakpoints[:-1], breakpoints[1:])):
-                    ax.plot(x_values[start:end], true_curve[start:end],\
-                        linewidth=2, color='k',\
-                        label=('input' if (isegment == 0) else None))
-            elif matplotlib_function == 'errorbar':
-                ax.scatter(x_values, true_curve, color='k')
+            if subtract_truth:
+                ax.plot(x_values, np.zeros_like(x_values), linewidth=2,\
+                    color='k', label='input')
             else:
-                raise ValueError("This error should never happen!")
+                if matplotlib_function == 'fill_between':
+                    for (isegment, (start, end)) in\
+                        enumerate(zip(breakpoints[:-1], breakpoints[1:])):
+                        ax.plot(x_values[start:end], true_curve[start:end],\
+                            linewidth=2, color='k',\
+                            label=('input' if (isegment == 0) else None))
+                elif matplotlib_function == 'errorbar':
+                    ax.scatter(x_values, true_curve, color='k')
+                else:
+                    raise ValueError("This error should never happen!")
         ax.set_xlim((x_values[0], x_values[-1]))
         ax.legend(fontsize=fontsize)
         if type(title) is type(None):

@@ -129,6 +129,13 @@ try:
         probabilities, parameters=parameter_regex, model=model,\
         true_curve=input_data, x_values=x_values, ax=ax, alphas=alphas,\
         title='68% and 95% confidence intervals', show=False)
+    fig = pl.figure()
+    ax = fig.add_subplot(111)
+    ax = fitter.plot_reconstruction_confidence_intervals(number,\
+        probabilities, parameters=parameter_regex, model=model,\
+        true_curve=input_curve, subtract_truth=True, x_values=x_values, ax=ax,\
+        alphas=alphas, show=False,\
+        title='68% and 95% confidence intervals with truth subtracted')
     fig = pl.figure(figsize=(12,9))
     ax = fig.add_subplot(111)
     number = 100

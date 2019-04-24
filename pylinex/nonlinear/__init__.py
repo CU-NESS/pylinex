@@ -14,3 +14,4 @@ from pylinex.nonlinear.Sampler import Sampler
 from pylinex.nonlinear.BurnRule import BurnRule
 from pylinex.nonlinear.NLFitter import NLFitter
 from pylinex.nonlinear.TruncationExtractor import TruncationExtractor
+from pylinex.nonlinear.RankDecider import RankDecider
