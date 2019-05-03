@@ -125,11 +125,7 @@ class ExpandedModel(Model):
         returns: numpy.ndarray of hessian values of this model of shape
                  (num_channels, num_parameters, num_parameters)
         """
-        model_hessian = self.model.hessian(parameters)
-        terminal_shape = (-1,) + model_hessian.shape[1:]
-        intermediate_shape = (-1, np.prod(terminal_shape))
-        model_hessian = np.reshape(model_hessian, intermediate_shape)
-        return np.reshape(self.expander(model_hessian.T).T, terminal_shape)
+        return self.expander(self.model.hessian(parameters).T).T
     
     def fill_hdf5_group(self, group):
         """
