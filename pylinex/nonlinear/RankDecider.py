@@ -245,8 +245,8 @@ class RankDecider(object):
                     raise ValueError("A key of non_basis_models also has a " +\
                         "basis in basis_set.")
                 else:
-                    if ((set(keys) | set(self.basis_set.names)) ==\
-                        set(self.names)):
+                    all_names_set = (set(keys) | set(self.basis_set.names))
+                    if (all_names_set == set(self.names)):
                         if all([isinstance(value[key], Model)\
                             for key in keys]):
                             self._non_basis_models = value
@@ -254,9 +254,13 @@ class RankDecider(object):
                             raise TypeError("Not all values of " +\
                                 "non_basis_models were Model objects.")
                     else:
-                        raise ValueError("At least one name in names was " +\
-                            "neither a key of non_basis_models or a name " +\
-                            "in the basis_set.")
+                        raise ValueError(("The following names were " +\
+                            "neither keys of non_basis_models or names in " +\
+                            "the basis_set: {0}. The following names were " +\
+                            "keys of non_basis_models, but were not in the " +\
+                            "names given at initialization: {1}.").format(\
+                            set(self.names) - all_names_set,\
+                            set(keys) - set(self.names)))
             else:
                 raise TypeError("Not all keys of non_basis_models were " +\
                     "strings.")
@@ -265,9 +269,9 @@ class RankDecider(object):
     
     def fill_hdf5_group(self, group, data_link=None, error_link=None):
         """
-        Fills the given hdf5 group with information about this Loglikelihood.
+        Fills the given hdf5 group with information about this RankDecider.
         
-        group: the group to fill with information about this Loglikelihood
+        group: the group to fill with information about this RankDecider
         data_link: link like that returned by pylinex.h5py_extensions.HDF5Link
         error_link: link like that returned by pylinex.h5py_extensions.HDF5Link
         """
@@ -376,8 +380,37 @@ class RankDecider(object):
         return GaussianLoglikelihood(self.data, self.error,\
             self.model_from_nterms(**nterms))
     
+    def starting_point_from_nterms(self, true_parameters, true_curves, nterms):
+        """
+        
+        
+        true_parameters: dictionary containing true parameter vectors indexed
+                         by name
+        true_curves: dictionary of the form {(true_curve[name], suberror[name])
+                     for name in true_curve_names}
+        nterms: dictionary with names in self.basis_set.names as keys and
+                integer numbers of terms as values
+        
+        returns: (loglikelihood, starting_parameters)
+        """
+        loglikelihood = self.loglikelihood_from_nterms(**nterms)
+        starting_point = []
+        for (iname, name) in enumerate(self.names):
+            if name in true_parameters:
+                starting_point.append(true_parameters[name])
+            else:
+                submodel = loglikelihood.model.models[iname]
+                if name in true_curves:
+                    starting_point.append(\
+                        submodel.quick_fit(*true_curves[name])[0])
+                elif submodel.num_parameters != 0:
+                    raise ValueError("A submodel has parameters but was " +\
+                        "given neither of the true_parameters or " +\
+                        "true_curves dictionaries.")
+        return (loglikelihood, np.concatenate(starting_point))
+    
     def best_parameters_from_nterms(self, true_parameters, true_curves,\
-        nterms, num_iterations_per_least_square_fit=1, **bounds):
+        nterms, **bounds):
         """
         Finds the best parameters (and the loglikelihood to which they apply)
         for given nterms.
@@ -393,36 +426,19 @@ class RankDecider(object):
         
         returns: (loglikelihood, max_likelihood_parameters)
         """
-        loglikelihood = self.loglikelihood_from_nterms(**nterms)
-        if set(self.names) <=\
-            (set(true_parameters.keys()) | set(true_curves.keys())):
-            starting_point = []
-            for (iname, name) in enumerate(self.names):
-                if name in true_parameters:
-                    starting_point.append(true_parameters[name])
-                else:
-                    submodel = loglikelihood.model.models[iname]
-                    starting_point.append(\
-                        submodel.quick_fit(*true_curves[name])[0])
-            starting_point = np.concatenate(starting_point)
-            guess_distribution = KroneckerDeltaDistribution(starting_point)
-            guess_distribution_set = DistributionSet([(guess_distribution,\
-                loglikelihood.parameters, None)])
-            least_square_fitter = LeastSquareFitter(\
-                loglikelihood=loglikelihood, prior_set=guess_distribution_set,\
-                **bounds)
-            least_square_fitter.run(\
-                iterations=num_iterations_per_least_square_fit)
-            return (loglikelihood, least_square_fitter.argmin)
-        else:
-            print(("set(self.names)={}, (set(true_parameters.keys()) & " +\
-                "set(true_curves.keys()))={}").format(set(self.names),\
-                (set(true_parameters.keys()) & set(true_curves.keys()))))
-            raise ValueError("There are names with no true parameters or " +\
-                "true curves.")
+        (loglikelihood, starting_point) = self.starting_point_from_nterms(\
+            true_parameters, true_curves, nterms)
+        guess_distribution = KroneckerDeltaDistribution(starting_point)
+        guess_distribution_set = DistributionSet([(guess_distribution,\
+            loglikelihood.parameters, None)])
+        least_square_fitter = LeastSquareFitter(\
+            loglikelihood=loglikelihood, prior_set=guess_distribution_set,\
+            **bounds)
+        least_square_fitter.run()
+        return (loglikelihood, least_square_fitter.argmin)
     
     def information_criterion_from_nterms(self, true_parameters, true_curves,\
-        nterms, num_iterations_per_least_square_fit=1, **bounds):
+        nterms, **bounds):
         """
         Finds the best parameters (and the loglikelihood to which they apply)
         for given nterms.
@@ -440,8 +456,7 @@ class RankDecider(object):
         """
         (loglikelihood, max_likelihood_parameters) =\
             self.best_parameters_from_nterms(true_parameters, true_curves,\
-            nterms, num_iterations_per_least_square_fit=\
-            num_iterations_per_least_square_fit, **bounds)
+            nterms, **bounds)
         loglikelihood_value = loglikelihood(max_likelihood_parameters)
         varying_num_parameters = sum([nterms[key] for key in nterms])
         penalty = (varying_num_parameters * self.parameter_penalty)
@@ -449,7 +464,7 @@ class RankDecider(object):
     
     def minimize_information_criterion(self, starting_nterms, true_parameters,\
         true_curves, return_trail=False, can_backtrack=False,\
-        num_iterations_per_least_square_fit=1, **bounds):
+        verbose=True, **bounds):
         """
         Minimizes the information criterion over the grid of possible nterms
         through finite difference descent.
@@ -468,16 +483,15 @@ class RankDecider(object):
         """
         nterms = {name: starting_nterms[name] for name in self.basis_set.names}
         information_criterion = self.information_criterion_from_nterms(\
-            true_parameters, true_curves, nterms,\
-            num_iterations_per_least_square_fit=\
-            num_iterations_per_least_square_fit, **bounds)
+            true_parameters, true_curves, nterms, **bounds)
         previous_nterms = []
         done = False
         iteration_number = 0
         while not done:
             iteration_number += 1
-            print("Iteration #{:d} starting nterms: {}".format(\
-                iteration_number, nterms))
+            if verbose:
+                print("Iteration #{:d} starting nterms: {}".format(\
+                    iteration_number, nterms))
             possible_next_nterms =\
                 [{} for index in range(2 * len(self.basis_set.names))]
             for (iname, name) in enumerate(self.basis_set.names):
@@ -511,9 +525,7 @@ class RankDecider(object):
                 done = True
                 continue
             information_criteria = [self.information_criterion_from_nterms(\
-                true_parameters, true_curves, nt,\
-                num_iterations_per_least_square_fit=\
-                num_iterations_per_least_square_fit, **bounds)\
+                true_parameters, true_curves, nt, **bounds)\
                 for nt in possible_next_nterms]
             information_criteria_argmin = np.argmin(information_criteria)
             information_criteria_min =\
@@ -524,6 +536,8 @@ class RankDecider(object):
             information_criterion = information_criteria_min
             previous_nterms.append(nterms)
             nterms = possible_next_nterms[information_criteria_argmin]
+        if verbose:
+            print("Final nterms: {}".format(nterms))
         if return_trail:
             return (nterms, previous_nterms)
         else:

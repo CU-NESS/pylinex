@@ -7,6 +7,7 @@ Description: File containing a class which represents a model which simply
              expands the output of another model using an Expander from the
              pylinex.expander module.
 """
+import numpy as np
 from ..expander import Expander
 from .Model import Model
 

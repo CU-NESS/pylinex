@@ -1690,7 +1690,7 @@ class NLFitter(object):
     
     def plot_chain(self, parameters=None, apply_transforms=True,\
         walkers=None, thin=1, figsize=(12, 12), show=False,\
-        **reference_values):
+        parameter_renamer=(lambda x: x), **reference_values):
         """
         Plots the chain of this MCMC.
         
@@ -1707,8 +1707,16 @@ class NLFitter(object):
         figsize: size of figure on which to plot chains
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
-        reference_values: if applicable, value to plot on top of chains for
-                          each parameter
+        parameter_renamer: a callable which is used to rename parameters for
+                           plotting purposes. The default value is
+                           (lambda x: x), which simply give parameters the same
+                           name with which they are internally represented
+        reference_values: if applicable, dictionary of values to plot on top of
+                          chains for each parameter keys can be parameters or
+                          parameters which are put through parameter_renamer
+        
+        returns: if show is True, None
+                 otherwise, the matplotlib Figure object containing plots
         """
         parameter_indices = self.get_parameter_indices(parameters=parameters)
         num_parameter_plots = len(parameter_indices)
@@ -1726,17 +1734,22 @@ class NLFitter(object):
         axes_per_side = int(np.ceil(np.sqrt(num_parameter_plots)))
         fig = pl.figure(figsize=figsize)
         for index in range(num_parameter_plots):
-            parameter_name = self.parameters[parameter_indices[index]]
+            parameter_index = parameter_indices[index]
+            parameter_name = self.parameters[parameter_index]
+            renamed_parameter = parameter_renamer(parameter_name)
             ax = fig.add_subplot(axes_per_side, axes_per_side, index + 1)
             ax.plot(steps, trimmed_chain[:,:,index].T, linewidth=1)
-            if parameter_name in reference_values:
-                to_plot = reference_values[parameter_name]
+            if (parameter_name in reference_values) or\
+                (renamed_parameter in reference_values):
+                if parameter_name in reference_values:
+                    to_plot = reference_values[parameter_name]
+                else:
+                    to_plot = reference_values[renamed_parameter]
                 if apply_transforms:
-                    to_plot =\
-                        self.transform_list[parameter_indices[index]](to_plot)
+                    to_plot = self.transform_list[parameter_index](to_plot)
                 ax.plot(steps, to_plot * np.ones_like(steps),\
                     linewidth=2, color='k', linestyle='--')
-            ax.set_title(parameter_name)
+            ax.set_title(renamed_parameter)
             ax.set_xlim((steps[0], steps[-1]))
         fig.subplots_adjust(left=0.05, bottom=0.05, right=0.95, top=0.95,\
             wspace=0.25, hspace=0.25)
@@ -2351,6 +2364,11 @@ class NLFitter(object):
         returns: if show is True, nothing is returned
                  otherwise, returns tuple of form (convergence_figure,
                             acceptance_fraction_figure, log_probability_figure)
+                            or (convergence_figure, acceptance_fraction_figure,
+                            log_probability_figure, log_likelihood_figure,
+                            log_prior_figure) depending on whether any priors
+                            are used by the Sampler sourcing this NLFitter or
+                            not
         """
         convergence_figure = self.plot_rescaling_factors_both_types(\
             fontsize=fontsize, fig=None, show=False)
