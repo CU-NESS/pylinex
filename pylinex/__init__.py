@@ -43,7 +43,7 @@ from pylinex.loglikelihood import Loglikelihood, RosenbrockLoglikelihood,\
     LikelihoodDistributionHarmonizer
 from pylinex.nonlinear import Sampler, BurnRule, NLFitter, LeastSquareFitter,\
     InterpolatingLeastSquareFitter, LeastSquareFitGenerator,\
-    TruncationExtractor, RankDecider
+    LeastSquareFitCluster, TruncationExtractor, RankDecider
 from pylinex.hdf5 import load_quantity_from_hdf5_file,\
     load_expander_from_hdf5_file, load_model_from_hdf5_file,\
     load_loglikelihood_from_hdf5_file, ExtractionPlotter
