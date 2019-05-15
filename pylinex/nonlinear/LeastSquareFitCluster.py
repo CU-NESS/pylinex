@@ -11,11 +11,11 @@ Description: File containing a class that runs many LeastSquareFitter objects
              local (derivative) information to estimate nonlocal properties, as
              is done in the Fisher matrix approach.
 """
-import os, time
+import os, time, h5py
 import numpy as np
 from distpy import cast_to_transform_list, GaussianDistribution,\
-    DistributionSet
-from ..util import int_types
+    DeterministicDistribution, KroneckerDeltaDistribution, DistributionSet
+from ..util import int_types, bool_types
 from ..loglikelihood import GaussianLoglikelihood
 from .LeastSquareFitter import LeastSquareFitter
 try:
@@ -35,33 +35,87 @@ class LeastSquareFitCluster(object):
     properties, as is done in the Fisher matrix approach.
     """
     def __init__(self, seed_loglikelihood, prior_set, prefix, num_fits,\
-        transform_list=None, **bounds):
+        transform_list=None, save_all=False, **bounds):
         """
         Initializes a new LeastSquareFitCluster.
         
         seed_loglikelihood: GaussianLoglikelihood object containing the data,
-                            error and model under concern.
+                            error and model under concern. The model should be
+                            given in transformed space (as defined by the given
+                            TransformList)
         prior_set: must be a DistributionSet object whose parameters are the
                    same as the parameters of the Loglikelihood at the heart of
                    this fitter
-        prefix: string seeding file names where LeastSquareFitter objects
-                should be placed. "{0!s}.{1:d}.hdf5".format(prefix, index)
-                should be a valid file location for index in range(num_fits)
+        prefix: if None, no files are saved
+                otherwise, string seeding file names where LeastSquareFitter
+                           objects should be placed.
+                           "{0!s}.{1:d}.hdf5".format(prefix, index) should be a
+                           valid file location for index in range(num_fits) if
+                           save_all is True. If save_all is False (default),
+                           then the first fit (the one with no added noise) is
+                           saved at "{!s}.hdf5".format(prefix)
         num_fits: integer number of LeastSquareFitter objects to create
         transform_list: TransformList (or something which can be cast to a
                         TransformList object) describing the space in which
                         the parameters of the loglikelihood exist
+        save_all: if True, all LeastSquareFitter objects are saved if prefix is
+                           not None.
+                  if False (default), only the first fit is saved
         bounds: dictionary containing 2-tuples of (min, max) where min and max
                 are either numbers or None indexed by parameter name.
                 Parameters which are not in value are bounded by their own
                 Model object's bounds property.
         """
+        self.save_all = save_all
         self.seed_loglikelihood = seed_loglikelihood
         self.prior_set = prior_set
         self.prefix = prefix
         self.num_fits = num_fits
         self.transform_list = transform_list
         self.bounds = bounds
+    
+    @staticmethod
+    def load_from_first_file(file_name, num_fits):
+        """
+        Loads a LeastSquareFitCluster from its first saved LeastSquareFitter.
+        
+        file_name: name of file where first LeastSquareFitter was saved
+        num_fits: number of noise realizations to run
+        
+        returns: a LeastSquareFitCluster object 
+        """
+        prefix = file_name[:-len('.hdf5')]
+        least_square_fitter = LeastSquareFitter(file_name=file_name)
+        seed_loglikelihood = least_square_fitter.loglikelihood
+        prior_set = least_square_fitter.prior_set
+        transform_list = least_square_fitter.transform_list.inverse
+        bounds = {name: least_square_fitter.bounds[iname]\
+            for (iname, name) in enumerate(seed_loglikelihood.parameters)}
+        return LeastSquareFitCluster(seed_loglikelihood, prior_set, prefix,\
+            num_fits, transform_list=transform_list, save_all=False, **bounds)
+    
+    @property
+    def save_all(self):
+        """
+        Property storing a boolean determining whether all LeastSquareFitter
+        objects created by this LeastSquareFitCluster should be saved or only
+        the one with no added noise.
+        """
+        if not hasattr(self, '_save_all'):
+            raise AttributeError("save_all was referenced before it was set.")
+        return self._save_all
+    
+    @save_all.setter
+    def save_all(self, value):
+        """
+        Setter for the save_all boolean property.
+        
+        value: True or False
+        """
+        if type(value) in bool_types:
+            self._save_all = value
+        else:
+            raise TypeError("save_all was set to a non-bool.")
     
     @property
     def seed_loglikelihood(self):
@@ -168,11 +222,13 @@ class LeastSquareFitCluster(object):
         Setter for the prefix of files where the LeastSquareFitter objects used
         by this LeastSquareFitCluster should be placed.
         
-        value: string seeding file names where LeastSquareFitter objects should
-               be placed. "{0!s}.{1:d}.hdf5".format(prefix, index) should
-               be a valid file location for index in range(num_fits)
+        value: if None, no fitters are saved
+               otherwise, string seeding file names where LeastSquareFitter
+                          objects should be placed.
+                          "{0!s}.{1:d}.hdf5".format(prefix, index) should
+                          be a valid file location for index in range(num_fits)
         """
-        if isinstance(value, basestring):
+        if (type(value) is type(None)) or isinstance(value, basestring):
             self._prefix = value
         else:
             raise TypeError("prefix was set to a non-string.")
@@ -209,11 +265,26 @@ class LeastSquareFitCluster(object):
         the LeastSquareFitter objects this LeastSquareFitCluster creates.
         """
         if not hasattr(self, '_file_names'):
-            zfill_width = int(np.ceil(np.log10(self.num_fits)))
-            self._file_names = ['{0!s}.{1!s}.hdf5'.format(self.prefix,\
-                "{:d}".format(fit_index).zfill(zfill_width))\
-                for fit_index in range(self.num_fits)]
+            if type(self.prefix) is type(None):
+                self._file_names = [None] * self.num_fits
+            elif self.save_all:
+                zfill_width = int(np.ceil(np.log10(self.num_fits)))
+                self._file_names = ['{0!s}.{1!s}.hdf5'.format(self.prefix,\
+                    "{:d}".format(fit_index).zfill(zfill_width))\
+                    for fit_index in range(self.num_fits)]
+            else:
+                file_name = '{!s}.hdf5'.format(self.prefix)
+                self._file_names = [file_name] + ([None] * (self.num_fits - 1))
         return self._file_names
+    
+    @property
+    def summary_file_name(self):
+        """
+        Property storing the name of the summary file.
+        """
+        if not hasattr(self, '_summary_file_name'):
+            self._summary_file_name = '{!s}.summary.hdf5'.format(self.prefix)
+        return self._summary_file_name
     
     @property
     def bounds(self):
@@ -288,7 +359,8 @@ class LeastSquareFitCluster(object):
             return self.seed_loglikelihood.change_data(modified_data)
     
     def run(self, iterations=1, attempt_threshold=100,\
-        cutoff_loglikelihood=np.inf, verbose=False, **kwargs):
+        cutoff_loglikelihood=np.inf, verbose=False, doubly_verbose=False,\
+        tolerance=None, **kwargs):
         """
         Creates the num_fits LeastSquareFitter objects which will be used to
         estimate the distribution of parameters implied by the seed
@@ -303,6 +375,13 @@ class LeastSquareFitCluster(object):
                               default value is np.inf
         verbose: if True, a message is printed at the creation of each
                           LeastSquareFitter object.
+        doubly_verbose: if True, verbose is passed on to each individual
+                                 LeastSquareFitter
+        tolerance: if not None (default None) and verbose is True, a message is
+                   printed after each of the LeastSquareFitter objects that
+                   used artificially modified data vectors specifying whether
+                   the fit found a minimum that was within this tolerance (can
+                   be array-like for multi-parameter fits)
         kwargs: Keyword arguments to pass on as options to
                 scipy.optimize.minimize(method='SLSQP'). They can include:
                     ftol : float, precision goal for the loglikelihood in the
@@ -312,17 +391,66 @@ class LeastSquareFitCluster(object):
                     disp : bool, set to True to print convergence messages.
                     maxiter : int, maximum number of iterations.
         """
-        for (fit_index, file_name) in enumerate(self.file_names):
-            if verbose:
-                print("Beginning least square fitter #{0:d} at {1!s}".format(\
-                    1 + fit_index, time.ctime()))
-            least_square_fitter = LeastSquareFitter(\
-                loglikelihood=self.generate_loglikelihood(fit_index),\
-                prior_set=self.prior_set, transform_list=None,\
-                file_name=file_name, **self.bounds)
-            least_square_fitter.run(iterations=iterations,\
-                attempt_threshold=attempt_threshold,\
-                cutoff_loglikelihood=cutoff_loglikelihood, **kwargs)
+        prior_set = self.prior_set
+        if os.path.exists(self.summary_file_name):
+            with h5py.File(self.summary_file_name, 'r') as hdf5_file:
+                self._data_realizations = hdf5_file['data_realizations'][()]
+                self._argmins = hdf5_file['argmins'][()]
+                self._successes = hdf5_file['successes'][()]
+        else:
+            self._data_realizations = []
+            self._argmins = []
+            self._successes = []
+            for (fit_index, file_name) in enumerate(self.file_names):
+                loglikelihood = self.generate_loglikelihood(fit_index)
+                least_square_fitter = LeastSquareFitter(\
+                    loglikelihood=loglikelihood, prior_set=prior_set,\
+                    transform_list=self.transform_list.inverse,\
+                    file_name=file_name, **self.bounds)
+                least_square_fitter.run(iterations=iterations,\
+                    attempt_threshold=attempt_threshold,\
+                    cutoff_loglikelihood=cutoff_loglikelihood,\
+                    verbose=doubly_verbose, run_if_iterations_exist=False,\
+                    **kwargs)
+                is_successful = bool(np.max(least_square_fitter.successes))
+                self._data_realizations.append(loglikelihood.data)
+                self._argmins.append(least_square_fitter.argmin)
+                self._successes.append(is_successful)
+                if verbose:
+                    print(("Finished least square fitter #{0:d} of " +\
+                        "LeastSquareFitCluster at {1!s}, and it was " +\
+                        "{2!s}successful.").format(1 + fit_index,\
+                        time.ctime(), "" if is_successful else "not "))
+                if fit_index == 0:
+                    prior_distribution =\
+                        KroneckerDeltaDistribution(least_square_fitter.argmin)
+                    prior_distribution_tuple =\
+                        (prior_distribution, self.parameters, None)
+                    prior_set = DistributionSet([prior_distribution_tuple])
+                    iterations = 1
+                elif verbose and (type(tolerance) is not type(None)):
+                    print(("np.any(np.abs(argmins[{0:d}] - argmins[0]) < " +\
+                        "{1})={2}").format(fit_index, tolerance,\
+                        np.any(np.abs(self._argmins[-1] - self._argmins[0]) <\
+                        tolerance)))
+            self._data_realizations = np.array(self._data_realizations)
+            self._argmins = np.array(self._argmins)
+            self._successes = np.array(self._successes)
+            with h5py.File(self.summary_file_name, 'w') as hdf5_file:
+                hdf5_file.create_dataset('data_realizations',\
+                    data=self.data_realizations)
+                hdf5_file.create_dataset('argmins', data=self.argmins)
+                hdf5_file.create_dataset('successes', data=self.successes)
+    
+    @property
+    def data_realizations(self):
+        """
+        Property storing the data realizations used by this cluster.
+        """
+        if not hasattr(self, '_data_realizations'):
+            raise AttributeError("data_realizations was referenced before " +\
+                "run was called.")
+        return self._data_realizations
     
     @property
     def argmins(self):
@@ -331,16 +459,23 @@ class LeastSquareFitCluster(object):
         objects.
         """
         if not hasattr(self, '_argmins'):
-            if all([os.path.exists(file_name)\
-                for file_name in self.file_names]):
-                self._argmins = [LeastSquareFitter(file_name=file_name).argmin\
-                    for file_name in self.file_names]
-                self._argmins = np.array(self._argmins)
-            else:
-                raise RuntimeError("argmins property cannot be accessed " +\
-                    "until this LeastSquareFitCluster has created all of " +\
-                    "the LeastSquareFitter objects it will create.")
+            raise AttributeError("argmins was referenced before run was " +\
+                "called.")
         return self._argmins
+    
+    @property
+    def successes(self):
+        """
+        Property storing a boolean array describing whether each of the
+        LeastSquareFitter objects created by this LeastSquareFitCluster
+        successfully found a minimum or not (according to the tolerances used
+        by default in scipy.optimize.minimize or as overridden by the kwargs
+        first passed to the run method).
+        """
+        if not hasattr(self, '_successes'):
+            raise AttributeError("successes was referenced before run was " +\
+                "called.")
+        return self._successes
     
     @property
     def approximate_gaussian_distribution(self):
@@ -369,4 +504,97 @@ class LeastSquareFitCluster(object):
                 DistributionSet([(self.approximate_gaussian_distribution,\
                 self.parameters, self.transform_list)])
         return self._approximate_gaussian_distribution_set
+    
+    @property
+    def sampled_distribution(self):
+        """
+        Property storing a DeterministicDistribution containing a sample of
+        num_fits points found by the LeastSquareFitter objects created by this
+        LeastSquareFitCluster.
+        """
+        if not hasattr(self, '_sampled_distribution'):
+            self._sampled_distribution =\
+                DeterministicDistribution(self.argmins)
+        return self._sampled_distribution
+    
+    @property
+    def sampled_distribution_set(self):
+        """
+        Property storing the parameter distribution in a DistributionSet
+        object, using the TransformList given at the initialization of this
+        LeastSquareFitCluster object to define the DeterministicDistribution
+        sampled_distribution property in transformed space.
+        """
+        if not hasattr(self, '_sampled_distribution_set'):
+            self._sampled_distribution_set =\
+                DistributionSet([(self.sampled_distribution, self.parameters,\
+                self.transform_list)])
+        return self._sampled_distribution_set
+    
+    def triangle_plot(self, parameters=None, in_transformed_space=True,\
+        figsize=(8, 8), fig=None, show=False, kwargs_1D={}, kwargs_2D={},\
+        fontsize=28, nbins=100, plot_type='contour',\
+        plot_reference_gaussian=True, contour_confidence_levels=0.95,\
+        parameter_renamer=(lambda x: x), tick_label_format_string='{x:.3g}'):
+        """
+        Makes a triangle plot of the results of the LeastSquareFitter objects
+        at the core of this LeastSquareFitCluster.
+        
+        parameters: sequence of string parameter names to include in the plot
+        in_transformed_space: if True (default), parameters are plotted in
+                                                 transformed space
+        figsize: the size of the figure on which to put the triangle plot
+        show: if True, matplotlib.pyplot.show is called before this function
+                       returns
+        kwargs_1D: keyword arguments to pass on to univariate_histogram
+                   function
+        kwargs_2D: keyword arguments to pass on to bivariate_histogram function
+        fontsize: the size of the label fonts
+        nbins: the number of bins for each sample
+        plot_type: 'contourf', 'contour', or 'histogram'
+        plot_reference_gaussian: if True (default), a reference Gaussian is
+                                                    plotted which was
+                                                    approximated from the
+                                                    sample which is used to
+                                                    make this triangle plot
+                                                    (only functions if
+                                                    in_transformed_space is
+                                                    True, where the Gaussian
+                                                    approximation is made)
+        contour_confidence_levels: the confidence level of the contour in the
+                                   bivariate histograms. Only used if plot_type
+                                   is 'contour' or 'contourf'. Can be single
+                                   number or sequence of numbers
+        tick_label_format_string: format string that can be called using
+                                  tick_label_format_string.format(x=loc) where
+                                  loc is the location of the tick in data
+                                  coordinates
+        
+        returns: if show, nothing is returned as figure is plotted
+                 otherwise, matplotlib.Figure is returned
+        """
+        if plot_reference_gaussian and in_transformed_space:
+            reference_value_mean =\
+                self.approximate_gaussian_distribution.mean.A[0]
+            reference_value_covariance =\
+                self.approximate_gaussian_distribution.covariance.A
+        else:
+            if plot_reference_gaussian:
+                print("plot_reference_gaussian was True but, this can only " +\
+                    "be done if in_transformed_space is True, but it was " +\
+                    "set to False.")
+            reference_value_mean = None
+            reference_value_covariance = None
+        return_value = self.sampled_distribution_set.triangle_plot(\
+            self.num_fits, parameters=parameters,\
+            in_transformed_space=in_transformed_space, figsize=figsize,\
+            fig=fig, show=show, kwargs_1D=kwargs_1D, kwargs_2D=kwargs_2D,\
+            fontsize=fontsize, nbins=nbins, plot_type=plot_type,\
+            reference_value_mean=reference_value_mean,\
+            reference_value_covariance=reference_value_covariance,\
+            contour_confidence_levels=contour_confidence_levels,\
+            parameter_renamer=parameter_renamer,\
+            tick_label_format_string=tick_label_format_string)
+        self.sampled_distribution.reset()
+        return return_value
 

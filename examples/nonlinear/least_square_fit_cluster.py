@@ -7,7 +7,7 @@ Description: Example showing use of the GaussianLoglikelihood class in an MCMC
              sampling context and comparison with the Fisher matrix formalism.
 """
 from __future__ import division
-import os, glob
+import os, time, glob
 import numpy as np
 import matplotlib.pyplot as pl
 from matplotlib.ticker import MultipleLocator
@@ -41,10 +41,18 @@ prefix = 'DELETETHESE'
 restart_mode = None
 guess_distribution_set = DistributionSet([(TruncatedGaussianDistribution(\
     true_value, true_variance / 1000, low=0), 'a', None)])
-num_fits = 100
+num_fits = 1000
 least_square_fit_cluster = LeastSquareFitCluster(loglikelihood,\
     guess_distribution_set, prefix, num_fits)
-least_square_fit_cluster.run(iterations=100)
+t0 = time.time()
+least_square_fit_cluster.run(iterations=1000)
+t1 = time.time()
+np.random.seed(seed)
+least_square_fit_cluster = LeastSquareFitCluster.load_from_first_file(\
+    '{!s}.hdf5'.format(prefix), num_fits)
+least_square_fit_cluster.run()
+t2 = time.time()
+print("least_square_fit_cluster.argmins={}".format(least_square_fit_cluster.argmins))
 gaussian_distribution =\
     least_square_fit_cluster.approximate_gaussian_distribution
 
@@ -97,7 +105,15 @@ ax.yaxis.set_minor_locator(MultipleLocator(5e-2))
 ax.tick_params(labelsize=fontsize, width=2.5, length=7.5, which='major')
 ax.tick_params(labelsize=fontsize, width=1.5, length=4.5, which='minor')
 
-for file_name in glob.glob('{!s}*hdf5'.format(prefix)):
-    os.remove(file_name)
+first_duration = t1 - t0
+second_duration = t2 - t1
+print("First call of run took {:.6g} s.".format(first_duration))
+print("Second call of run took {:.6g} s.".format(second_duration))
+
+least_square_fit_cluster.triangle_plot(fontsize=12, nbins=num_fits//25,\
+    plot_reference_gaussian=True, contour_confidence_levels=0.95)
+
+os.remove('{!s}.hdf5'.format(prefix))
+os.remove('{!s}.summary.hdf5'.format(prefix))
 pl.show()
 

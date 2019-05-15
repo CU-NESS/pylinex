@@ -1034,7 +1034,7 @@ class NLFitter(object):
                 "None, a string, a sequence of strings, and a sequence of " +\
                 "ints")
     
-    def sample(self, number, parameters=None):
+    def sample(self, number, parameters=None, random=np.random):
         """
         Takes number samples from the chain associated with this fitter.
         
@@ -1044,10 +1044,13 @@ class NLFitter(object):
                                expression
                     if list of indices, sample parameters with these indices
                     if list of strings, sample these parameters
+        random: random number generator from which to draw indices using
+                random.randint(0, high=self.nsamples, size=number),
+                default is numpy.random
         
         returns: array of the form (number, nparameters)
         """
-        index_sample = np.random.randint(0, high=self.nsamples, size=number)
+        index_sample = random.randint(0, high=self.nsamples, size=number)
         full_parameter_sample = self.flattened_chain[index_sample,:]
         parameter_indices = self.get_parameter_indices(parameters=parameters)
         return full_parameter_sample[:,parameter_indices]
@@ -1088,7 +1091,8 @@ class NLFitter(object):
         return\
             self.parameter_covariance[:,parameter_indices][parameter_indices,:]
     
-    def reconstructions(self, number, parameters=None, model=None):
+    def reconstructions(self, number, parameters=None, model=None,\
+        random=np.random):
         """
         Computes reconstructions of a quantity by applying model to a sample of
         parameters from this fitter's chain.
@@ -1102,17 +1106,21 @@ class NLFitter(object):
         model: if None (default), the full model in the loglikelihood is used
                otherwise, the model with which to create reconstructions from
                           parameters
+        random: random number generator from which to draw indices using
+                random.randint(0, high=self.nsamples, size=number),
+                default is numpy.random
         
         returns: 2D numpy.ndarray of shape (number, nchannels) containing
                  reconstructions created from the given model and parameters
         """
-        parameter_sample = self.sample(number, parameters=parameters)
+        parameter_sample =\
+            self.sample(number, parameters=parameters, random=random)
         if type(model) is type(None):
             model = self.model
         return np.array([model(args) for args in parameter_sample])
     
     def reconstruction_RMS_by_channel(self, number, parameters=None,\
-        model=None):
+        model=None, random=np.random):
         """
         Computes the root-mean-square deviations from the mean in each channel
         of the given number of reconstructions made using the given model and
@@ -1127,17 +1135,20 @@ class NLFitter(object):
         model: if None (default), the full model in the loglikelihood is used
                otherwise, the model with which to create reconstructions from
                           parameters
+        random: random number generator from which to draw indices using
+                random.randint(0, high=self.nsamples, size=number),
+                default is numpy.random
         
         returns: 1D numpy.ndarray of shape (num_channels,) with RMS values
         """
-        reconstructions =\
-            self.reconstructions(number, parameters=parameters, model=model)
+        reconstructions = self.reconstructions(number, parameters=parameters,\
+            model=model, random=random)
         centered_reconstructions = reconstructions -\
             np.mean(reconstructions, axis=0, keepdims=True)
         return np.sqrt(np.mean(np.power(centered_reconstructions, 2), axis=0))
     
     def reconstruction_RMS(self, number, parameters=None, model=None,\
-        x_slice=slice(None)):
+        x_slice=slice(None), random=np.random):
         """
         Computes the root-mean-square deviation from the mean of the given
         number of reconstructions made using the given model and parameters.
@@ -1152,15 +1163,19 @@ class NLFitter(object):
                otherwise, the model with which to create reconstructions from
                           parameters
         x_slice: slice with which to trim x_values to include in final RMS'ing
+        random: random number generator from which to draw indices using
+                random.randint(0, high=self.nsamples, size=number),
+                default is numpy.random
         
         returns: single number containing the RMS of the
                  reconstruction_RMS_by_channel error
         """
         rms_by_channel = self.reconstruction_RMS_by_channel(number,\
-            parameters=parameters, model=model)
+            parameters=parameters, model=model, random=random)
         return np.sqrt(np.mean(np.power(rms_by_channel[x_slice], 2)))
     
-    def bias(self, number, parameters=None, model=None, true_curve=None):
+    def bias(self, number, parameters=None, model=None, true_curve=None,\
+        random=np.random):
         """
         Computes differences between a true_curve and reconstructions of the
         quantity made by applying model to a sample of parameters from this
@@ -1180,13 +1195,16 @@ class NLFitter(object):
                                        loglikelihood's data curve.
                     Otherwise, curve to subtract from all reconstructions to
                                compute bias
+        random: random number generator from which to draw indices using
+                random.randint(0, high=self.nsamples, size=number),
+                default is numpy.random
         
         returns: 2D numpy.ndarray of (number, nchannels) containing differences
                  between true_curve and reconstructions created by applying
                  model to parameters
         """
-        reconstructions =\
-            self.reconstructions(number, parameters=parameters, model=model)
+        reconstructions = self.reconstructions(number, parameters=parameters,\
+            model=model, random=random)
         if type(true_curve) is type(None):
             if (type(parameters) is type(None)) and\
                 (type(model) is type(None)):
@@ -1201,7 +1219,7 @@ class NLFitter(object):
     
     def reconstruction_confidence_intervals(self, number, probabilities,\
         parameters=None, model=None, reconstructions=None,\
-        return_reconstructions=False):
+        return_reconstructions=False, random=np.random):
         """
         Computes confidence intervals on reconstructions of quantities created
         by applying the given model to the given parameters from this fitter's
@@ -1223,6 +1241,9 @@ class NLFitter(object):
                          (its default value)
         return_reconstructions: if True (default: False), returns
                                 reconstructions as well as intervals.
+        random: random number generator from which to draw indices using
+                random.randint(0, high=self.nsamples, size=number),
+                default is numpy.random
         
         returns: list of tuples of the form (band_min, band_max) representing
                  confidence_intervals with the given confidence levels, or
@@ -1233,7 +1254,7 @@ class NLFitter(object):
         """
         if type(reconstructions) is type(None):
             reconstructions = self.reconstructions(number,\
-                parameters=parameters, model=model)
+                parameters=parameters, model=model, random=random)
         sorted_channel_values = np.sort(reconstructions, axis=0)
         single_input = (type(probabilities) in real_numerical_types)
         if single_input:
@@ -1259,7 +1280,7 @@ class NLFitter(object):
     
     def bias_confidence_intervals(self, number, probabilities,\
         parameters=None, model=None, true_curve=None, reconstructions=None,\
-        return_biases=False):
+        return_biases=False, random=np.random):
         """
         Computes confidence intervals on differences between reconstructions of
         quantities created by applying the given model to the given parameters
@@ -1282,6 +1303,9 @@ class NLFitter(object):
                          (its default value)
         return_biases: if True (default: False), returns biases as well as
                        intervals.
+        random: random number generator from which to draw indices using
+                random.randint(0, high=self.nsamples, size=number),
+                default is numpy.random
         
         returns: list of tuples of the form (band_min, band_max) representing
                  confidence_intervals with the given confidence levels. If
@@ -1292,7 +1316,8 @@ class NLFitter(object):
         (intervals, reconstructions) =\
             self.reconstruction_confidence_intervals(number, probabilities,\
             parameters=parameters, model=model,\
-            reconstructions=reconstructions, return_reconstructions=True)
+            reconstructions=reconstructions, return_reconstructions=True,\
+            random=random)
         if type(true_curve) is type(None):
             if (type(parameters) is type(None)) and\
                 (type(model) is type(None)):
@@ -1396,7 +1421,8 @@ class NLFitter(object):
         true_curve=None, reconstructions=None, subtract_truth=False,\
         x_values=None, ax=None, xlabel=None, ylabel=None, title=None,\
         fontsize=28, scale_factor=1., matplotlib_function='plot',\
-        return_reconstructions=False, breakpoints=None, show=False, **kwargs):
+        return_reconstructions=False, breakpoints=None, random=np.random,\
+        show=False, **kwargs):
         """
         Plots a given number of reconstructions using given parameters
         evaluated by the given model.
@@ -1428,6 +1454,9 @@ class NLFitter(object):
         return_reconstructions: allows user to access reconstructions used
         breakpoints: either None (default), integer index of a breakpoint (the
                      first point of the next segment) or list of such integers
+        random: random number generator from which to draw indices using
+                random.randint(0, high=self.nsamples, size=number),
+                default is numpy.random
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
         **kwargs: extra keyword arguments are passed to the
@@ -1440,7 +1469,7 @@ class NLFitter(object):
         """
         if type(reconstructions) is type(None):
             reconstructions = self.reconstructions(number,\
-                parameters=parameters, model=model)
+                parameters=parameters, model=model, random=random)
         if type(ax) is type(None):
             fig = pl.figure()
             ax = fig.add_subplot(111)
@@ -1534,7 +1563,7 @@ class NLFitter(object):
         matplotlib_function='fill_between', figsize=(12,9), alphas=None,\
         xlabel=None, ylabel=None, title=None, fontsize=28, scale_factor=1.,\
         show=False, return_reconstructions=False, breakpoints=None,\
-        error_expansion_factors=1., **kwargs):
+        error_expansion_factors=1., random=np.random, **kwargs):
         """
         Plots reconstruction confidence intervals with the given model,
         parameters, and confidence levels.
@@ -1579,6 +1608,9 @@ class NLFitter(object):
                                  breakpoints isn't given. It should be a single
                                  number, not an array, if matplotlib_function
                                  is 'fill_between'
+        random: random number generator from which to draw indices using
+                random.randint(0, high=self.nsamples, size=number),
+                default is numpy.random
         **kwargs: extra keyword arguments to pass to matplotlib_function
         
         returns: (reconstructions if return_reconstructions else None) if show
@@ -1596,7 +1628,8 @@ class NLFitter(object):
         (intervals, reconstructions) =\
             self.reconstruction_confidence_intervals(number, probabilities,\
             parameters=parameters, model=model,\
-            reconstructions=reconstructions, return_reconstructions=True)
+            reconstructions=reconstructions, return_reconstructions=True,\
+            random=random)
         mean_reconstruction = np.mean(reconstructions, axis=0)
         if type(probabilities) in real_numerical_types:
             probabilities = [probabilities]
@@ -1781,16 +1814,23 @@ class NLFitter(object):
                 "parameter or a valid index of a parameter.")
     
     def triangle_plot(self, parameters=None, walkers=None, thin=1,\
-        figsize=(12, 12), fig=None, show=False, kwargs_1D={}, kwargs_2D={},\
-        fontsize=28, nbins=100, plot_type='contour', parameter_renamer=None,\
+        scale_factors=None, figsize=(12, 12), fig=None, show=False,\
+        kwargs_1D={}, kwargs_2D={}, fontsize=28, nbins=100,\
+        plot_type='contour', parameter_renamer=None,\
         reference_value_mean=None, reference_value_covariance=None,\
-        contour_confidence_levels=0.95, apply_transforms=True):
+        contour_confidence_levels=0.95, apply_transforms_to_chain=True,\
+        apply_transforms_to_reference_value=True,\
+        tick_label_format_string='{x:.3g}'):
         """
         Makes a triangle plot.
         
         parameters: key describing parameters to appear in subplots
         walkers: either None or indices of walkers to include chain samples
         thin: integer stride with which to thin chain samples
+        scale_factors: scale factors to apply to the parameters (after
+                       transformation if it is applied). By default,
+                       scale_factors is None and no samples are scaled after
+                       transformation
         figsize: size of figure on which the triangle plot will be placed
         fig: existing figure on which to place triangle plot, if applicable.
              Default: None
@@ -1829,13 +1869,17 @@ class NLFitter(object):
                                    tuple.
         apply_transforms: if True (default), transforms are applied before
                                              histogram-ing
+        tick_label_format_string: format string that can be called using
+                                  tick_label_format_string.format(x=loc) where
+                                  loc is the location of the tick in data
+                                  coordinates
         """
         parameter_indices = self.get_parameter_indices(parameters=parameters)
         labels = [self.parameters[parameter_index]\
             for parameter_index in parameter_indices]
         if type(parameter_renamer) is not type(None):
             labels = [parameter_renamer(label) for label in labels]
-        if apply_transforms:
+        if apply_transforms_to_chain:
             samples = [self.transform_list[parameter_index](\
                 self.chain[:,:,parameter_index])[walkers,:][:,::thin].flatten(\
                 ) for parameter_index in parameter_indices]
@@ -1843,6 +1887,9 @@ class NLFitter(object):
             samples = [\
                 self.chain[:,:,parameter_index][walkers,:][:,::thin].flatten()\
                 for parameter_index in parameter_indices]
+        if type(scale_factors) is not type(None):
+            samples = [(sample * scale_factor)\
+                for (sample, scale_factor) in zip(samples, scale_factors)]
         num_samples = len(samples)
         if type(reference_value_covariance) is not type(None):
             if isinstance(reference_value_covariance, np.ndarray):
@@ -1875,7 +1922,7 @@ class NLFitter(object):
                     fisher_kwargs = {}
                 else:
                     fisher_kwargs = fisher_kwargs[0]
-                if apply_transforms:
+                if apply_transforms_to_reference_value:
                     fisher_kwargs['transform_list'] =\
                         self.transform_list[parameter_indices]
                 likelihood = GaussianLoglikelihood(\
@@ -1883,7 +1930,8 @@ class NLFitter(object):
                 reference_value_covariance =\
                     likelihood.parameter_covariance_fisher_formalism(\
                     reference_value_mean, **fisher_kwargs)
-        if (type(reference_value_mean) is not type(None)) and apply_transforms:
+        if (type(reference_value_mean) is not type(None)) and\
+            apply_transforms_to_reference_value:
             reference_value_mean = [(None\
                 if (type(reference) is type(None)) else transform(reference))\
                 for (transform, reference) in\
@@ -1894,12 +1942,15 @@ class NLFitter(object):
             nbins=nbins, plot_type=plot_type,\
             reference_value_mean=reference_value_mean,\
             reference_value_covariance=reference_value_covariance,\
-            contour_confidence_levels=contour_confidence_levels, fig=fig)
+            contour_confidence_levels=contour_confidence_levels, fig=fig,\
+            tick_label_format_string=tick_label_format_string)
     
     def plot_univariate_histogram(self, parameter_index, walkers=None, thin=1,\
-        ax=None, show=False, reference_value=None, apply_transforms=True,\
-        fontsize=28, matplotlib_function='fill_between', show_intervals=False,\
-        bins=None, xlabel='', ylabel='', title='', **kwargs):
+        ax=None, show=False, reference_value=None,\
+        apply_transforms_to_chain=True,\
+        apply_transforms_to_reference_value=True, fontsize=28,\
+        matplotlib_function='fill_between', show_intervals=False, bins=None,\
+        xlabel='', ylabel='', title='', **kwargs):
         """
         Plots a 1D histogram of the given parameter.
         
@@ -1935,12 +1986,13 @@ class NLFitter(object):
             walkers = np.arange(self.nwalkers)
         elif type(walkers) in int_types:
             walkers = np.arange(walkers)
-        if apply_transforms:
+        if apply_transforms_to_chain:
             sample = self.transform_list[parameter_index](\
                 self.chain[:,:,parameter_index])[walkers,:][:,::thin].flatten()
-            if type(reference_value) is not type(None):
-                reference_value =\
-                    self.transform_list[parameter_index](reference_value)
+        if apply_transforms_to_reference_value and\
+            (type(reference_value) is not type(None)):
+            reference_value =\
+                self.transform_list[parameter_index](reference_value)
         else:
             sample =\
                 self.chain[:,:,parameter_index][walkers,:][:,::thin].flatten()
@@ -1951,7 +2003,8 @@ class NLFitter(object):
     
     def plot_bivariate_histogram(self, parameter_index1, parameter_index2,\
         walkers=None, thin=1, ax=None, show=False, reference_value_mean=None,\
-        reference_value_covariance=None, apply_transforms=True, fontsize=28,\
+        reference_value_covariance=None, apply_transforms_to_chain=True,\
+        apply_transforms_to_reference_value=True, fontsize=28,\
         bins=None, matplotlib_function='imshow', xlabel='', ylabel='',\
         contour_confidence_levels=0.95, title='', **kwargs):
         """
@@ -2003,11 +2056,12 @@ class NLFitter(object):
             walkers = np.arange(self.nwalkers)
         elif type(walkers) in int_types:
             walkers = np.arange(walkers)
-        if apply_transforms:
+        if apply_transforms_to_chain:
             xsample = self.transform_list[parameter_index1](\
                 self.chain[:,:,parameter_index1])[walkers,:][:,::thin].flatten()
             ysample = self.transform_list[parameter_index2](\
                 self.chain[:,:,parameter_index2])[walkers,:][:,::thin].flatten()
+        if apply_transforms_to_reference_value:
             transform_list = TransformList(\
                 self.transform_list[parameter_index1],\
                 self.transform_list[parameter_index2])

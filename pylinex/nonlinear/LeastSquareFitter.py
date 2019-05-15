@@ -7,7 +7,7 @@ Description: File containing class representing a least square fitter which
              uses gradient ascent to maximize the likelihood (if the gradient
              is computable; otherwise, other optimization algorithms are used).
 """
-import os, h5py
+import os, h5py, time
 import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as pl
@@ -584,7 +584,8 @@ class LeastSquareFitter(object):
             hdf5_file.close()
     
     def run(self, iterations=1, attempt_threshold=100,\
-        cutoff_loglikelihood=np.inf, **kwargs):
+        cutoff_loglikelihood=np.inf, verbose=False,\
+        run_if_iterations_exist=True, **kwargs):
         """
         Runs the given number of iterations of this fitter.
         
@@ -595,6 +596,11 @@ class LeastSquareFitter(object):
                               achieves a loglikelihood above this value, the
                               LeastSquareFitter is stopped early
                               default value is np.inf
+        verbose: if True, a message is printed at the beginning of each
+                          iteration of this LeastSquareFitter
+        run_if_iterations_exist: if False (default: True), iterations are only
+                                                           run if they don't
+                                                           already exist
         kwargs: Keyword arguments to pass on as options to
                 scipy.optimize.minimize(method='SLSQP'). They can include:
                     ftol : float, precision goal for the loglikelihood in the
@@ -604,7 +610,13 @@ class LeastSquareFitter(object):
                     disp : bool, set to True to print convergence messages.
                     maxiter : int, maximum number of iterations.
         """
+        if (not run_if_iterations_exist) and\
+            (self.num_iterations >= iterations):
+            return
         for index in range(iterations):
+            if verbose:
+                print(("Starting iteration #{0:d} of LeastSquareFitter " +\
+                    "at {1!s}.").format(1 + index, time.ctime()))
             if (len(self.argmins) > 0) and\
                 (self.min < ((-1) * cutoff_loglikelihood)):
                 continue
