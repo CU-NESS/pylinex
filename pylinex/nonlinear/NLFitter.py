@@ -9,6 +9,7 @@ Description: File containing class which analyzes MCMC chains in order to infer
 from __future__ import division
 import os, re, gc, h5py
 import numpy as np
+from scipy.special import erfinv
 import matplotlib.pyplot as pl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from distpy import TransformList, DistributionSet, JumpingDistributionSet
@@ -796,8 +797,12 @@ class NLFitter(object):
         which may be transformed.
         """
         if not hasattr(self, '_parameter_covariance'):
-            self._parameter_covariance =\
-                np.cov(self.transform_list(self.flattened_chain), rowvar=False)
+            if len(self.parameter_mean) == 1:
+                self._parameter_covariance = np.array(\
+                    [[np.var(self.transform_list(self.flattened_chain)[:,0])]])
+            else:
+                self._parameter_covariance = np.cov(\
+                    self.transform_list(self.flattened_chain), rowvar=False)
         return self._parameter_covariance
     
     @property
@@ -1720,10 +1725,12 @@ class NLFitter(object):
             return (ax, reconstructions)
         else:
             return ax
-    
-    def plot_chain(self, parameters=None, apply_transforms=True,\
-        walkers=None, thin=1, figsize=(12, 12), show=False,\
-        parameter_renamer=(lambda x: x), **reference_values):
+
+    def plot_chain(self, parameters=None, apply_transforms_to_chain=True,\
+        apply_transforms_to_reference_value=True, walkers=None, thin=1,\
+        figsize=(12, 12), show=False, parameter_renamer=(lambda x: x),\
+        reference_value_mean=None, reference_value_covariance=None,\
+        confidence_level=0.95):
         """
         Plots the chain of this MCMC.
         
@@ -1733,6 +1740,12 @@ class NLFitter(object):
                     if sequence of ints, describes the indices of the
                                          parameters to be plotted
                     if sequence of strings, describes parameters to be plotted
+        apply_transforms_to_chain: if True, chains are plotted in transformed
+                                   space, instead of in untransformed space
+        apply_transforms_to_reference_value: if True, reference values are
+                                              assumed to be in untransformed
+                                              space and they are transformed
+                                              before being plotted
         walkers: if None, all walkers are shown.
                  if int, describes the number of walkers shown in the plot
                  if sequence, describes which walkers are shown in the plot
@@ -1744,9 +1757,18 @@ class NLFitter(object):
                            plotting purposes. The default value is
                            (lambda x: x), which simply give parameters the same
                            name with which they are internally represented
-        reference_values: if applicable, dictionary of values to plot on top of
-                          chains for each parameter keys can be parameters or
-                          parameters which are put through parameter_renamer
+        reference_value_mean: either None or a 1D array containing reference
+                              values.
+        reference_value_covariance: either None, a 2D array of rank
+                                    len(parameter_indices), or a tuple of
+                                    length greater than 1 of the form
+                                    (model, error)
+                                    or (model, error, fisher_kwargs) to use for
+                                    estimating the covariance matrix under the
+                                    Fisher matrix formalism
+        confidence_level: confidence to use when plotting reference interval
+                          (only used if reference_value_mean and
+                          reference_value_covariance are known)
         
         returns: if show is True, None
                  otherwise, the matplotlib Figure object containing plots
@@ -1760,9 +1782,13 @@ class NLFitter(object):
         elif type(walkers) in int_types:
             walkers = np.arange(walkers)
         trimmed_chain = self.chain[walkers,:,:]
-        if apply_transforms:
+        if apply_transforms_to_chain:
             trimmed_chain = self.transform_list(trimmed_chain)
         trimmed_chain = trimmed_chain[:,::thin,:][:,:,parameter_indices]
+        (reference_value_mean, reference_value_covariance) =\
+            self.process_reference_values(parameter_indices,\
+            apply_transforms_to_reference_value, reference_value_mean,\
+            reference_value_covariance)
         steps = np.arange(0, self.nsteps, thin)
         axes_per_side = int(np.ceil(np.sqrt(num_parameter_plots)))
         fig = pl.figure(figsize=figsize)
@@ -1772,16 +1798,24 @@ class NLFitter(object):
             renamed_parameter = parameter_renamer(parameter_name)
             ax = fig.add_subplot(axes_per_side, axes_per_side, index + 1)
             ax.plot(steps, trimmed_chain[:,:,index].T, linewidth=1)
-            if (parameter_name in reference_values) or\
-                (renamed_parameter in reference_values):
-                if parameter_name in reference_values:
-                    to_plot = reference_values[parameter_name]
-                else:
-                    to_plot = reference_values[renamed_parameter]
-                if apply_transforms:
-                    to_plot = self.transform_list[parameter_index](to_plot)
-                ax.plot(steps, to_plot * np.ones_like(steps),\
-                    linewidth=2, color='k', linestyle='--')
+            if type(reference_value_mean) is not type(None):
+                this_mean = reference_value_mean[index]
+                if type(this_mean) is not type(None):
+                    ax.plot([steps[0], steps[-1]], [this_mean] * 2,\
+                        linewidth=2, color='k', linestyle='-')
+                if type(reference_value_covariance) is not type(None):
+                    this_variance = reference_value_covariance[index,index]
+                    if type(this_variance) is not type(None):
+                        variance_expansion_for_1D_confidence =\
+                            (2 * np.power(erfinv(confidence_level), 2))
+                        this_error = np.sqrt(this_variance *\
+                            variance_expansion_for_1D_confidence)
+                        ax.plot([steps[0], steps[-1]],\
+                            [this_mean - this_error] * 2, color='k',\
+                            linewidth=2, linestyle='--')
+                        ax.plot([steps[0], steps[-1]],\
+                            [this_mean + this_error] * 2, color='k',\
+                            linewidth=2, linestyle='--')
             ax.set_title(renamed_parameter)
             ax.set_xlim((steps[0], steps[-1]))
         fig.subplots_adjust(left=0.05, bottom=0.05, right=0.95, top=0.95,\
@@ -1812,6 +1846,77 @@ class NLFitter(object):
         else:
             raise TypeError("parameter must be a string name of a " +\
                 "parameter or a valid index of a parameter.")
+    
+    def process_reference_values(self, parameter_indices,\
+        apply_transforms_to_reference_value, reference_value_mean,\
+        reference_value_covariance):
+        """
+        Processes the given reference values, performing a Fisher matrix
+        calculation if desired.
+        
+        parameter_indices: array of integer indices (like those returned by
+                           get_parameter_indices method)
+        apply_transforms_to_reference_value: boolean determining whether
+                                             transforms should be applied to
+                                             the reference values
+        reference_value_mean: either None or a 1D array containing reference
+                              values.
+        reference_value_covariance: either None, a 2D array of rank
+                                    len(parameter_indices), or a tuple of
+                                    length greater than 1 of the form
+                                    (model, error)
+                                    or (model, error, fisher_kwargs) to use for
+                                    estimating the covariance matrix under the
+                                    Fisher matrix formalism
+        
+        returns: (reference_value_mean, reference_value_covariance)
+                 If reference_value_mean was not given as None, then it is
+                 returned (after being transformed if
+                 apply_transforms_to_reference_value is True). If
+                 reference_value_covariance was not given as None, then it is
+                 returned (in transformed space if
+                 apply_transforms_to_reference_value is True) as a 2D array.
+        """
+        if (type(reference_value_covariance) is not type(None)) and\
+            (type(reference_value_mean) is not type(None)):
+            if isinstance(reference_value_covariance, np.ndarray):
+                if reference_value_covariance.shape !=\
+                    ((len(reference_value_mean),) * 2):
+                    raise ValueError("reference_value_covariance was a " +\
+                        "numpy.ndarray but it was not square with rank " +\
+                        "given by the number of parameters in the triangle " +\
+                        "plot.")
+                else:
+                    transform_list = self.transform_list[parameter_indices]
+                    reference_value_covariance =\
+                        transform_list.transform_covariance(\
+                        reference_value_covariance, reference_value_mean,\
+                        axis=(0, 1))
+            else:
+                (model, error, fisher_kwargs) =\
+                    (reference_value_covariance[0],\
+                    reference_value_covariance[1],\
+                    reference_value_covariance[2:])
+                if len(fisher_kwargs) == 0:
+                    fisher_kwargs = {}
+                else:
+                    fisher_kwargs = fisher_kwargs[0]
+                if apply_transforms_to_reference_value:
+                    fisher_kwargs['transform_list'] =\
+                        self.transform_list[parameter_indices]
+                likelihood = GaussianLoglikelihood(\
+                    model(reference_value_mean), error, model)
+                reference_value_covariance =\
+                    likelihood.parameter_covariance_fisher_formalism(\
+                    reference_value_mean, **fisher_kwargs)
+        if (type(reference_value_mean) is not type(None)) and\
+            apply_transforms_to_reference_value:
+            reference_value_mean = [(None\
+                if (type(reference) is type(None)) else transform(reference))\
+                for (transform, reference) in\
+                zip(self.transform_list[parameter_indices],\
+                reference_value_mean)]
+        return (reference_value_mean, reference_value_covariance)
     
     def triangle_plot(self, parameters=None, walkers=None, thin=1,\
         scale_factors=None, figsize=(12, 12), fig=None, show=False,\
@@ -1891,52 +1996,10 @@ class NLFitter(object):
             samples = [(sample * scale_factor)\
                 for (sample, scale_factor) in zip(samples, scale_factors)]
         num_samples = len(samples)
-        if type(reference_value_covariance) is not type(None):
-            if isinstance(reference_value_covariance, np.ndarray):
-                if reference_value_covariance.shape != ((num_samples,) * 2):
-                    raise ValueError("reference_value_covariance was a " +\
-                        "numpy.ndarray but it was not square with rank " +\
-                        "given by the number of parameters in the triangle " +\
-                        "plot.")
-                else:
-                    transform_list = self.transform_list[parameter_indices]
-                    reference_value_covariance =\
-                        transform_list.transform_covariance(\
-                        reference_value_covariance, reference_value_mean,\
-                        axis=(0, 1))
-            else:
-                (model, error, fisher_kwargs) =\
-                    (reference_value_covariance[0],\
-                    reference_value_covariance[1],\
-                    reference_value_covariance[2:])
-                if type(contour_confidence_levels) is type(None):
-                    confidence_level = 0.95
-                    print("WARNING: No contour_confidence_levels given in " +\
-                        "triangle_plot even though it is necessary to " +\
-                        "compute Fisher matrix ellipses. Using 95% " +\
-                        "confidence by default.")
-                else:
-                    confidence_level = np.max(contour_confidence_levels)
-                error = error * np.sqrt((-2) * np.log(1 - confidence_level))
-                if len(fisher_kwargs) == 0:
-                    fisher_kwargs = {}
-                else:
-                    fisher_kwargs = fisher_kwargs[0]
-                if apply_transforms_to_reference_value:
-                    fisher_kwargs['transform_list'] =\
-                        self.transform_list[parameter_indices]
-                likelihood = GaussianLoglikelihood(\
-                    model(reference_value_mean), error, model)
-                reference_value_covariance =\
-                    likelihood.parameter_covariance_fisher_formalism(\
-                    reference_value_mean, **fisher_kwargs)
-        if (type(reference_value_mean) is not type(None)) and\
-            apply_transforms_to_reference_value:
-            reference_value_mean = [(None\
-                if (type(reference) is type(None)) else transform(reference))\
-                for (transform, reference) in\
-                zip(self.transform_list[parameter_indices],\
-                reference_value_mean)]
+        (reference_value_mean, reference_value_covariance) =\
+            self.process_reference_values(parameter_indices,\
+            apply_transforms_to_reference_value, reference_value_mean,\
+            reference_value_covariance)
         return triangle_plot(samples, labels, figsize=figsize, show=show,\
             kwargs_1D=kwargs_1D, kwargs_2D=kwargs_2D, fontsize=fontsize,\
             nbins=nbins, plot_type=plot_type,\

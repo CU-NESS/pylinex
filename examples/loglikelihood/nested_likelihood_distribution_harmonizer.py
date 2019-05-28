@@ -48,9 +48,9 @@ likelihood_distribution_harmonizer = LikelihoodDistributionHarmonizer(\
     incomplete_guess_distribution_set, gaussian_loglikelihood,\
     unknown_name_chain, ndraw)
 
-full_distribution_set =\
-    likelihood_distribution_harmonizer.full_distribution_set
-draw = full_distribution_set.draw(ndraw)
+joint_distribution_set =\
+    likelihood_distribution_harmonizer.joint_distribution_set
+draw = joint_distribution_set.draw(ndraw)
 
 fig = pl.figure(figsize=(12, 9))
 ax = fig.add_subplot(111)
@@ -65,9 +65,9 @@ ax.set_title('Parameters found through likelihood distribution ' +\
     'harmonization', size=fontsize)
 ax.tick_params(labelsize=fontsize, width=2.5, length=7.5, which='major')
 ax.tick_params(labelsize=fontsize, width=1.5, length=4.5, which='minor')
-full_distribution_set.reset()
+joint_distribution_set.reset()
 
-curve_sample = model.curve_sample(full_distribution_set, ndraw)
+curve_sample = model.curve_sample(joint_distribution_set, ndraw)
 
 fig = pl.figure(figsize=(12, 9))
 ax = fig.add_subplot(111)

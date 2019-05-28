@@ -525,6 +525,8 @@ class InterpolatedModel(Model):
         expander = load_expander_from_hdf5_group(group['expander'])
         if 'error' in group.attrs:
             error = group.attrs['error']
+        else:
+            error = None
         interpolation_method = group.attrs['interpolation_method']
         return InterpolatedModel(parameter_names, training_inputs,\
             training_outputs, should_compress=should_compress,\
@@ -543,9 +545,37 @@ class InterpolatedModel(Model):
         """
         if not isinstance(other, InterpolatedModel):
             return False
-        
-        raise NotImplementedError("__eq__ not finished yet for the " +\
-            "InterpolatedModel class!")
+        if self.scale_to_cube != other.scale_to_cube:
+            return False
+        if self.compressed != other.compressed:
+            return False
+        elif self.compressed and\
+            (self.num_basis_vectors != other.num_basis_vectors):
+            return False
+        if self.interpolation_method != other.interpolation_method:
+            return False
+        if type(self.error) is type(None):
+            if type(other.error) is not type(None):
+                return False
+        elif np.any(self.error != other.error):
+            return False
+        if self.transform_list != other.transform_list:
+            return False
+        if self.expander != other.expander:
+            return False
+        if self.parameters != other.parameters:
+            return False
+        if self.training_inputs.shape == other.training_inputs.shape:
+            if np.any(self.training_inputs != other.training_inputs):
+                return False
+        else:
+            return False
+        if self.training_outputs.shape == other.training_outputs.shape:
+            if np.any(self.training_outputs != other.training_outputs):
+                return False
+        else:
+            return False
+        return True
     
     @property
     def bounds(self):

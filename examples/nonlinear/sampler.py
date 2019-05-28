@@ -79,14 +79,14 @@ try:
             guess_distribution_set=guess_distribution_set,\
             prior_distribution_set=prior_distribution_set, nthreads=nthreads,\
             steps_per_checkpoint=steps_per_checkpoint, restart_mode=None)
-    sampler.run_checkpoints(quarter_ncheckpoints)
+    sampler.run_checkpoints(quarter_ncheckpoints, silence_error=True)
     sampler.close()
     sampler = Sampler(file_name, nwalkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
         prior_distribution_set=prior_distribution_set, nthreads=nthreads,\
         steps_per_checkpoint=steps_per_checkpoint, restart_mode='update',\
         desired_acceptance_fraction=desired_acceptance_fraction)
-    sampler.run_checkpoints(quarter_ncheckpoints)
+    sampler.run_checkpoints(quarter_ncheckpoints, silence_error=True)
     sampler.close()
     sampler = Sampler(file_name, nwalkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
@@ -94,24 +94,26 @@ try:
         steps_per_checkpoint=steps_per_checkpoint,\
         restart_mode='reinitialize',\
         desired_acceptance_fraction=desired_acceptance_fraction)
-    sampler.run_checkpoints(quarter_ncheckpoints)
+    sampler.run_checkpoints(quarter_ncheckpoints, silence_error=True)
     sampler.close()
     sampler = Sampler(file_name, nwalkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
         prior_distribution_set=prior_distribution_set, nthreads=nthreads,\
         steps_per_checkpoint=steps_per_checkpoint, restart_mode='continue')
-    sampler.run_checkpoints(quarter_ncheckpoints)
+    sampler.run_checkpoints(quarter_ncheckpoints, silence_error=True)
     sampler.close()
     fitter = NLFitter(file_name)
     fitter.plot_acceptance_fraction_four_types()
     fitter.plot_lnprobability_both_types(which='posterior')
     fitter.plot_lnprobability_both_types(which='likelihood')
     fitter.plot_lnprobability_both_types(which='prior')
-    fitter.plot_chain(show=False, amplitude=true_amplitude,\
-        center=true_center, scale=true_scale)
+    reference_value_mean = np.array([true_amplitude, true_center, true_scale])
+    reference_value_covariance = (model, error)
+    fitter.plot_chain(show=False, reference_value_mean=reference_value_mean,\
+        reference_value_covariance=reference_value_covariance)
     fig = fitter.triangle_plot(parameters='.*', plot_type='contourf',\
-        reference_value_mean=np.array([true_amplitude, true_center,\
-        true_scale]), reference_value_covariance=(model, error),\
+        reference_value_mean=reference_value_mean,\
+        reference_value_covariance=reference_value_covariance,\
         figsize=(12, 12), contour_confidence_levels=[0.40, 0.95],\
         kwargs_2D={'reference_alpha': 0.5}, show=False)
     fig.subplots_adjust(left=0.2)

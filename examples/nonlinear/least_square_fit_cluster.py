@@ -52,7 +52,6 @@ least_square_fit_cluster = LeastSquareFitCluster.load_from_first_file(\
     '{!s}.hdf5'.format(prefix), num_fits)
 least_square_fit_cluster.run()
 t2 = time.time()
-print("least_square_fit_cluster.argmins={}".format(least_square_fit_cluster.argmins))
 gaussian_distribution =\
     least_square_fit_cluster.approximate_gaussian_distribution
 

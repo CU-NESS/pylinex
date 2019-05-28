@@ -60,13 +60,15 @@ sampler.run_checkpoints(ncheckpoints, silence_error=True)
 sampler.close()
 fitter = NLFitter(file_name)
 fitter.plot_acceptance_fraction(log_scale=True, ax=None, show=False)
-fitter.plot_chain(show=False, a0=true_a0, a1=true_a1)
+reference_value_covariance =\
+    loglikelihood.parameter_covariance_fisher_formalism(true)
+fitter.plot_chain(show=False, reference_value_mean=true,\
+    reference_value_covariance=reference_value_covariance)
 fig = pl.figure(figsize=(12, 9))
 ax = fig.add_subplot(111)
 fig = fitter.plot_bivariate_histogram('a0', 'a1', ax=ax,\
     matplotlib_function='contourf', reference_value_mean=true,\
-    reference_value_covariance=\
-    loglikelihood.parameter_covariance_fisher_formalism(true),\
+    reference_value_covariance=reference_value_covariance,\
     contour_confidence_levels=[0.95], reference_alpha=0.4, bins=nbins,\
     xlabel='$x$', ylabel='$y$', show=False,\
     title='Samples from Rosenbrock function-inspired distribution')

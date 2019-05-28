@@ -31,5 +31,6 @@ ylim = ax.get_ylim()
 ax.plot([1] * 2, ylim, color='k', linestyle='-')
 ax.plot([1 - psi_squared_error] * 2, ylim, color='k', linestyle='--')
 ax.plot([1 + psi_squared_error] * 2, ylim, color='k', linestyle='--')
+ax.set_ylim(ylim)
 pl.show()
 

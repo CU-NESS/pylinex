@@ -79,14 +79,14 @@ try:
         steps_per_checkpoint=steps_per_checkpoint, verbose=verbose,\
         restart_mode=restart_mode,\
         desired_acceptance_fraction=desired_acceptance_fraction)
-    sampler.run_checkpoints(num_checkpoints)
+    sampler.run_checkpoints(num_checkpoints, silence_error=True)
     sampler.close()
     fitter = NLFitter(file_name)
     fig = pl.figure(figsize=(12,9))
     ax = fig.add_subplot(111)
     fitter.plot_acceptance_fraction(log_scale=False, ax=ax, show=False)
-    fitter.plot_chain(parameters='a.*', ax=ax, show=False, a0=parameters[0],\
-        a1=parameters[1])
+    fitter.plot_chain(parameters='a.*', show=False,\
+        reference_value_mean=parameters[:2])
     fitter.close()
     burn_rule = BurnRule(min_checkpoints=10, desired_fraction=0.5)
     fitter = NLFitter(file_name, burn_rule)

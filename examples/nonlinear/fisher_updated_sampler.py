@@ -65,7 +65,7 @@ try:
         guess_distribution_set=guess_distribution_set,\
         prior_distribution_set=None, nthreads=nthreads,\
         steps_per_checkpoint=steps_per_checkpoint, restart_mode=None)
-    sampler.run_checkpoints(half_ncheckpoints)
+    sampler.run_checkpoints(half_ncheckpoints, silence_error=True)
     sampler.close()
     sampler = Sampler(file_name, nwalkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
@@ -73,17 +73,19 @@ try:
         steps_per_checkpoint=steps_per_checkpoint,\
         restart_mode='fisher_update',\
         desired_acceptance_fraction=desired_acceptance_fraction)
-    sampler.run_checkpoints(half_ncheckpoints)
+    sampler.run_checkpoints(half_ncheckpoints, silence_error=True)
     sampler.close()
     fitter = NLFitter(file_name)
     fitter.plot_acceptance_fraction_four_types()
     fitter.plot_lnprobability_both_types()
-    fitter.plot_chain(show=False, amplitude=true_amplitude,\
-        center=true_center, scale=true_scale, figsize=(8,8))
+    reference_value_mean = np.array([true_amplitude, true_center, true_scale])
+    reference_value_covariance = (model, error)
+    fitter.plot_chain(show=False, reference_value_mean=reference_value_mean,\
+        reference_value_covariance=reference_value_covariance, figsize=(8,8))
     fig = fitter.triangle_plot(parameters='.*', plot_type='contourf',\
-        reference_value_mean=np.array([true_amplitude, true_center,\
-        true_scale]), reference_value_covariance=(model, error),\
-        figsize=(8, 8), contour_confidence_levels=[0.40, 0.95], fontsize=16,\
+        reference_value_mean=reference_value_mean,\
+        reference_value_covariance=reference_value_covariance, figsize=(8, 8),\
+        contour_confidence_levels=[0.40, 0.95], fontsize=16,\
         kwargs_2D={'reference_alpha': 0.3}, show=False)
     fig.subplots_adjust(left=0.2)
     fitter.close()

@@ -8,7 +8,8 @@ Description: File containing class which implements distpy's
              whose model is a sum of other models.
 """
 import numpy as np
-from distpy import DistributionHarmonizer
+from distpy import GaussianDistribution, DistributionSet,\
+    DistributionHarmonizer
 from ..model import SumModel, DirectSumModel, ProductModel
 from .GaussianLoglikelihood import GaussianLoglikelihood
 
@@ -25,7 +26,8 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
     likelihood.
     """
     def __init__(self, incomplete_guess_distribution_set,\
-        gaussian_loglikelihood, unknown_name_chain, ndraw, **transforms):
+        gaussian_loglikelihood, unknown_name_chain, marginal_draws,\
+        conditional_draws=None, **transforms):
         """
         Creates a new LikelihoodDistributionHarmonizer from the loglikelihood.
         
@@ -37,7 +39,20 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
                             which has a quick_fit function which will be solved
                             for to generate samples from this
                             LikelihoodDistributionHarmonizer
-        ndraw: positive integer number of desired samples
+        marginal_draws: positive integer number of samples to draw from the
+                        marginal distribution (given by the
+                        incomplete_guess_distribution_set)
+        conditional_draws: if None (default), then the conditional distribution
+                                              is effectively degenerate, with
+                                              only the maximum likelihood value
+                                              being drawn
+                           otherwise, then this should be a positive integer
+                                      determining the number of times the
+                                      conditional distribution should be drawn
+                                      from for each of the marginal_draws
+                                      number of draws from the marginal
+                                      distribution (given by the
+                                      incomplete_guess_distribution_set).
         transforms: transforms indexed by parameter. parameters not given are
                     assumed to remain untransformed throughout
         """
@@ -109,17 +124,21 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
                     data_to_fit = data_to_fit / known_model_value
                     error_to_fit = error_to_fit / np.abs(known_model_value)
             try:
-                solved_for_parameters =\
-                    unknown_submodel.quick_fit(data_to_fit, error_to_fit)[0]
+                quick_fit =\
+                    unknown_submodel.quick_fit(data_to_fit, error_to_fit)
             except NotImplementedError:
                 raise NotImplementedError(("The submodel (class: {!s}) " +\
                     "concerning the parameters whose distribution is not " +\
                     "known does not have a quick_fit function implemented, " +\
                     "so the LikelihoodDistributionHarmonizer class cannot " +\
                     "be used.").format(type(unknown_submodel)))
-            return {parameter: value for (parameter, value) in\
-                zip(unknown_parameter_names, solved_for_parameters)}
+            if type(conditional_draws) is type(None):
+                return {parameter: value for (parameter, value) in\
+                    zip(unknown_parameter_names, quick_fit[0])}
+            else:
+                return DistributionSet([(GaussianDistribution(*quick_fit),\
+                    unknown_parameter_names, None)])
         DistributionHarmonizer.__init__(self,\
             incomplete_guess_distribution_set, remaining_parameter_solver,\
-            ndraw, **transforms)
+            marginal_draws, conditional_draws=conditional_draws, **transforms)
 

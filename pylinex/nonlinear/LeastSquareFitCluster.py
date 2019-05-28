@@ -402,37 +402,49 @@ class LeastSquareFitCluster(object):
             self._argmins = []
             self._successes = []
             for (fit_index, file_name) in enumerate(self.file_names):
-                loglikelihood = self.generate_loglikelihood(fit_index)
-                least_square_fitter = LeastSquareFitter(\
-                    loglikelihood=loglikelihood, prior_set=prior_set,\
-                    transform_list=self.transform_list.inverse,\
-                    file_name=file_name, **self.bounds)
-                least_square_fitter.run(iterations=iterations,\
-                    attempt_threshold=attempt_threshold,\
-                    cutoff_loglikelihood=cutoff_loglikelihood,\
-                    verbose=doubly_verbose, run_if_iterations_exist=False,\
-                    **kwargs)
-                is_successful = bool(np.max(least_square_fitter.successes))
-                self._data_realizations.append(loglikelihood.data)
-                self._argmins.append(least_square_fitter.argmin)
-                self._successes.append(is_successful)
-                if verbose:
-                    print(("Finished least square fitter #{0:d} of " +\
-                        "LeastSquareFitCluster at {1!s}, and it was " +\
-                        "{2!s}successful.").format(1 + fit_index,\
-                        time.ctime(), "" if is_successful else "not "))
-                if fit_index == 0:
-                    prior_distribution =\
-                        KroneckerDeltaDistribution(least_square_fitter.argmin)
-                    prior_distribution_tuple =\
-                        (prior_distribution, self.parameters, None)
-                    prior_set = DistributionSet([prior_distribution_tuple])
-                    iterations = 1
-                elif verbose and (type(tolerance) is not type(None)):
-                    print(("np.any(np.abs(argmins[{0:d}] - argmins[0]) < " +\
-                        "{1})={2}").format(fit_index, tolerance,\
-                        np.any(np.abs(self._argmins[-1] - self._argmins[0]) <\
-                        tolerance)))
+                while True:
+                    loglikelihood = self.generate_loglikelihood(fit_index)
+                    least_square_fitter = LeastSquareFitter(\
+                        loglikelihood=loglikelihood, prior_set=prior_set,\
+                        transform_list=self.transform_list.inverse,\
+                        file_name=file_name, **self.bounds)
+                    least_square_fitter.run(iterations=iterations,\
+                        attempt_threshold=attempt_threshold,\
+                        cutoff_loglikelihood=cutoff_loglikelihood,\
+                        verbose=doubly_verbose, run_if_iterations_exist=False,\
+                        **kwargs)
+                    is_successful = bool(np.max(least_square_fitter.successes))
+                    self._data_realizations.append(loglikelihood.data)
+                    self._argmins.append(least_square_fitter.argmin)
+                    self._successes.append(is_successful)
+                    if verbose:
+                        print(("Finished least square fitter #{0:d} of " +\
+                            "LeastSquareFitCluster at {1!s}, and it was " +\
+                            "{2!s}successful.").format(1 + fit_index,\
+                            time.ctime(), "" if is_successful else "not "))
+                    if fit_index == 0:
+                        prior_distribution = KroneckerDeltaDistribution(\
+                            least_square_fitter.argmin)
+                        prior_distribution_tuple =\
+                            (prior_distribution, self.parameters, None)
+                        prior_set = DistributionSet([prior_distribution_tuple])
+                        iterations = 1
+                        break
+                    elif type(tolerance) is type(None):
+                        break
+                    else:
+                        within_tolerance = np.any(np.abs(\
+                            self._argmins[-1] - self._argmins[0]) < tolerance)
+                        if verbose:
+                            print(("Supplemental fit #{0:d} was{1!s} " +\
+                                "within tolerance of {2}.").format(fit_index,\
+                                "" if within_tolerance else " not", tolerance))
+                        if within_tolerance:
+                            if type(file_name) is not type(None):
+                                os.remove(file_name)
+                            continue
+                        else:
+                            break
             self._data_realizations = np.array(self._data_realizations)
             self._argmins = np.array(self._argmins)
             self._successes = np.array(self._successes)
@@ -486,7 +498,10 @@ class LeastSquareFitCluster(object):
         """
         if not hasattr(self, '_approximate_gaussian_distribution'):
             mean = np.mean(self.argmins, axis=0)
-            covariance = np.cov(self.argmins, rowvar=False)
+            if len(mean) == 1:
+                covariance = np.var(self.argmins[:,0])
+            else:
+                covariance = np.cov(self.argmins, rowvar=False)
             self._approximate_gaussian_distribution =\
                 GaussianDistribution(mean, covariance)
         return self._approximate_gaussian_distribution

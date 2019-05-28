@@ -32,44 +32,51 @@ kwargs = {}
 use_ensemble_sampler = False
 half_ncheckpoints = 50
 
-np.random.seed(seed)
-sampler = Sampler(file_name1, nwalkers, loglikelihood,\
-    jumping_distribution_set=jumping_distribution_set,\
-    guess_distribution_set=guess_distribution_set,\
-    prior_distribution_set=prior_distribution_set,\
-    steps_per_checkpoint=steps_per_checkpoint, verbose=verbose,\
-    restart_mode=None, nthreads=nthreads, args=args, kwargs=kwargs,\
-    use_ensemble_sampler=use_ensemble_sampler,\
-    desired_acceptance_fraction=desired_acceptance_fraction)
-sampler.run_checkpoints(2 * half_ncheckpoints)
-sampler.close()
+try:
+    np.random.seed(seed)
+    sampler = Sampler(file_name1, nwalkers, loglikelihood,\
+        jumping_distribution_set=jumping_distribution_set,\
+        guess_distribution_set=guess_distribution_set,\
+        prior_distribution_set=prior_distribution_set,\
+        steps_per_checkpoint=steps_per_checkpoint, verbose=verbose,\
+        restart_mode=None, nthreads=nthreads, args=args, kwargs=kwargs,\
+        use_ensemble_sampler=use_ensemble_sampler,\
+        desired_acceptance_fraction=desired_acceptance_fraction)
+    sampler.run_checkpoints(2 * half_ncheckpoints)
+    sampler.close()
+    
+    np.random.seed(seed)
+    sampler = Sampler(file_name2, nwalkers, loglikelihood,\
+        jumping_distribution_set=jumping_distribution_set,\
+        guess_distribution_set=guess_distribution_set,\
+        prior_distribution_set=prior_distribution_set,\
+        steps_per_checkpoint=steps_per_checkpoint, verbose=verbose,\
+        restart_mode=None, nthreads=nthreads, args=args, kwargs=kwargs,\
+        use_ensemble_sampler=use_ensemble_sampler,\
+        desired_acceptance_fraction=desired_acceptance_fraction)
+    sampler.run_checkpoints(half_ncheckpoints)
+    sampler.close()
+    sampler = Sampler(file_name2, nwalkers, loglikelihood,\
+        jumping_distribution_set=None, guess_distribution_set=None,\
+        prior_distribution_set=None, steps_per_checkpoint=steps_per_checkpoint,\
+        verbose=verbose, restart_mode='continue', nthreads=nthreads, args=args,\
+        kwargs=kwargs, use_ensemble_sampler=use_ensemble_sampler,\
+        desired_acceptance_fraction=desired_acceptance_fraction)
+    sampler.run_checkpoints(half_ncheckpoints)
+    sampler.close()
 
-np.random.seed(seed)
-sampler = Sampler(file_name2, nwalkers, loglikelihood,\
-    jumping_distribution_set=jumping_distribution_set,\
-    guess_distribution_set=guess_distribution_set,\
-    prior_distribution_set=prior_distribution_set,\
-    steps_per_checkpoint=steps_per_checkpoint, verbose=verbose,\
-    restart_mode=None, nthreads=nthreads, args=args, kwargs=kwargs,\
-    use_ensemble_sampler=use_ensemble_sampler,\
-    desired_acceptance_fraction=desired_acceptance_fraction)
-sampler.run_checkpoints(half_ncheckpoints)
-sampler.close()
-sampler = Sampler(file_name2, nwalkers, loglikelihood,\
-    jumping_distribution_set=None, guess_distribution_set=None,\
-    prior_distribution_set=None, steps_per_checkpoint=steps_per_checkpoint,\
-    verbose=verbose, restart_mode='continue', nthreads=nthreads, args=args,\
-    kwargs=kwargs, use_ensemble_sampler=use_ensemble_sampler,\
-    desired_acceptance_fraction=desired_acceptance_fraction)
-sampler.run_checkpoints(half_ncheckpoints)
-sampler.close()
-
-fitters = [NLFitter(file_name1), NLFitter(file_name2)]
-chains = [fitter.chain for fitter in fitters]
-print('chains_equal={}'.format(np.all(chains[0] == chains[1])))
-for fitter in fitters:
-    fitter.close()
-
-os.remove(file_name1)
-os.remove(file_name2)
+    fitters = [NLFitter(file_name1), NLFitter(file_name2)]
+    chains = [fitter.chain for fitter in fitters]
+    print('chains_equal={}'.format(np.all(chains[0] == chains[1])))
+    for fitter in fitters:
+        fitter.close()
+except KeyboardInterrupt:
+    if os.path.exists(file_name1):
+        os.remove(file_name1)
+    if os.path.exists(file_name2):
+        os.remove(file_name2)
+    raise
+else:
+    os.remove(file_name1)
+    os.remove(file_name2)
 

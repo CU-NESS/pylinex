@@ -64,7 +64,7 @@ even_loglikelihood =\
 even_likelihood_distribution_harmonizer =\
     LikelihoodDistributionHarmonizer(None, even_loglikelihood, [], ndraw)
 even_distribution_set =\
-    even_likelihood_distribution_harmonizer.full_distribution_set
+    even_likelihood_distribution_harmonizer.joint_distribution_set
 even_distribution_set.modify_parameter_names(\
     lambda name: 'even_{!s}'.format(name))
 odd_model = loglikelihood.models[loglikelihood.basis_set.names.index('odd')]
@@ -73,7 +73,7 @@ odd_loglikelihood =\
 odd_likelihood_distribution_harmonizer =\
     LikelihoodDistributionHarmonizer(None, odd_loglikelihood, [], ndraw)
 odd_distribution_set =\
-    odd_likelihood_distribution_harmonizer.full_distribution_set
+    odd_likelihood_distribution_harmonizer.joint_distribution_set
 odd_distribution_set.modify_parameter_names(\
     lambda name: 'odd_{!s}'.format(name))
 guess_distribution_set = even_distribution_set + odd_distribution_set

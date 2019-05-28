@@ -64,10 +64,11 @@ fitter = NLFitter(file_name, burn_rule)
 
 fig = pl.figure(figsize=(12,9))
 ax = fig.add_subplot(111)
-ax = fitter.plot_univariate_histogram('a', ax=ax, apply_transforms=True,\
-    fontsize=28, matplotlib_function='plot', show_intervals=False,\
-    bins=100, xlabel='$a$', ylabel='PDF', title='Gaussian loglikelihood test',\
-    linewidth=linewidth, label='MCMC w. noise', linestyle='--')
+ax = fitter.plot_univariate_histogram('a', ax=ax,\
+    apply_transforms_to_chain=True, fontsize=28, matplotlib_function='plot',\
+    show_intervals=False, bins=100, xlabel='$a$', ylabel='PDF',\
+    title='Gaussian loglikelihood test', linewidth=linewidth,\
+    label='MCMC w. noise', linestyle='--')
 
 x_values = true_value +\
     (np.linspace(-1, 1, 1000) * (4 * np.sqrt(true_variance)))

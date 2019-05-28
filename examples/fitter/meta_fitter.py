@@ -10,15 +10,15 @@ Description: Example showing how to use MetaFitter class to perform many least
              quantities at each grid square.
 """
 import numpy as np
-import numpy.random as rand
+import matplotlib.pyplot as pl
 from pylinex import AttributeQuantity, PolynomialBasis, BasisSum, MetaFitter
 
 xs = np.linspace(-1, 1, 100)
 
 noise_level = 1e-1
-error = np.ones_like(xs)
+error = np.ones_like(xs) * noise_level
 noiseless_data = np.polyval([4, 3, 2, 1, 0, 0, 9], xs)
-data = noiseless_data + (rand.normal(0, 1, xs.shape) * error)
+data = noiseless_data + (np.random.normal(0, 1, xs.shape) * error)
 
 name = 'polynomial'
 basis = PolynomialBasis(xs, 15)
@@ -31,6 +31,10 @@ dimension = {'polynomial': np.arange(1, 16)}
 meta_fitter = MetaFitter(basis_sum, data, error, quantity, quantity.name,\
     dimension)
 fitter = meta_fitter.fitter_from_indices(meta_fitter.minimize_quantity('BPIC'))
-fitter.plot_subbasis_fit(nsigma=1, name=name, true_curve=noiseless_data,\
-    x_values=xs, colors='r', show=True)
+fig = pl.figure(figsize=(12,9))
+ax = fig.add_subplot(111)
+ax.scatter(xs, data, color='k')
+fitter.plot_subbasis_fit(nsigma=1, name=name, true_curve=None, x_values=xs,\
+    colors='r', ax=ax, show=False)
+pl.show()
 

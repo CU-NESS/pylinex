@@ -43,7 +43,8 @@ if not os.path.exists(file_name):
         jumping_distribution_set, guess_distribution_set,\
         prior_distribution_set=guess_distribution_set,\
         steps_per_checkpoint=steps_per_checkpoint, nthreads=nthreads)
-    sampler.run_checkpoints(iterations // steps_per_checkpoint)
+    sampler.run_checkpoints(iterations // steps_per_checkpoint,\
+        silence_error=True)
     sampler.close()
 
 burn_rule = BurnRule(min_checkpoints=5, desired_fraction=0.5)

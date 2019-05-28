@@ -63,25 +63,27 @@ try:
         guess_distribution_set=guess_distribution_set,\
         prior_distribution_set=prior_distribution_set,\
         steps_per_checkpoint=steps_per_checkpoint, verbose=verbose)
-    sampler.run_checkpoints(num_checkpoints)
+    sampler.run_checkpoints(num_checkpoints, silence_error=True)
     sampler.close()
     fitter = NLFitter(file_name)
     fig = pl.figure(figsize=(12,9))
     ax = fig.add_subplot(111)
     fitter.plot_acceptance_fraction(log_scale=False, ax=ax, show=False)
+    fisher_kwargs = {'smaller_differences': 1e-3, 'larger_differences': 1e-2}
+    reference_value_covariance = (model, error, fisher_kwargs)
     fitter.plot_chain(parameters='.*', show=False,\
-        amplitude=parameters[0], scale=parameters[1])
+        reference_value_mean=parameters,\
+        reference_value_covariance=reference_value_covariance)
     fitter.close()
     burn_rule = BurnRule(min_checkpoints=1, desired_fraction=0.5)
     fitter = NLFitter(file_name, burn_rule)
-    fisher_kwargs = {'smaller_differences': 1e-3, 'larger_differences': 1e-2}
-    reference_value_covariance = (model, error, fisher_kwargs)
-    #reference_value_covariance = None
     fig = fitter.triangle_plot(parameters='.*', figsize=(12, 12), show=False,\
         fontsize=28, nbins=nbins, plot_type='contourf',\
         reference_value_mean=parameters,\
         reference_value_covariance=reference_value_covariance,\
-        apply_transforms=True, contour_confidence_levels=[0.68, 0.95],\
+        apply_transforms_to_chain=True,\
+        apply_transforms_to_reference_value=True,\
+        contour_confidence_levels=[0.68, 0.95],\
         kwargs_2D={'reference_alpha': 0.5})
     fig.subplots_adjust(left=0.2, right=0.95, bottom=0.12, top=0.98)
     fig = pl.figure(figsize=(12,9))

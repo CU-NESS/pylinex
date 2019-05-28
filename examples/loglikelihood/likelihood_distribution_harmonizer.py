@@ -49,17 +49,21 @@ incomplete_guess_distribution_set = DistributionSet([(\
     GaussianDistribution(true_linear_term, linear_term_stdv ** 2),\
     'linear_a0', None)])
 unknown_name = 'constant'
-ndraw = 100
+marginal_draws = 100
+conditional_draws = 10
 
-full_distribution_set = LikelihoodDistributionHarmonizer(\
+joint_distribution_set = LikelihoodDistributionHarmonizer(\
     incomplete_guess_distribution_set, gaussian_loglikelihood, unknown_name,\
-    ndraw).full_distribution_set
+    marginal_draws, conditional_draws=conditional_draws).joint_distribution_set
 
-curve_sample = full_sum_model.curve_sample(full_distribution_set, ndraw)
+ndraw = marginal_draws *\
+    (1 if (type(conditional_draws) is type(None)) else conditional_draws)
+
+curve_sample = full_sum_model.curve_sample(joint_distribution_set, ndraw)
 
 fig = pl.figure(figsize=(12, 9))
 ax = fig.add_subplot(111)
-ax.plot(channels, curve_sample.T, color='r', alpha=0.125)
+ax.plot(channels, curve_sample.T, color='r', alpha=0.01)
 ax.plot(channels, data, color='k')
 
 pl.show()

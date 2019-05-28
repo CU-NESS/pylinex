@@ -16,7 +16,7 @@ from distpy import GaussianDistribution, CustomDiscreteDistribution,\
     MetropolisHastingsSampler
 from ..util import bool_types, int_types, real_numerical_types,\
     sequence_types, create_hdf5_dataset, get_hdf5_value
-from ..loglikelihood import Loglikelihood
+from ..loglikelihood import Loglikelihood, load_loglikelihood_from_hdf5_group
 
 try:
     # this runs with no issues in python 2 but raises error in python 3
@@ -824,6 +824,9 @@ class Sampler(object):
         last_checkpoint_continuous_covariance = np.cov(\
             last_checkpoint_chain_continuous, ddof=0, rowvar=False,\
             aweights=likelihood_based_weights)
+        if len(last_checkpoint_continuous_mean) == 1:
+            last_checkpoint_continuous_covariance =\
+                np.array([[float(last_checkpoint_continuous_covariance)]])
         (eigenvalues, eigenvectors) =\
             la.eigh(last_checkpoint_continuous_covariance)
         eigenvalues[eigenvalues < min_eigenvalue] = min_eigenvalue
@@ -904,6 +907,9 @@ class Sampler(object):
         last_checkpoint_continuous_covariance = np.cov(\
             last_checkpoint_chain_continuous, rowvar=False, ddof=0,\
             aweights=likelihood_based_weights)
+        if last_checkpoint_continuous_covariance.shape == ():
+            last_checkpoint_continuous_covariance =\
+                np.array([[float(last_checkpoint_continuous_covariance)]])
         (eigenvalues, eigenvectors) =\
             la.eigh(last_checkpoint_continuous_covariance)
         eigenvalues[eigenvalues < min_eigenvalue] = min_eigenvalue
@@ -1057,6 +1063,17 @@ class Sampler(object):
                 "the initializer of this Sampler.")
         else:
             self._file = h5py.File(self.file_name, 'r+')
+            loglikelihood_from_file =\
+                load_loglikelihood_from_hdf5_group(self.file['loglikelihood'])
+            if type(self.loglikelihood) is type(None):
+                self.loglikelihood = loglikelihood_from_file
+            elif loglikelihood_from_file != self.loglikelihood:
+                print("WARNING: The loglikelihood in the existing file is " +\
+                    "not the same as the loglikelihood given at " +\
+                    "initialization. The loglikelihood from the file is " +\
+                    "the one being used because otherwise the posterior " +\
+                    "has changed since the before the restart.")
+                self.loglikelihood = loglikelihood_from_file
             self.chunk_index = self.file.attrs['max_chunk_index']
             chunk_string = 'chunk{0:d}'.format(self.chunk_index)
             (guess_distribution_set, prior_distribution_set,\
@@ -1355,7 +1372,7 @@ class Sampler(object):
         
         value: a Loglikelihood object
         """
-        if isinstance(value, Loglikelihood):
+        if (type(value) is type(None)) or isinstance(value, Loglikelihood):
             self._loglikelihood = value
         else:
             raise TypeError("loglikelihood was not set to a " +\

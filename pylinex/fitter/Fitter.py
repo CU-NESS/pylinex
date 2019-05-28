@@ -1606,7 +1606,7 @@ class Fitter(Savable):
         """
         def_kwargs = {'interpolation': None}
         def_kwargs.update(**kwargs)
-        if (type(fig) is type(None)) or (type(ax) is type(None)):
+        if (type(fig) is type(None)) and (type(ax) is type(None)):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         ax.imshow(self.overlap_matrix, **def_kwargs)
@@ -1629,7 +1629,7 @@ class Fitter(Savable):
         """
         def_kwargs = {'interpolation': None}
         def_kwargs.update(**kwargs)
-        if (type(fig) is type(None)) or (type(ax) is type(None)):
+        if (type(fig) is type(None)) and (type(ax) is type(None)):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         ax.imshow(self.parameter_covariance, **def_kwargs)
@@ -1674,7 +1674,7 @@ class Fitter(Savable):
             colors = [colors] * 3
         if self.multiple_data_curves:
             mean = mean[which_data]
-        if (type(fig) is type(None)) or (type(ax) is type(None)):
+        if (type(fig) is type(None)) and (type(ax) is type(None)):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         if type(x_values) is type(None):
@@ -1749,7 +1749,7 @@ class Fitter(Savable):
         """
         def_kwargs = {'interpolation': None}
         def_kwargs.update(**kwargs)
-        if (type(fig) is type(None)) or (type(ax) is type(None)):
+        if (type(fig) is type(None)) and (type(ax) is type(None)):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         to_show = self.subbases_overlap_matrix(row_name=row_name,\
@@ -1778,7 +1778,7 @@ class Fitter(Savable):
         """
         def_kwargs = {'interpolation': None}
         def_kwargs.update(**kwargs)
-        if (type(fig) is type(None)) or (type(ax) is type(None)):
+        if (type(fig) is type(None)) and (type(ax) is type(None)):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         to_show = self.subbasis_parameter_covariances[name]
