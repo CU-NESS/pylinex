@@ -1,3 +1,11 @@
+"""
+File: examples/nonlinear/test_continue.py
+Author: Keith Tauscher
+Date: 4 Jun 2019
+
+Description: Example script testing whether a 'continue' restarted sampler is
+             exactly the same as a sampler that never stopped.
+"""
 from __future__ import division
 import os
 import numpy as np
@@ -8,7 +16,7 @@ from pylinex import Basis, BasisModel, GaussianLoglikelihood, Sampler, NLFitter
 seed = 0
 file_name1 = 'TESTING_SAMPLER_CONTINUE1.hdf5'
 file_name2 = 'TESTING_SAMPLER_CONTINUE2.hdf5'
-nwalkers = 10
+num_walkers = 10
 num_channels = 10
 data = np.zeros(num_channels)
 error = np.ones(num_channels)
@@ -26,7 +34,7 @@ guess_distribution_set =\
 prior_distribution_set = None
 steps_per_checkpoint = 10
 verbose = True
-nthreads = 1
+num_threads = 1
 args = []
 kwargs = {}
 use_ensemble_sampler = False
@@ -34,33 +42,33 @@ half_ncheckpoints = 50
 
 try:
     np.random.seed(seed)
-    sampler = Sampler(file_name1, nwalkers, loglikelihood,\
+    sampler = Sampler(file_name1, num_walkers, loglikelihood,\
         jumping_distribution_set=jumping_distribution_set,\
         guess_distribution_set=guess_distribution_set,\
         prior_distribution_set=prior_distribution_set,\
         steps_per_checkpoint=steps_per_checkpoint, verbose=verbose,\
-        restart_mode=None, nthreads=nthreads, args=args, kwargs=kwargs,\
+        restart_mode=None, num_threads=num_threads, args=args, kwargs=kwargs,\
         use_ensemble_sampler=use_ensemble_sampler,\
         desired_acceptance_fraction=desired_acceptance_fraction)
     sampler.run_checkpoints(2 * half_ncheckpoints)
     sampler.close()
     
     np.random.seed(seed)
-    sampler = Sampler(file_name2, nwalkers, loglikelihood,\
+    sampler = Sampler(file_name2, num_walkers, loglikelihood,\
         jumping_distribution_set=jumping_distribution_set,\
         guess_distribution_set=guess_distribution_set,\
         prior_distribution_set=prior_distribution_set,\
         steps_per_checkpoint=steps_per_checkpoint, verbose=verbose,\
-        restart_mode=None, nthreads=nthreads, args=args, kwargs=kwargs,\
+        restart_mode=None, num_threads=num_threads, args=args, kwargs=kwargs,\
         use_ensemble_sampler=use_ensemble_sampler,\
         desired_acceptance_fraction=desired_acceptance_fraction)
     sampler.run_checkpoints(half_ncheckpoints)
     sampler.close()
-    sampler = Sampler(file_name2, nwalkers, loglikelihood,\
+    sampler = Sampler(file_name2, num_walkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
         prior_distribution_set=None, steps_per_checkpoint=steps_per_checkpoint,\
-        verbose=verbose, restart_mode='continue', nthreads=nthreads, args=args,\
-        kwargs=kwargs, use_ensemble_sampler=use_ensemble_sampler,\
+        verbose=verbose, restart_mode='continue', num_threads=num_threads,\
+        args=args, kwargs=kwargs, use_ensemble_sampler=use_ensemble_sampler,\
         desired_acceptance_fraction=desired_acceptance_fraction)
     sampler.run_checkpoints(half_ncheckpoints)
     sampler.close()

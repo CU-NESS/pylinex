@@ -29,7 +29,6 @@ new_x_values = binner.binned_x_values
 (new_y_values, new_weights) = binner.bin(old_y_values, weights=weights,\
     return_weights=True)
 new_error = binner.bin_error(old_error, weights=weights, return_weights=False)
-print("new_error={}".format(new_error))
 
 fig = pl.figure(figsize=(12,9))
 ax = fig.add_subplot(111)

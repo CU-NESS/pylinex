@@ -19,8 +19,8 @@ remove_file = True
 seed = 1234567890
 np.random.seed(seed)
 
-nwalkers = 500
-nthreads = 1 # to test multithreading, set to > 1
+num_walkers = 500
+num_threads = 1 # to test multithreading, set to > 1
 file_name = 'TESTING_ROSENBROCK_SAMPLER.hdf5'
 ncheckpoints = 20
 steps_per_checkpoint = 100
@@ -46,15 +46,15 @@ jumping_distribution_set = JumpingDistributionSet(\
     [(GaussianJumpingDistribution(initial_covariance), ['a0', 'a1'], None)])
 
 if os.path.exists(file_name):
-    sampler = Sampler(file_name, nwalkers, loglikelihood,\
+    sampler = Sampler(file_name, num_walkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
-        prior_distribution_set=None, nthreads=nthreads,\
+        prior_distribution_set=None, num_threads=num_threads,\
         steps_per_checkpoint=steps_per_checkpoint, restart_mode='continue')
 else:
-    sampler = Sampler(file_name, nwalkers, loglikelihood,\
+    sampler = Sampler(file_name, num_walkers, loglikelihood,\
         jumping_distribution_set=jumping_distribution_set,\
         guess_distribution_set=guess_distribution_set,\
-        prior_distribution_set=None, nthreads=nthreads,\
+        prior_distribution_set=None, num_threads=num_threads,\
         steps_per_checkpoint=steps_per_checkpoint, restart_mode=None)
 sampler.run_checkpoints(ncheckpoints, silence_error=True)
 sampler.close()

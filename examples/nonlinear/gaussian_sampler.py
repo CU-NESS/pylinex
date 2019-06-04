@@ -26,7 +26,7 @@ true_value = 1
 num_points = 1000
 noise_level = 1
 
-nwalkers = 100
+num_walkers = 100
 steps_per_checkpoint = 100
 num_checkpoints = 100
 
@@ -53,7 +53,7 @@ except:
 else:
     os.remove(file_name)
 
-sampler = Sampler(file_name, nwalkers, loglikelihood,\
+sampler = Sampler(file_name, num_walkers, loglikelihood,\
     jumping_distribution_set=jumping_distribution_set,\
     guess_distribution_set=guess_distribution_set,\
     steps_per_checkpoint=steps_per_checkpoint, restart_mode=restart_mode)

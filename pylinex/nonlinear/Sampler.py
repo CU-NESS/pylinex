@@ -10,13 +10,19 @@ from __future__ import division
 import os, time, h5py
 import numpy as np
 import numpy.linalg as la
-from emcee import EnsembleSampler
 from distpy import GaussianDistribution, CustomDiscreteDistribution,\
     DistributionSet, GaussianJumpingDistribution, JumpingDistributionSet,\
     MetropolisHastingsSampler
 from ..util import bool_types, int_types, real_numerical_types,\
     sequence_types, create_hdf5_dataset, get_hdf5_value
 from ..loglikelihood import Loglikelihood, load_loglikelihood_from_hdf5_group
+
+try:
+    from emcee import EnsembleSampler
+except:
+    have_emcee = False
+else:
+    have_emcee = True
 
 try:
     # this runs with no issues in python 2 but raises error in python 3
@@ -30,10 +36,10 @@ class Sampler(object):
     Class which wraps around the MetropolisHastingsSampler defined in the
     distpy package.
     """
-    def __init__(self, file_name, nwalkers, loglikelihood,\
+    def __init__(self, file_name, num_walkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
         prior_distribution_set=None, steps_per_checkpoint=100, verbose=True,\
-        restart_mode=None, nthreads=1, args=[], kwargs={},\
+        restart_mode=None, num_threads=1, args=[], kwargs={},\
         use_ensemble_sampler=False, desired_acceptance_fraction=0.25):
         """
         Initializes a new sampler with the given file_name, loglikelihood,
@@ -41,7 +47,7 @@ class Sampler(object):
         
         file_name: name of hdf5 file to save (if extant, a restart process is
                    triggered)
-        nwalkers: number of MCMC chains being iterated together
+        num_walkers: number of MCMC chains being iterated together
         loglikelihood: likelihood to explore
         jumping_distribution_set: JumpingDistributionSet object which can be
                                   used to draw new points from any given source
@@ -94,12 +100,13 @@ class Sampler(object):
                                                  sigma from the mean
                                                  lnprobability value will be
                                                  ignored
-        nthreads: the number of threads to use in log likelihood calculations
-                  for walkers. Default: 1, 1 is best unless loglikelihood is
-                  very slow
+        num_threads: the number of threads to use in log likelihood
+                     calculations for walkers. Default: 1, 1 is best unless
+                     loglikelihood is very slow
         args: extra positional arguments to pass on to the likelihood
         kwargs: extra keyword arguments to pass on to the likelihood
-        use_ensemble_sampler: if True, EnsembleSampler of emcee is used
+        use_ensemble_sampler: if True, EnsembleSampler of emcee is used. This
+                                       cannot be done if emcee is not installed
                               otherwise, MetropolisHastingsSampler from distpy
                                          is used
         desired_acceptance_fraction: only used if this is a restart,
@@ -107,10 +114,10 @@ class Sampler(object):
                                      and jumping_distribution_set is None
         """
         self.use_ensemble_sampler = use_ensemble_sampler
-        self.nthreads = nthreads
+        self.num_threads = num_threads
         self.restart_mode = restart_mode
         self.verbose = verbose
-        self.nwalkers = nwalkers
+        self.num_walkers = num_walkers
         self.steps_per_checkpoint = steps_per_checkpoint
         self.loglikelihood = loglikelihood
         self.desired_acceptance_fraction = desired_acceptance_fraction
@@ -124,17 +131,17 @@ class Sampler(object):
         self.close()
     
     @property
-    def nthreads(self):
+    def num_threads(self):
         """
         Property storing the number of threads to use in calculating log
         likelihood values.
         """
-        if not hasattr(self, '_nthreads'):
-            raise AttributeError("nthreads referenced before it was set.")
-        return self._nthreads
+        if not hasattr(self, '_num_threads'):
+            raise AttributeError("num_threads referenced before it was set.")
+        return self._num_threads
     
-    @nthreads.setter
-    def nthreads(self, value):
+    @num_threads.setter
+    def num_threads(self, value):
         """
         Setter for the number of threads to use in log likelihood calculations.
         
@@ -142,11 +149,11 @@ class Sampler(object):
         """
         if type(value) in int_types:
             if value > 0:
-                self._nthreads = value
+                self._num_threads = value
             else:
-                raise ValueError("nthreads must be non-negative.")
+                raise ValueError("num_threads must be non-negative.")
         else:
-            raise TypeError("nthreads was set to a non-int.")
+            raise TypeError("num_threads was set to a non-int.")
     
     @property
     def use_ensemble_sampler(self):
@@ -1334,26 +1341,26 @@ class Sampler(object):
                 "other than a DistributionSet object.")
     
     @property
-    def nwalkers(self):
+    def num_walkers(self):
         """
         Property storing the integer number of independent walkers evolved by
         the sampler.
         """
-        if not hasattr(self, '_nwalkers'):
-            raise AttributeError("nwalkers referenced before it was set.")
-        return self._nwalkers
+        if not hasattr(self, '_num_walkers'):
+            raise AttributeError("num_walkers referenced before it was set.")
+        return self._num_walkers
     
-    @nwalkers.setter
-    def nwalkers(self, value):
+    @num_walkers.setter
+    def num_walkers(self, value):
         """
         Setter for the number of independent walkers evolved by the sampler.
         
         value: must be a positive integer
         """
         if type(value) in int_types:
-            self._nwalkers = value
+            self._num_walkers = value
         else:
-            raise TypeError("nwalkers was set to a non-int.")
+            raise TypeError("num_walkers was set to a non-int.")
     
     @property
     def loglikelihood(self):
@@ -1424,34 +1431,43 @@ class Sampler(object):
         """
         if not hasattr(self, '_sampler'):
             if self.use_ensemble_sampler:
-                self._sampler = EnsembleSampler(self.nwalkers,\
-                    len(self.parameters), self.logprobability, args=self.args,\
-                    kwargs=self.kwargs, threads=self.nthreads)
+                if have_emcee:
+                    self._sampler = EnsembleSampler(self.num_walkers,\
+                        len(self.parameters), self.logprobability,\
+                        args=self.args, kwargs=self.kwargs,\
+                        threads=self.num_threads)
+                else:
+                    raise ImportError("use_ensemble_sampler cannot be set " +\
+                        "to True (EnsembleSampler cannot be used) if emcee " +\
+                        "is not installed.")
             else:
                 self._sampler = MetropolisHastingsSampler(self.parameters,\
-                    self.nwalkers, self.logprobability,\
-                    self.jumping_distribution_set, nthreads=self.nthreads,\
-                    args=self.args, kwargs=self.kwargs)
+                    self.num_walkers, self.logprobability,\
+                    self.jumping_distribution_set,\
+                    num_threads=self.num_threads, args=self.args,\
+                    kwargs=self.kwargs)
         return self._sampler
     
     @property
     def pos(self):
         """
-        Property storing the current positions of all nwalkers of the walkers.
+        Property storing the current positions of all num_walkers of the
+        walkers.
         """
         if not hasattr(self, '_pos'):
             self._pos = []
             iterations = 0
-            while len(self._pos) < self.nwalkers:
+            while len(self._pos) < self.num_walkers:
                 draw = self.guess_distribution_set.draw()
                 if (type(self.prior_distribution_set) is type(None)) or\
                     np.isfinite(self.prior_distribution_set.log_value(draw)):
                     self._pos.append(\
                         [draw[param] for param in self.parameters])
-                if iterations > (100 * self.nwalkers):
-                    raise RuntimeError(("100*nwalkers positions have been " +\
-                        "drawn but not enough have had finite likelihood. " +\
-                        "The last draw which failed was: {}.").format(draw))
+                if iterations > (100 * self.num_walkers):
+                    raise RuntimeError(("100*num_walkers positions have " +\
+                        "been drawn but not enough have had finite " +\
+                        "likelihood. The last draw which failed was: " +\
+                        "{}.").format(draw))
                 iterations += 1
             self._pos = np.array(self._pos)
         return self._pos
@@ -1461,7 +1477,7 @@ class Sampler(object):
         """
         Setter for the current positions of this sampler's walkers.
         
-        value: numpy.ndarray of shape (nwalkers, ndim)
+        value: numpy.ndarray of shape (num_walkers, ndim)
         """
         if isinstance(value, np.ndarray) and (value.shape == self.pos.shape):
             self._pos = value
@@ -1484,14 +1500,14 @@ class Sampler(object):
         Setter for the values of the logprobability callable evaluated at the
         current walker positions.
         
-        value: 1D numpy.ndarray of length nwalkers
+        value: 1D numpy.ndarray of length num_walkers
         """
         if isinstance(value, np.ndarray):
-            if value.shape == (self.nwalkers,):
+            if value.shape == (self.num_walkers,):
                 self._lnprob = value
             else:
                 raise TypeError("lnprob doesn't have the expected shape, " +\
-                    "which is (nwalkers,).")
+                    "which is (num_walkers,).")
         else:
             raise TypeError("lnprob should be an array but it isn't.")
     
@@ -1553,7 +1569,7 @@ class Sampler(object):
                 self.run_checkpoint()
             except KeyboardInterrupt:
                 # TODO possibly check if some remnants were incompletely saved?
-                if silence_error or (self.nthreads > 1):
+                if silence_error or (self.num_threads > 1):
                     break
                 else:
                     raise
@@ -1563,8 +1579,8 @@ class Sampler(object):
         Runs this sampler for a single checkpoint.
         """
         (self.pos, self.lnprob, self.rstate) = self.sampler.run_mcmc(self.pos,\
-            self.steps_per_checkpoint, rstate0=self.rstate,\
-            lnprob0=self.lnprob)
+            self.steps_per_checkpoint, initial_random_state=self.rstate,\
+            initial_lnprob=self.lnprob)
         self.update_file()
         self.sampler.reset()
         self.checkpoint_index = self.checkpoint_index + 1

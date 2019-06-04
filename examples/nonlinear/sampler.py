@@ -21,8 +21,8 @@ seed = 1234567890
 np.random.seed(seed)
 
 desired_acceptance_fraction = 0.25
-nwalkers = 30
-nthreads = 1 # to test multithreading, set to > 1
+num_walkers = 30
+num_threads = 1 # to test multithreading, set to > 1
 file_name = 'TESTING_SAMPLER_CLASS.hdf5'
 num_channels = 100
 quarter_ncheckpoints = 25
@@ -65,40 +65,45 @@ prior_distribution_set.add_distribution(GaussianDistribution(100, 100),\
 prior_distribution_set.add_distribution(\
     TruncatedGaussianDistribution(0.1, 100, low=0), 'scale')
 
-#nwalkers = 2 * loglikelihood.num_parameters
+#num_walkers = 2 * loglikelihood.num_parameters
 
 try:
     if os.path.exists(file_name):
-        sampler = Sampler(file_name, nwalkers, loglikelihood,\
+        sampler = Sampler(file_name, num_walkers, loglikelihood,\
             jumping_distribution_set=None, guess_distribution_set=None,\
-            prior_distribution_set=prior_distribution_set, nthreads=nthreads,\
-            steps_per_checkpoint=steps_per_checkpoint, restart_mode='continue')
+            prior_distribution_set=prior_distribution_set,\
+            num_threads=num_threads,\
+            steps_per_checkpoint=steps_per_checkpoint,\
+            restart_mode='continue')
     else:
-        sampler = Sampler(file_name, nwalkers, loglikelihood,\
+        sampler = Sampler(file_name, num_walkers, loglikelihood,\
             jumping_distribution_set=jumping_distribution_set,\
             guess_distribution_set=guess_distribution_set,\
-            prior_distribution_set=prior_distribution_set, nthreads=nthreads,\
+            prior_distribution_set=prior_distribution_set,\
+            num_threads=num_threads,\
             steps_per_checkpoint=steps_per_checkpoint, restart_mode=None)
     sampler.run_checkpoints(quarter_ncheckpoints, silence_error=True)
     sampler.close()
-    sampler = Sampler(file_name, nwalkers, loglikelihood,\
+    sampler = Sampler(file_name, num_walkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
-        prior_distribution_set=prior_distribution_set, nthreads=nthreads,\
+        prior_distribution_set=prior_distribution_set,\
+        num_threads=num_threads,\
         steps_per_checkpoint=steps_per_checkpoint, restart_mode='update',\
         desired_acceptance_fraction=desired_acceptance_fraction)
     sampler.run_checkpoints(quarter_ncheckpoints, silence_error=True)
     sampler.close()
-    sampler = Sampler(file_name, nwalkers, loglikelihood,\
+    sampler = Sampler(file_name, num_walkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
-        prior_distribution_set=prior_distribution_set, nthreads=nthreads,\
-        steps_per_checkpoint=steps_per_checkpoint,\
+        prior_distribution_set=prior_distribution_set,\
+        num_threads=num_threads, steps_per_checkpoint=steps_per_checkpoint,\
         restart_mode='reinitialize',\
         desired_acceptance_fraction=desired_acceptance_fraction)
     sampler.run_checkpoints(quarter_ncheckpoints, silence_error=True)
     sampler.close()
-    sampler = Sampler(file_name, nwalkers, loglikelihood,\
+    sampler = Sampler(file_name, num_walkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
-        prior_distribution_set=prior_distribution_set, nthreads=nthreads,\
+        prior_distribution_set=prior_distribution_set,\
+        num_threads=num_threads,\
         steps_per_checkpoint=steps_per_checkpoint, restart_mode='continue')
     sampler.run_checkpoints(quarter_ncheckpoints, silence_error=True)
     sampler.close()

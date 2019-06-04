@@ -19,8 +19,8 @@ seed = 1234567890
 np.random.seed(seed)
 
 desired_acceptance_fraction = 0.25
-nwalkers = 20
-nthreads = 1 # to test multithreading, set to > 1
+num_walkers = 20
+num_threads = 1 # to test multithreading, set to > 1
 file_name = 'TESTING_SAMPLER_CLASS.hdf5'
 num_channels = 1000
 num_iterations = 100
@@ -57,19 +57,19 @@ jumping_distribution_set.add_distribution(GaussianJumpingDistribution(0.1),\
 jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-2),\
     'scale', 'log10')
 
-#nwalkers = 2 * loglikelihood.num_parameters
+#num_walkers = 2 * loglikelihood.num_parameters
 
 try:
-    sampler = Sampler(file_name, nwalkers, loglikelihood,\
+    sampler = Sampler(file_name, num_walkers, loglikelihood,\
         jumping_distribution_set=jumping_distribution_set,\
         guess_distribution_set=guess_distribution_set,\
-        prior_distribution_set=None, nthreads=nthreads,\
+        prior_distribution_set=None, num_threads=num_threads,\
         steps_per_checkpoint=steps_per_checkpoint, restart_mode=None)
     sampler.run_checkpoints(half_ncheckpoints, silence_error=True)
     sampler.close()
-    sampler = Sampler(file_name, nwalkers, loglikelihood,\
+    sampler = Sampler(file_name, num_walkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
-        prior_distribution_set=None, nthreads=nthreads,\
+        prior_distribution_set=None, num_threads=num_threads,\
         steps_per_checkpoint=steps_per_checkpoint,\
         restart_mode='fisher_update',\
         desired_acceptance_fraction=desired_acceptance_fraction)

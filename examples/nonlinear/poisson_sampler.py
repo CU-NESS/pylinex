@@ -19,7 +19,7 @@ seed = 0
 num_iterations = 100
 steps_per_checkpoint = 100
 ncheckpoints = 50
-nwalkers = 50
+num_walkers = 50
 
 x_values = np.linspace(-1, 1, 21)
 model = GaussianModel(x_values)
@@ -58,7 +58,7 @@ jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-2),\
 np.random.seed(seed)
 
 try:
-    sampler = Sampler(file_name, nwalkers, loglikelihood,\
+    sampler = Sampler(file_name, num_walkers, loglikelihood,\
         jumping_distribution_set=jumping_distribution_set,\
         guess_distribution_set=guess_distribution_set,\
         prior_distribution_set=None,\

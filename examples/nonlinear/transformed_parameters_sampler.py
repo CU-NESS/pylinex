@@ -51,14 +51,14 @@ jumping_distribution_set.add_distribution(GaussianJumpingDistribution(1e-4),\
     'scale', 'log10')
 
 file_name = 'TESTINGSAMPLERDELETEIFYOUSEETHIS.hdf5'
-nwalkers = 50
+num_walkers = 50
 steps_per_checkpoint = 100
 num_checkpoints = 10
 nbins = 25
 verbose = True
 
 try:
-    sampler = Sampler(file_name, nwalkers, loglikelihood,\
+    sampler = Sampler(file_name, num_walkers, loglikelihood,\
         jumping_distribution_set=jumping_distribution_set,\
         guess_distribution_set=guess_distribution_set,\
         prior_distribution_set=prior_distribution_set,\

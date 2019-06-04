@@ -100,7 +100,7 @@ jumping_distribution_set.add_distribution(GaussianJumpingDistribution(\
     if 'nterms' not in parameter])
 
 file_name = 'TEST_NONLINEAR_TRUNCATION_SAMPLER.hdf5'
-nwalkers = 64
+num_walkers = 64
 steps_per_checkpoint = 100
 num_checkpoints = 25
 verbose = True
@@ -108,7 +108,7 @@ restart_mode = None
 desired_acceptance_fraction = 0.25
 
 try:
-    sampler = Sampler(file_name, nwalkers, loglikelihood,\
+    sampler = Sampler(file_name, num_walkers, loglikelihood,\
         jumping_distribution_set=jumping_distribution_set,\
         guess_distribution_set=guess_distribution_set,\
         prior_distribution_set=prior_distribution_set,\

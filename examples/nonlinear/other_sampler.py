@@ -17,11 +17,11 @@ from pylinex import GaussianLoglikelihood, BasisModel, Basis, Sampler,\
 file_name = 'TEMPORARY_TEST_DELETE_THIS_IF_YOU_SEE_IT.hdf5'
 cmap = 'bone'
 fontsize = 32
-nwalkers = 50
+num_walkers = 50
 iterations = 1000
 steps_per_checkpoint = 100
 bins_per_side = 20
-nthreads = 1 # to test multithreading, set this to > 1
+num_threads = 1 # to test multithreading, set this to > 1
 
 jumping_distribution_set = JumpingDistributionSet()
 jumping_distribution = GaussianJumpingDistribution(5.76 * np.identity(2))
@@ -39,10 +39,10 @@ error = np.ones(2)
 loglikelihood = GaussianLoglikelihood(data, error, model)
 
 if not os.path.exists(file_name):
-    sampler = Sampler(file_name, nwalkers, loglikelihood,\
+    sampler = Sampler(file_name, num_walkers, loglikelihood,\
         jumping_distribution_set, guess_distribution_set,\
         prior_distribution_set=guess_distribution_set,\
-        steps_per_checkpoint=steps_per_checkpoint, nthreads=nthreads)
+        steps_per_checkpoint=steps_per_checkpoint, num_threads=num_threads)
     sampler.run_checkpoints(iterations // steps_per_checkpoint,\
         silence_error=True)
     sampler.close()

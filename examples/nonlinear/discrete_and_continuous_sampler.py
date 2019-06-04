@@ -64,7 +64,7 @@ jumping_distribution_set.add_distribution(coefficient_jumping_distribution,\
 
 file_name =\
     'TESTINGDISCRETEANDCONTINUOUSPARAMETERSAMPLINGDELETEIFYOUSEETHIS.hdf5'
-nwalkers = 20
+num_walkers = 20
 steps_per_checkpoint = 500
 num_checkpoints = 20
 verbose = True
@@ -72,7 +72,7 @@ restart_mode = 'continue'
 desired_acceptance_fraction = 0.25
 
 try:
-    sampler = Sampler(file_name, nwalkers, loglikelihood,\
+    sampler = Sampler(file_name, num_walkers, loglikelihood,\
         jumping_distribution_set=jumping_distribution_set,\
         guess_distribution_set=guess_distribution_set,\
         prior_distribution_set=prior_distribution_set,\

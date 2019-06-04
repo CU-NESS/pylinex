@@ -500,7 +500,7 @@ class TruncationExtractor(Savable):
                     guess_distribution_set=guess_distribution_set,\
                     prior_distribution_set=prior_distribution_set,\
                     steps_per_checkpoint=steps_per_checkpoint)
-                sampler.run_checkpoints(num_checkpoints)
+                sampler.run_checkpoints(num_checkpoints, silence_error=True)
                 sampler.close()
             burn_rule = BurnRule(min_checkpoints=1, desired_fraction=1)
             analyzer = NLFitter(self.file_name, burn_rule=burn_rule,\
