@@ -7,7 +7,7 @@ Description: File containing a class representing a model which is the same as
              a different model except with transformed inputs.
 """
 import numpy as np
-from distpy import castable_to_transform_list, cast_to_transform_list
+from distpy import TransformList
 from .Model import Model
 
 class DistortedModel(Model):
@@ -74,10 +74,9 @@ class DistortedModel(Model):
                a TransformList object (such as None or a list of strings which
                can each be cast to a Transform object)
         """
-        if castable_to_transform_list(value,\
-            num_transforms=self.num_parameters):
-            self._transform_list = cast_to_transform_list(value,\
-                num_transforms=self.num_parameters)
+        if TransformList.castable(value, num_transforms=self.num_parameters):
+            self._transform_list =\
+                TransformList.cast(value, num_transforms=self.num_parameters)
         else:
             raise TypeError("transform_list could not be successfully cast " +\
                 "to a TransformList object.")

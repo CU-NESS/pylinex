@@ -8,6 +8,7 @@ Description: File containing a class representing a model which can be
              ordered set of basis vectors).
 """
 import numpy as np
+import numpy.linalg as la
 from ..util import numerical_types
 from ..basis import Basis
 from ..fitter import Fitter
@@ -150,8 +151,18 @@ class BasisModel(LoadableModel):
             error = 1
         if type(error) in numerical_types:
             error = error * np.ones_like(data)
-        fitter = Fitter(self.basis, data, error=error)
-        return (fitter.parameter_mean, fitter.parameter_covariance)
+        if not hasattr(self, '_last_error') or\
+            (not hasattr(self, '_last_covariance')) or\
+            (not hasattr(self, '_last_covariance_times_weighted_basis')) or\
+            np.any(error != self._last_error):
+            self._last_error = error
+            self._last_covariance = la.inv(self.basis.gram_matrix(error))
+            self._last_covariance_times_weighted_basis = np.dot(\
+                self._last_covariance,\
+                self.basis.expanded_basis / error[np.newaxis,:])
+        mean = np.dot(self._last_covariance_times_weighted_basis,\
+            data / self._last_error)
+        return (mean, self._last_covariance)
     
     def fill_hdf5_group(self, group):
         """

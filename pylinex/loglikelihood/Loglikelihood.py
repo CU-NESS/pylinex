@@ -9,8 +9,8 @@ Description: File containing a base class representing a likelihood that can be
 """
 import numpy as np
 import numpy.linalg as la
-from distpy import cast_to_transform_list, GaussianDistribution,\
-    WindowedDistribution, DistributionSet
+from distpy import TransformList, GaussianDistribution, WindowedDistribution,\
+    DistributionSet
 from ..util import Savable, Loadable
 
 cannot_instantiate_loglikelihood_error = NotImplementedError("The " +\
@@ -374,7 +374,7 @@ class Loglikelihood(Savable, Loadable):
         returns: DistributionSet object containing GaussianDistribution object
                  approximating distribution in transformed space
         """
-        transform_list = cast_to_transform_list(transform_list,\
+        transform_list = TransformList.cast(transform_list,\
             num_transforms=self.num_parameters)
         mean = transform_list(maximum_likelihood_parameters)
         covariance = self.parameter_covariance_fisher_formalism(\

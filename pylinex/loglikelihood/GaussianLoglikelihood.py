@@ -8,8 +8,8 @@ Description: File containing a class which evaluates a likelihood which is
 """
 import numpy as np
 import numpy.linalg as la
-from distpy import cast_to_transform_list, WindowedDistribution,\
-    GaussianDistribution, DistributionSet, DistributionList
+from distpy import TransformList, WindowedDistribution, GaussianDistribution,\
+    DistributionSet, DistributionList
 from ..util import create_hdf5_dataset, get_hdf5_value
 from .LoglikelihoodWithData import LoglikelihoodWithData
 from .LoglikelihoodWithModel import LoglikelihoodWithModel
@@ -277,7 +277,7 @@ class GaussianLoglikelihood(LoglikelihoodWithModel):
         """
         if self.gradient_computable:
             gradient = self.model.gradient(maximum_likelihood_parameters)
-            transform_list = cast_to_transform_list(transform_list,\
+            transform_list = TransformList.cast(transform_list,\
                 num_transforms=self.num_parameters)
             gradient = transform_list.transform_gradient(gradient,\
                 maximum_likelihood_parameters)

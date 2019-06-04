@@ -13,7 +13,7 @@ Description: File containing a class that runs many LeastSquareFitter objects
 """
 import os, time, h5py
 import numpy as np
-from distpy import cast_to_transform_list, GaussianDistribution,\
+from distpy import TransformList, GaussianDistribution,\
     DeterministicDistribution, KroneckerDeltaDistribution, DistributionSet
 from ..util import int_types, bool_types
 from ..loglikelihood import GaussianLoglikelihood
@@ -151,6 +151,15 @@ class LeastSquareFitCluster(object):
         return self._parameters
     
     @property
+    def num_parameters(self):
+        """
+        Property storing the number of parameters being solved for.
+        """
+        if not hasattr(self, '_num_parameters'):
+            self._num_parameters = len(self.parameters)
+        return self._num_parameters
+    
+    @property
     def prior_set(self):
         """
         Property storing a DistributionSet object which allows for reasonable
@@ -202,8 +211,8 @@ class LeastSquareFitCluster(object):
                with a length given by the number of parameters in the vector to
                be optimized.
         """
-        self._transform_list = cast_to_transform_list(value,\
-            num_transforms=len(self.parameters))
+        self._transform_list =\
+            TransformList.cast(value, num_transforms=self.num_parameters)
     
     @property
     def prefix(self):

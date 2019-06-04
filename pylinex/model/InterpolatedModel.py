@@ -7,7 +7,7 @@ Description: File containing class representing a model based on
              multidimensional linear interpolation on a Delaunay mesh.
 """
 import numpy as np
-from distpy import cast_to_transform_list, TransformList, DistributionSet
+from distpy import TransformList, DistributionSet
 from ..util import int_types, sequence_types, create_hdf5_dataset,\
     get_hdf5_value
 from ..interpolator import LinearInterpolator, QuadraticInterpolator,\
@@ -147,7 +147,7 @@ class InterpolatedModel(Model):
                                            to all parameters
         """
         self._transform_list =\
-            cast_to_transform_list(value, num_transforms=len(self.parameters))
+            TransformList.cast(value, num_transforms=len(self.parameters))
     
     @property
     def error(self):

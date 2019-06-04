@@ -12,7 +12,7 @@ import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as pl
 from scipy.optimize import minimize
-from distpy import TransformList, cast_to_transform_list, DistributionSet
+from distpy import TransformList, DistributionSet
 from ..util import create_hdf5_dataset, get_hdf5_value
 from ..loglikelihood import Loglikelihood, GaussianLoglikelihood,\
     load_loglikelihood_from_hdf5_group
@@ -208,7 +208,7 @@ class LeastSquareFitter(object):
                with a length given by the number of parameters in the vector to
                be optimized.
         """
-        self._transform_list = cast_to_transform_list(value,\
+        self._transform_list = TransformList.cast(value,\
             num_transforms=self.loglikelihood.num_parameters)
     
     @property

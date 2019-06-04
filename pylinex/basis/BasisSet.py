@@ -149,7 +149,8 @@ class BasisSet(object):
     
     def __getitem__(self, key):
         """
-        Allows for the usage of square-bracket indexing notation for getting 
+        Allows for the usage of square-bracket indexing notation for getting
+        sub-bases or truncations of this basis.
         
         key: if key is None, this object is returned
              if key is a string, it is assumed to be the name of a Basis
@@ -365,13 +366,12 @@ class BasisSet(object):
         returns: True if other is a BasisSet containing the same bases under
                  the same names. False otherwise
         """
-        if isinstance(other, BasisSet):
+        if type(self) == type(other):
             if self.num_bases:
-                names_equal = all([(sname == oname)\
-                    for (sname, oname) in zip(self.names, other.names)])
-                bases_equal = all([(sbasis == obasis) for (sbasis, obasis) in\
-                    zip(self.component_bases, other.component_bases)])
-                return (names_equal and bases_equal)
+                if self.names == other.names:
+                    return (self.component_bases == other.component_bases)
+                else:
+                    return False
             else:
                 return False
         else:

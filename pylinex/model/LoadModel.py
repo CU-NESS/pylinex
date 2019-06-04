@@ -36,6 +36,8 @@ from .ExpandedModel import ExpandedModel
 from .ScaledModel import ScaledModel
 from .SlicedModel import SlicedModel
 from .InterpolatedModel import InterpolatedModel
+from .BasisFitModel import BasisFitModel
+from .ConditionalFitModel import ConditionalFitModel
 
 # These are the model classes where it's valid to load the model using
 # XXXXX.load_from_hdf5_group(group) or XXXXX.load(hdf5_file_name). Other
@@ -44,7 +46,7 @@ self_loadable_model_classes =\
 [\
     'BasisModel', 'ConstantModel', 'ExpressionModel', 'GaussianModel',\
     'SinusoidalModel', 'TanhModel', 'TruncatedBasisHyperModel',\
-    'LorentzianModel', 'FixedModel', 'InterpolatedModel'\
+    'LorentzianModel', 'FixedModel', 'InterpolatedModel', 'BasisFitModel'\
 ]
 
 # Model classes which are simple wrappers around exactly one other Model class
@@ -52,7 +54,7 @@ meta_model_classes =\
 [\
     'ExpandedModel', 'RenamedModel', 'RestrictedModel', 'TransformedModel',\
     'DistortedModel', 'ProjectedModel', 'SlicedModel', 'ScaledModel',\
-    'BinnedModel'\
+    'BinnedModel', 'ConditionalFitModel'\
 ]
 
 # Model classes which are wrappers around an arbitrary number of Model classes
@@ -98,7 +100,14 @@ def load_model_from_hdf5_group(group):
     except:
         if class_name in meta_model_classes:
             model = load_model_from_hdf5_group(group['model'])
-            if class_name == 'TransformedModel':
+            if class_name == 'ConditionalFitModel':
+                data = get_hdf5_value(group['data'])
+                error = get_hdf5_value(group['error'])
+                unknown_name_chain =\
+                    get_hdf5_value(group['unknown_name_chain'])
+                return\
+                    ConditionalFitModel(model, data, error, unknown_name_chain)
+            elif class_name == 'TransformedModel':
                 transform = load_transform_from_hdf5_group(group['transform'])
                 return TransformedModel(model, transform)
             elif class_name == 'DistortedModel':

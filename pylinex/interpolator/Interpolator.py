@@ -8,7 +8,7 @@ Description: File containing class which performs many-dimensional
 """
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
-from distpy import AffineTransform, cast_to_transform_list, TransformList,\
+from distpy import AffineTransform, TransformList,\
     UniformTriangulationDistribution
 from ..util import sequence_types
 
@@ -158,7 +158,7 @@ class Interpolator(object):
                Transform objects)
         """
         self._transform_list =\
-            cast_to_transform_list(value, num_transforms=self.input_dimension)
+            TransformList.cast(value, num_transforms=self.input_dimension)
     
     @property
     def scale_to_cube(self):

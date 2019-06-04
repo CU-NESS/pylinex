@@ -11,7 +11,7 @@ Description: File containing class which performs a least square fit by using
              Then it uses that interpolator, to maximize the loglikelihood.
 """
 import numpy as np
-from distpy import cast_to_transform_list
+from distpy import TransformList
 from ..util import int_types, sequence_types
 from ..expander import Expander, NullExpander
 from ..model import InterpolatedModel
@@ -386,7 +386,7 @@ class InterpolatingLeastSquareFitter(object):
                                            to all parameters
         """
         self._transform_list =\
-            cast_to_transform_list(value, num_transforms=len(self.parameters))
+            TransformList.cast(value, num_transforms=len(self.parameters))
     
     @property
     def loglikelihood_callable(self):

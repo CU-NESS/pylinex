@@ -9,7 +9,7 @@ Description: File which contains class which generates LeastSquareFitter
              produces and runs LeastSquareFitter objects.
 """
 import numpy as np
-from distpy import DistributionSet, cast_to_transform_list
+from distpy import DistributionSet, TransformList
 from ..util import sequence_types
 from ..model import Model
 from ..loglikelihood import GaussianLoglikelihood
@@ -66,8 +66,8 @@ class LeastSquareFitGenerator(object):
                with a length given by the number of parameters in the vector to
                be optimized.
         """
-        self._transform_list = cast_to_transform_list(value,\
-            num_transforms=self.model.num_parameters)
+        self._transform_list =\
+            TransformList.cast(value, num_transforms=self.model.num_parameters)
     
     @property
     def error(self):

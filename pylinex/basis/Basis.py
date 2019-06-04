@@ -305,6 +305,15 @@ class Basis(Savable, Loadable):
         return self._num_larger_channel_set_indices
     
     @property
+    def num_channels(self):
+        """
+        Alias for the num_larger_channel_set_indices property. It is assumed if
+        a user is merely asking for a number of channels, they are referring to
+        the number of channels after expansion.
+        """
+        return self.num_larger_channel_set_indices
+    
+    @property
     def euclidean_gram_matrix(self):
         """
         Property storing the standard Gram matrix of this set of basis vectors
@@ -551,10 +560,14 @@ class Basis(Savable, Loadable):
                  False otherwise
         """
         if isinstance(other, Basis):
-            basis_vectors_equal =\
-                np.allclose(self.basis, other.basis, rtol=1e-6, atol=0)
-            expanders_equal = (self.expander == other.expander)
-            return (basis_vectors_equal and expanders_equal)
+            if self.expander == other.expander:
+                if self.basis.shape == other.basis.shape:
+                    return\
+                        np.allclose(self.basis, other.basis, rtol=1e-6, atol=0)
+                else:
+                    return False
+            else:
+                return False
         else:
             return False
     

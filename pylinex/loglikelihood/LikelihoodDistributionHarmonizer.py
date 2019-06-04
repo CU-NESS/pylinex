@@ -25,14 +25,14 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
     Class which implements distpy's DistributionHarmonizer in the context of a
     likelihood.
     """
-    def __init__(self, incomplete_guess_distribution_set,\
-        gaussian_loglikelihood, unknown_name_chain, marginal_draws,\
-        conditional_draws=None, **transforms):
+    def __init__(self, marginal_distribution_set, gaussian_loglikelihood,\
+        unknown_name_chain, marginal_draws, conditional_draws=None,\
+        **transforms):
         """
         Creates a new LikelihoodDistributionHarmonizer from the loglikelihood.
         
-        incomplete_guess_distribution_set: DistributionSet(s) describing
-                                           parameters not to be solved for
+        marginal_distribution_set: DistributionSet(s) describing parameters not
+                                   to be solved for
         gaussian_loglikelihood: GaussianLoglikelihood object whose model is a
                                 SumModel or ProductModel
         unknown_name_chain: name (or chain of names) of the single submodel
@@ -41,7 +41,7 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
                             LikelihoodDistributionHarmonizer
         marginal_draws: positive integer number of samples to draw from the
                         marginal distribution (given by the
-                        incomplete_guess_distribution_set)
+                        marginal_distribution_set)
         conditional_draws: if None (default), then the conditional distribution
                                               is effectively degenerate, with
                                               only the maximum likelihood value
@@ -52,7 +52,7 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
                                       from for each of the marginal_draws
                                       number of draws from the marginal
                                       distribution (given by the
-                                      incomplete_guess_distribution_set).
+                                      marginal_distribution_set).
         transforms: transforms indexed by parameter. parameters not given are
                     assumed to remain untransformed throughout
         """
@@ -92,18 +92,24 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
                 for parameter in unknown_submodel.parameters]
         else:
             unknown_parameter_names = unknown_submodel.parameters
-        def remaining_parameter_solver(incomplete_parameters):
+        def remaining_parameter_solver(marginal_parameters):
             #
             # Solves for the unknown_parameters by using the drawn values of
             # the parameters whose distribution is known (or assumed).
             # 
-            # incomplete_parameters: dictionary with names of parameters whose
-            #                        distributions are known as keys and their
-            #                        drawn floats as values
+            # marginal_parameters: dictionary with names of parameters whose
+            #                      distributions are known as keys and their
+            #                      drawn floats as values
             # 
-            # returns: dictionary of same format as incomplete_parameters,
-            #          except the keys and values are associated with the
-            #          parameters whose distribution is not known
+            # returns: if conditional_draws is None, dictionary of same format
+            #                                        as marginal_parameters,
+            #                                        except the keys and values
+            #                                        are associated with the
+            #                                        parameters whose
+            #                                        distribution is not known
+            #          otherwise, a DistributionSet object encoding the
+            #                     conditional distribution of the
+            #                     unknown_parameters
             #
             data_to_fit = gaussian_loglikelihood.data
             error_to_fit = gaussian_loglikelihood.error
@@ -114,7 +120,7 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
                     parameter_prefix =\
                         '{!s}_'.format('_'.join(unknown_name_chain[:index]))
                 known_model = known_model_chain[index]
-                parameter_array = np.array([incomplete_parameters[\
+                parameter_array = np.array([marginal_parameters[\
                     '{0!s}{1!s}'.format(parameter_prefix, parameter)]\
                     for parameter in known_model.parameters])
                 known_model_value = known_model(parameter_array)
@@ -124,7 +130,7 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
                     data_to_fit = data_to_fit / known_model_value
                     error_to_fit = error_to_fit / np.abs(known_model_value)
             try:
-                quick_fit =\
+                (conditional_mean, conditional_covariance) =\
                     unknown_submodel.quick_fit(data_to_fit, error_to_fit)
             except NotImplementedError:
                 raise NotImplementedError(("The submodel (class: {!s}) " +\
@@ -134,11 +140,13 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
                     "be used.").format(type(unknown_submodel)))
             if type(conditional_draws) is type(None):
                 return {parameter: value for (parameter, value) in\
-                    zip(unknown_parameter_names, quick_fit[0])}
+                    zip(unknown_parameter_names, conditional_mean)}
             else:
-                return DistributionSet([(GaussianDistribution(*quick_fit),\
+                conditional_distribution = GaussianDistribution(\
+                    conditional_mean, conditional_covariance)
+                return DistributionSet([(conditional_distribution,\
                     unknown_parameter_names, None)])
-        DistributionHarmonizer.__init__(self,\
-            incomplete_guess_distribution_set, remaining_parameter_solver,\
-            marginal_draws, conditional_draws=conditional_draws, **transforms)
+        DistributionHarmonizer.__init__(self, marginal_distribution_set,\
+            remaining_parameter_solver, marginal_draws,\
+            conditional_draws=conditional_draws, **transforms)
 

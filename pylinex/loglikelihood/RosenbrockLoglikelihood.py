@@ -8,7 +8,7 @@ Description: File containing a class representing a Likelihood which does not
              comes from the Rosenbrock function of two variables.
 """
 import numpy as np
-from distpy import cast_to_transform_list
+from distpy import TransformList
 from ..util import real_numerical_types
 from .Loglikelihood import Loglikelihood
 
@@ -263,7 +263,7 @@ class RosenbrockLoglikelihood(Loglikelihood):
         returns: 1D numpy.ndarray of length num_parameters containing gradient
                  of loglikelihood value
         """
-        transform_list = cast_to_transform_list(transform_list,\
+        transform_list = TransformList.cast(transform_list,\
             num_transforms=self.num_parameters)
         gradient = self.gradient(pars, return_negative=return_negative)
         return transform_list.transform_gradient(gradient, pars)
@@ -299,7 +299,7 @@ class RosenbrockLoglikelihood(Loglikelihood):
         returns: square 2D numpy.ndarray of side length num_parameters
                  containing hessian of loglikelihood value
         """
-        transform_list = cast_to_transform_list(transform_list,\
+        transform_list = TransformList.cast(transform_list,\
             num_transforms=self.num_parameters)
         gradient = self.gradient(pars, return_negative=return_negative)
         gradient = transform_list.transform_gradient(gradient, pars)

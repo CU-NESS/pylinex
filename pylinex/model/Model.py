@@ -7,7 +7,7 @@ Description: File containing an abstract class representing a model.
 """
 from __future__ import division
 import numpy as np
-from distpy import cast_to_transform_list
+from distpy import TransformList
 from ..util import Savable
 
 # an error indicating everything which should be implemented by subclass
@@ -115,7 +115,7 @@ class Model(Savable):
         """
         differences = differences * np.ones(self.num_parameters)
         center_model_value = self(parameters)
-        transform_list = cast_to_transform_list(transform_list,\
+        transform_list = TransformList.cast(transform_list,\
             num_transforms=self.num_parameters)
         vectors = transform_list.I(transform_list(parameters)[np.newaxis,:] +\
             np.diag(differences))
@@ -142,7 +142,7 @@ class Model(Savable):
                  gradient values
         """
         if self.gradient_computable:
-            transform_list = cast_to_transform_list(transform_list,\
+            transform_list = TransformList.cast(transform_list,\
                 num_transforms=self.num_parameters)
             return transform_list.transform_gradient(\
                 self.gradient(parameters), parameters)
@@ -169,7 +169,7 @@ class Model(Savable):
                  containing hessian values
         """
         differences = differences * np.ones(self.num_parameters)
-        transform_list = cast_to_transform_list(transform_list,\
+        transform_list = TransformList.cast(transform_list,\
             num_transforms=self.num_parameters)
         center_model_gradient = transform_list.transform_gradient(\
             self.gradient(parameters), parameters)
@@ -213,7 +213,7 @@ class Model(Savable):
         larger_differences = larger_differences * np.ones(self.num_parameters)
         center_model_gradient = self.numerical_gradient(parameters,\
             differences=smaller_differences, transform_list=transform_list)
-        transform_list = cast_to_transform_list(transform_list,\
+        transform_list = TransformList.cast(transform_list,\
             num_transforms=self.num_parameters)
         vectors = transform_list.I(transform_list(parameters)[np.newaxis,:] +\
             np.diag(larger_differences))
@@ -257,7 +257,7 @@ class Model(Savable):
         """
         if self.gradient_computable:
             if self.hessian_computable:
-                transform_list = cast_to_transform_list(transform_list,\
+                transform_list = TransformList.cast(transform_list,\
                     num_transforms=self.num_parameters)
                 untransformed_gradient = self.gradient(parameters)
                 untransformed_hessian = self.hessian(parameters)

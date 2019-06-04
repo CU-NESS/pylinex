@@ -13,7 +13,8 @@ from .LoadableModel import LoadableModel
 
 class SinusoidalModel(LoadableModel):
     """
-    An abstract class representing any model.
+    An abstract class representing a model containing a single sinusoidal wave
+    characterized by three parameters: amplitude, frequency, phase.
     """
     def __init__(self, x_values):
         """
