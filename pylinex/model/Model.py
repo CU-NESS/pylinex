@@ -293,7 +293,7 @@ class Model(Savable):
         """
         raise shouldnt_instantiate_model_error
     
-    def quick_fit(self, data, error=None):
+    def quick_fit(self, data, error):
         """
         Performs a quick fit of this model to the given data with (or without)
         a given noise level.
@@ -314,7 +314,25 @@ class Model(Savable):
         raise NotImplementedError("Either the Model subclass you are using " +\
             "does not support quick_fit or it hasn't yet been implemented.")
     
-    def quick_residual(self, data, error=None):
+    @property
+    def quick_fit_parameters(self):
+        """
+        Property storing the quick_fit_parameters
+        """
+        if not hasattr(self, '_quick_fit_parameters'):
+            self._quick_fit_parameters = []
+        return self._quick_fit_parameters
+    
+    @property
+    def num_quick_fit_parameters(self):
+        """
+        Property storing the number of quick_fit_parameters in this model.
+        """
+        if not hasattr(self, '_num_quick_fit_parameters'):
+            self._num_quick_fit_parameters = len(self.quick_fit_parameters)
+        return self._num_quick_fit_parameters
+    
+    def quick_residual(self, data, error, *quick_fit_parameters):
         """
         Performs a quick fit of this model to the given data with (or without)
         a given noise level.
@@ -329,7 +347,7 @@ class Model(Savable):
         returns: 1D array of data's shape containing residual of quick fit
         """
         (parameter_mean, parameter_covariance) =\
-            self.quick_fit(data, error=error)
+            self.quick_fit(data, error, *quick_fit_parameters)
         return data - self(parameter_mean)
     
     def fill_hdf5_group(self, group):

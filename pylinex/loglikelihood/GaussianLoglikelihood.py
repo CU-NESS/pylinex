@@ -16,7 +16,7 @@ from .LoglikelihoodWithModel import LoglikelihoodWithModel
 
 class GaussianLoglikelihood(LoglikelihoodWithModel):
     """
-    class which evaluates a likelihood which is Gaussian in the data.
+    A class which evaluates a likelihood which is Gaussian in the data.
     """
     def __init__(self, data, error, model):
         """

@@ -199,7 +199,7 @@ class DistortedModel(Model):
                 self._bounds[name] = (lower_bound, upper_bound)
         return self._bounds
     
-    def quick_fit(self, data, error=None):
+    def quick_fit(self, data, error):
         """
         Performs a quick fit to the given data.
         
@@ -209,7 +209,7 @@ class DistortedModel(Model):
         returns: (parameter_mean, parameter_covariance)
         """
         (transformed_mean, transformed_covariance) =\
-            self.model.quick_fit(data, error=error)
+            self.model.quick_fit(data, error)
         untransformed_mean =\
             self.transform_list.apply_inverse(transformed_mean)
         derivatives = self.transform_list.derivative(untransformed_mean)

@@ -150,7 +150,7 @@ class ScaledModel(Model):
         else:
             return False
     
-    def quick_fit(self, data, error=None):
+    def quick_fit(self, data, error):
         """
         Performs a quick fit of this model to the given data with (or without)
         a given noise level.
@@ -168,7 +168,7 @@ class ScaledModel(Model):
             error = np.ones_like(data)
         data_to_fit = data / self.scale_factor
         error_to_fit = error / self.scale_factor
-        return self.model.quick_fit(data_to_fit, error=error_to_fit)
+        return self.model.quick_fit(data_to_fit, error_to_fit)
     
     @property
     def bounds(self):

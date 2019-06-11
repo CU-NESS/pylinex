@@ -49,7 +49,7 @@ class DirectSumModel(SumModel):
             self._expanders = expanders
         return self._expanders
     
-    def quick_fit(self, data, error=None):
+    def quick_fit(self, data, error, *extra_parameters):
         """
         Performs a quick fit to the given data with the error.
         
@@ -61,6 +61,11 @@ class DirectSumModel(SumModel):
         """
         if type(error) is type(None):
             error = np.ones_like(data)
+        if type(extra_parameters) is type(None):
+            extra_parameters = []
+        if len(extra_parameters) != self.num_quick_fit_parameters:
+            raise ValueError("extra_parameters length was not equal to the " +\
+                "number of quick_fit_parameters of this model.")
         expander_dict = {name: expander\
             for (name, expander) in zip(self.names, self.expanders)}
         if not ExpanderSet(data, error, **expander_dict).separable:
@@ -68,12 +73,31 @@ class DirectSumModel(SumModel):
                 "model is not separable (i.e. that the individual models " +\
                 "cannot be used easily to find subfits which can then be " +\
                 "combined).")
-        fits = [model.quick_fit(data, error=error) for model in self.models]
+        fits = []
+        pars_used = 0
+        for (imodel, model) in enumerate(self.models):
+            extras = extra_parameters[\
+                pars_used:pars_used+model.num_quick_fit_parameters]
+            fits.append(model.quick_fit(data, error, *extras))
+            pars_used = pars_used + model.num_quick_fit_parameters
         means = [fit[0] for fit in fits]
         covariances = [fit[1] for fit in fits]
         mean = np.concatenate(means)
         covariance = scila.block_diag(*covariances)
         return (mean, covariance)
+    
+    @property
+    def quick_fit_parameters(self):
+        """
+        Property storing the quick_fit parameters
+        """
+        if not hasattr(self, '_quick_fit_parameters'):
+            self._quick_fit_parameters = []
+            for (iname, name) in enumerate(self.names):
+                self._quick_fit_parameters = self._quick_fit_parameters +\
+                    ['{0!s}_{1!s}'.format(name, parameter)\
+                    for parameter in self.models[iname].quick_fit_parameters]
+        return self._quick_fit_parameters
     
     def fill_hdf5_group(self, group):
         """

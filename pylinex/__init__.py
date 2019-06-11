@@ -39,8 +39,8 @@ from pylinex.model import Model, LoadableModel, FixedModel,\
 from pylinex.loglikelihood import Loglikelihood, RosenbrockLoglikelihood,\
     LoglikelihoodWithData, LoglikelihoodWithModel, GaussianLoglikelihood,\
     PoissonLoglikelihood, GammaLoglikelihood, LinearTruncationLoglikelihood,\
-    NonlinearTruncationLoglikelihood, load_loglikelihood_from_hdf5_group,\
-    LikelihoodDistributionHarmonizer
+    NonlinearTruncationLoglikelihood, ConditionalFitGaussianLoglikelihood,\
+    load_loglikelihood_from_hdf5_group, LikelihoodDistributionHarmonizer
 from pylinex.nonlinear import Sampler, BurnRule, NLFitter, LeastSquareFitter,\
     InterpolatingLeastSquareFitter, LeastSquareFitGenerator,\
     LeastSquareFitCluster, TruncationExtractor, RankDecider

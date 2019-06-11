@@ -329,7 +329,7 @@ class TiedModel(Model):
             return False
         return True
     
-    def quick_fit(self, data, error=None):
+    def quick_fit(self, data, error):
         """
         Fits this SlicedModel by marginalizing out the constant parameters of
         the posterior parameter distribution of the unsliced model.

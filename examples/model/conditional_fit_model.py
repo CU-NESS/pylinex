@@ -9,8 +9,8 @@ Description: Example script showing how objects of the ConditionalFitModel
 import numpy as np
 import matplotlib.pyplot as pl
 from distpy import ChiSquaredDistribution
-from pylinex import LegendreBasis, SumModel, ProductModel, BasisModel,\
-    LorentzianModel, GaussianModel, ConditionalFitModel
+from pylinex import LegendreBasis, SumModel, ProductModel, LorentzianModel,\
+    TruncatedBasisHyperModel, GaussianModel, ConditionalFitModel
 
 fontsize = 24
 first_seed = None
@@ -22,15 +22,18 @@ x_values = np.linspace(-1, 1, num_channels)
 
 gaussian_model = GaussianModel(x_values)
 lorentzian_model = LorentzianModel(x_values)
+max_num_basis_vectors = 10
 num_basis_vectors = 5
-basis = LegendreBasis(num_channels, num_basis_vectors - 1)
-basis_model = BasisModel(basis)
+basis = LegendreBasis(num_channels, max_num_basis_vectors - 1)
+basis_model = TruncatedBasisHyperModel(basis)
 sum_model = SumModel(['basis', 'lorentzian'], [basis_model, lorentzian_model])
 
 gaussian_parameters = np.array([1, 0.2, 1])
 lorentzian_parameters = np.array([15, 0, 0.5])
 np.random.seed(first_seed)
-basis_parameters = np.random.normal(0, 100, size=num_basis_vectors)
+basis_parameters =\
+    np.concatenate([np.random.normal(0, 100, size=num_basis_vectors),\
+    np.zeros(max_num_basis_vectors - num_basis_vectors), [num_basis_vectors]])
 
 noise_level = 1
 error = np.ones((num_channels,)) * noise_level
@@ -45,10 +48,12 @@ data = full_model(full_parameters) + noise
 unknown_name_chain = ['sum', 'basis']
 
 model = ConditionalFitModel(full_model, data, error, unknown_name_chain)
-parameters = np.concatenate([gaussian_parameters, lorentzian_parameters])
+parameters =\
+    np.concatenate([gaussian_parameters, lorentzian_parameters,\
+    [num_basis_vectors]])
+print("model.parameters={}".format(model.parameters))
 
-degrees_of_freedom = num_channels -\
-    (full_model.num_parameters - model.num_parameters)
+degrees_of_freedom = num_channels - num_basis_vectors
 chi_squared = np.sum(np.power((data - model(parameters)) / error, 2)) /\
     degrees_of_freedom
 chi_squared_distribution =\

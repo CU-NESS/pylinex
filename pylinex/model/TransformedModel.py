@@ -162,7 +162,7 @@ class TransformedModel(Model):
         else:
             return False
     
-    def quick_fit(self, data, error=None):
+    def quick_fit(self, data, error):
         """
         Performs a quick fit to the given data.
         
@@ -177,7 +177,7 @@ class TransformedModel(Model):
         else:
             error_to_fit =\
                 error / np.abs(self.transform.derivative(data_to_fit))
-        return self.model.quick_fit(data_to_fit, error=error_to_fit)
+        return self.model.quick_fit(data_to_fit, error_to_fit)
     
     @property
     def bounds(self):

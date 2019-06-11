@@ -12,6 +12,8 @@ from .PoissonLoglikelihood import PoissonLoglikelihood
 from .GammaLoglikelihood import GammaLoglikelihood
 from .LinearTruncationLoglikelihood import LinearTruncationLoglikelihood
 from .NonlinearTruncationLoglikelihood import NonlinearTruncationLoglikelihood
+from .ConditionalFitGaussianLoglikelihood import\
+    ConditionalFitGaussianLoglikelihood
 
 def load_loglikelihood_from_hdf5_group(group):
     """

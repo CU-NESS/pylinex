@@ -210,6 +210,9 @@ class ConditionalFitModel(Model):
             known_model_chain.append(known_model)
             is_sum_chain.append(is_sum)
             unknown_submodel = unknown_submodel[unknown_name]
+        quick_fit_parameter_prefix = '_'.join(self.unknown_name_chain)
+        parameters.extend(['{0!s}_{1!s}'.format(quick_fit_parameter_prefix,\
+            parameter) for parameter in unknown_submodel.quick_fit_parameters])
         self._known_model_chain = known_model_chain
         self._is_sum_chain = is_sum_chain
         self._parameters = parameters
@@ -288,13 +291,18 @@ class ConditionalFitModel(Model):
             self._num_links = len(self.unknown_name_chain)
         return self._num_links
     
-    def __call__(self, parameters):
+    def __call__(self, parameters, return_conditional_covariance=False):
         """
         Evaluates the model at the given parameters.
         
         parameters: 1D numpy.ndarray of parameter values
+        return_conditional_covariance: if True (return False), then conditional
+                                       parameter covariance matrix is returned
+                                       alongside the data recreation
         
-        returns: array of size (num_channels,)
+        returns: data_recreation, an array of size (num_channels,).
+                 if return_conditional_covariance is True, the conditional
+                 parameter covariance matrix is also returned
         """
         data_to_fit = self.data
         error_to_fit = self.error
@@ -313,21 +321,25 @@ class ConditionalFitModel(Model):
             known_model_values.append(known_model_value)
             pars_used += known_model.num_parameters
         try:
-            best_fit_unknown_parameters =\
-                self.unknown_submodel.quick_fit(data_to_fit, error_to_fit)[0]
+            (conditional_mean, conditional_covariance) =\
+                self.unknown_submodel.quick_fit(data_to_fit, error_to_fit,\
+                *parameters[pars_used:])
         except NotImplementedError:
             raise NotImplementedError(("The submodel (class: {!s}) " +\
                 "concerning the parameters whose distribution is not known " +\
                 "does not have a quick_fit function implemented, so the " +\
-                "LikelihoodDistributionHarmonizer class cannot be " +\
-                "used.").format(type(self.unknown_submodel)))
-        recreation = self.unknown_submodel(best_fit_unknown_parameters)
+                "ConditionalFitModel class cannot be used.").format(\
+                type(self.unknown_submodel)))
+        recreation = self.unknown_submodel(conditional_mean)
         for index in range(self.num_links - 1, -1, -1):
             if self.is_sum_chain[index]:
                 recreation = recreation + known_model_values[index]
             else:
                 recreation = recreation * known_model_values[index]
-        return recreation
+        if return_conditional_covariance:
+            return (recreation, conditional_covariance)
+        else:
+            return recreation
     
     @property
     def gradient_computable(self):
@@ -357,6 +369,19 @@ class ConditionalFitModel(Model):
         create_hdf5_dataset(group, 'error', data=self.error)
         create_hdf5_dataset(group, 'unknown_name_chain',\
             data=self.unknown_name_chain)
+    
+    def change_data(self, new_data):
+        """
+        Creates a new ConditionalFitModel which has everything kept constant
+        except the given new data vector is used.
+        
+        new_data: 1D numpy.ndarray data vector of the same length as the data
+                  vector of this ConditionalFitModel
+        
+        returns: a new ConditionalFitModel object
+        """
+        return ConditionalFitModel(self.model, new_data, self.error,\
+            self.unknown_name_chain)
     
     def __eq__(self, other):
         """

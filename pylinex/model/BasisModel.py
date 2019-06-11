@@ -129,7 +129,7 @@ class BasisModel(LoadableModel):
         """
         return np.zeros((self.num_channels,) + ((self.num_parameters,) * 2))
     
-    def quick_fit(self, data, error=None):
+    def quick_fit(self, data, error):
         """
         Performs a quick fit of this model to the given data with (or without)
         a given noise level.

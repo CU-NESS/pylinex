@@ -19,6 +19,8 @@ from pylinex.loglikelihood.LinearTruncationLoglikelihood import\
     LinearTruncationLoglikelihood
 from pylinex.loglikelihood.NonlinearTruncationLoglikelihood import\
     NonlinearTruncationLoglikelihood
+from pylinex.loglikelihood.ConditionalFitGaussianLoglikelihood import\
+    ConditionalFitGaussianLoglikelihood
 from pylinex.loglikelihood.LoadLoglikelihood import\
     load_loglikelihood_from_hdf5_group
 from pylinex.loglikelihood.LikelihoodDistributionHarmonizer import\

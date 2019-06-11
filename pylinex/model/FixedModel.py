@@ -119,7 +119,7 @@ class FixedModel(LoadableModel):
         group.attrs['class'] = 'FixedModel'
         create_hdf5_dataset(group, 'fixed_curve', data=self.fixed_curve)
     
-    def quick_fit(self, data, error=None):
+    def quick_fit(self, data, error):
         """
         Performs a quick fit of this model to the given data with (or without)
         a given noise level.

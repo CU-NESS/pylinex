@@ -111,7 +111,7 @@ class ConstantModel(LoadableModel):
         group.attrs['class'] = 'ConstantModel'
         group.attrs['num_channels'] = self.num_channels
     
-    def quick_fit(self, data, error=None):
+    def quick_fit(self, data, error):
         """
         Performs a quick fit of this model to the given data with (or without)
         a given noise level.

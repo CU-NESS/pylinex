@@ -49,7 +49,7 @@ noise = np.random.normal(0, 1, size=error.shape) * error
 
 data = true_curve + noise
 
-(mean, covariance) = direct_sum_model.quick_fit(data, error=error)
+(mean, covariance) = direct_sum_model.quick_fit(data, error)
 variances = np.sqrt(np.diag(covariance))
 expected_variances =\
     ((noise_level / np.sqrt(smaller_num_channels)) * np.ones(num_models))

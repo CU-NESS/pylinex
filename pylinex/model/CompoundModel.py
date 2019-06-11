@@ -50,6 +50,15 @@ class CompoundModel(Model):
                 "string.")
     
     @property
+    def num_models(self):
+        """
+        Property storing the number of models being compounded.
+        """
+        if not hasattr(self, '_num_models'):
+            self._num_models = len(self.names)
+        return self._num_models
+    
+    @property
     def models(self):
         """
         Property storing the submodels of this CompoundModel.
@@ -66,7 +75,7 @@ class CompoundModel(Model):
         
         value: sequence of models of same length as names
         """
-        if len(value) == len(self.names):
+        if len(value) == self.num_models:
             if all([isinstance(element, Model) for element in value]):
                 self._models = [element for element in value]
             else:
@@ -130,11 +139,11 @@ class CompoundModel(Model):
         order they are given in the models/names property.
         """
         if not hasattr(self, '_parameters'):
-             self._parameters = []
-             for (iname, name) in enumerate(self.names):
-                 self._parameters = self._parameters +\
-                     ['{0!s}_{1!s}'.format(name, parameter)\
-                     for parameter in self.models[iname].parameters]
+            self._parameters = []
+            for (iname, name) in enumerate(self.names):
+                self._parameters = self._parameters +\
+                    ['{0!s}_{1!s}'.format(name, parameter)\
+                    for parameter in self.models[iname].parameters]
         return self._parameters
     
     @property

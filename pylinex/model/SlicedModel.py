@@ -235,7 +235,7 @@ class SlicedModel(Model):
                 return False
         return True
     
-    def quick_fit(self, data, error=None):
+    def quick_fit(self, data, error):
         """
         Fits this SlicedModel by marginalizing out the constant parameters of
         the posterior parameter distribution of the unsliced model.
@@ -248,7 +248,7 @@ class SlicedModel(Model):
                  marginalized over the constant parameters, not conditionalized
         """
         (parameter_mean, parameter_covariance) =\
-            self.model.quick_fit(data, error=error)
+            self.model.quick_fit(data, error)
         to_retain = np.isnan(self.parameter_template)
         parameter_mean = parameter_mean[to_retain]
         parameter_covariance = parameter_covariance[to_retain,:][:,to_retain]

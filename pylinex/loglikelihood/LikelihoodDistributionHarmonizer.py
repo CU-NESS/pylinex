@@ -27,7 +27,7 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
     """
     def __init__(self, marginal_distribution_set, gaussian_loglikelihood,\
         unknown_name_chain, marginal_draws, conditional_draws=None,\
-        **transforms):
+        quick_fit_parameters=[], **transforms):
         """
         Creates a new LikelihoodDistributionHarmonizer from the loglikelihood.
         
@@ -53,6 +53,8 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
                                       number of draws from the marginal
                                       distribution (given by the
                                       marginal_distribution_set).
+        quick_fit_parameters: additional parameters to pass to quick_fit
+                              function of unknown submodel
         transforms: transforms indexed by parameter. parameters not given are
                     assumed to remain untransformed throughout
         """
@@ -131,7 +133,8 @@ class LikelihoodDistributionHarmonizer(DistributionHarmonizer):
                     error_to_fit = error_to_fit / np.abs(known_model_value)
             try:
                 (conditional_mean, conditional_covariance) =\
-                    unknown_submodel.quick_fit(data_to_fit, error_to_fit)
+                    unknown_submodel.quick_fit(data_to_fit, error_to_fit,\
+                    *quick_fit_parameters)
             except NotImplementedError:
                 raise NotImplementedError(("The submodel (class: {!s}) " +\
                     "concerning the parameters whose distribution is not " +\

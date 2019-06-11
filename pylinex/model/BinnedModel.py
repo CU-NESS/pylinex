@@ -198,7 +198,7 @@ class BinnedModel(Model):
         else:
             return False
     
-    def quick_fit(self, data, error=None):
+    def quick_fit(self, data, error):
         """
         Performs a quick fit to the given data.
         
