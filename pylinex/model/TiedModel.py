@@ -244,6 +244,15 @@ class TiedModel(Model):
             processed_parameters[indices] = parameter
         return processed_parameters
     
+    @property
+    def num_channels(self):
+        """
+        Property storing the number of channels in outputs of this model.
+        """
+        if not hasattr(self, '_num_channels'):
+            self._num_channels = self.sum_model.num_channels
+        return self._num_channels
+    
     def __call__(self, parameters):
         """
         Evaluates the model at the given parameters.
@@ -329,7 +338,7 @@ class TiedModel(Model):
             return False
         return True
     
-    def quick_fit(self, data, error):
+    def quick_fit(self, data, error, **kwargs):
         """
         Fits this SlicedModel by marginalizing out the constant parameters of
         the posterior parameter distribution of the unsliced model.

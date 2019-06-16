@@ -27,6 +27,13 @@ class Model(Savable):
         raise shouldnt_instantiate_model_error
     
     @property
+    def num_channels(self):
+        """
+        Property storing the number of channels in outputs of this model.
+        """
+        raise shouldnt_instantiate_model_error
+    
+    @property
     def num_parameters(self):
         """
         Property storing the number of parameters necessitated by this model.
@@ -293,7 +300,7 @@ class Model(Savable):
         """
         raise shouldnt_instantiate_model_error
     
-    def quick_fit(self, data, error):
+    def quick_fit(self, data, error, quick_fit_parameters=[], prior=None):
         """
         Performs a quick fit of this model to the given data with (or without)
         a given noise level.
@@ -304,6 +311,9 @@ class Model(Savable):
                         nonsense
                otherwise, error should either be a single number or a 1D array
                           of same length as data
+        quick_fit_parameters: quick fit parameters to pass to underlying model
+        prior: either None or a GaussianDistribution object containing priors
+               (in space of underlying model)
         
         returns: (parameter_mean, parameter_covariance) where parameter_mean is
                  a length N (number of parameters) 1D array and

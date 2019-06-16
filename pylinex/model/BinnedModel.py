@@ -28,6 +28,15 @@ class BinnedModel(Model):
         self.weights = weights
     
     @property
+    def num_channels(self):
+        """
+        Property storing the number of channels in the output of this model.
+        """
+        if not hasattr(self, '_num_channels'):
+            self._num_channels = self.binner.nbins_to_keep
+        return self._num_channels
+    
+    @property
     def weights(self):
         """
         Property storing the weights to be used in binned. This is None by

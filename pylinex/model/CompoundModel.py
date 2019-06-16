@@ -85,6 +85,24 @@ class CompoundModel(Model):
             raise ValueError("Length of models sequence was not the same " +\
                 "as the number of names given.")
     
+    @property
+    def num_channels(self):
+        """
+        Property storing the number of channels in outputs of this model.
+        """
+        if not hasattr(self, '_num_channels'):
+            self._num_channels = None
+            for model in self.models:
+                if (type(self._num_channels) is type(None)) or\
+                    (self._num_channels == 1):
+                    self._num_channels = model.num_channels
+                elif model.num_channels not in [1, self._num_channels]:
+                    raise AttributeError("The number of channels in this " +\
+                        "model could not be determined simply. The number " +\
+                        "of channels of the submodels were not compatible " +\
+                        "for addition.")
+        return self._num_channels
+    
     def __getitem__(self, key):
         """
         Gets the model associated with the given name.

@@ -7,6 +7,7 @@ Description: File containing a simple Model which is a constant across
              channels. That constant is the sole parameter of the model.
 """
 import numpy as np
+from distpy import GaussianDistribution
 from ..util import int_types, numerical_types
 from .LoadableModel import LoadableModel
 
@@ -111,7 +112,7 @@ class ConstantModel(LoadableModel):
         group.attrs['class'] = 'ConstantModel'
         group.attrs['num_channels'] = self.num_channels
     
-    def quick_fit(self, data, error):
+    def quick_fit(self, data, error, prior=None, **kwargs):
         """
         Performs a quick fit of this model to the given data with (or without)
         a given noise level.
@@ -126,6 +127,8 @@ class ConstantModel(LoadableModel):
                         nonsense
                otherwise, error should either be a single number or a 1D array
                           of same length as data
+        prior: either a GaussianDistribution prior with 1 parameter or None
+        **kwargs: unused for compatibility
         
         returns: (parameter_mean, parameter_covariance) where parameter_mean is
                  a length 1 1D array and parameter_covariance is a 2D array of
@@ -138,8 +141,16 @@ class ConstantModel(LoadableModel):
         if type(error) in numerical_types:
             error = np.ones(self.num_channels) * error
         inverse_squared_error = np.power(error, -2)
-        variance = 1 / np.sum(inverse_squared_error)
-        mean = variance * np.sum(data * inverse_squared_error)
+        inverse_variance = np.sum(inverse_squared_error)
+        mean = np.sum(data * inverse_squared_error)
+        if isinstance(prior, GaussianDistribution):
+            inverse_variance += prior.inverse_covariance.A[0,0]
+            mean += (prior.inverse_covariance.A[0,0] * prior.mean.A[0,0])
+        elif type(prior) is not type(None):
+            raise TypeError("prior must be either None or a " +\
+                "GaussianDistribution object.")
+        variance = 1 / inverse_variance
+        mean = variance * mean
         return (mean * np.ones((1,)), variance * np.ones((1, 1)))
     
     def __eq__(self, other):

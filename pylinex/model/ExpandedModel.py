@@ -79,6 +79,16 @@ class ExpandedModel(Model):
         """
         return self.model.parameters
     
+    @property
+    def num_channels(self):
+        """
+        Property storing the number of channels in the outputs of this model.
+        """
+        if not hasattr(self, '_num_channels'):
+            self._num_channels =\
+                self.expander.expanded_space_size(self.model.num_channels)
+        return self._num_channels
+    
     def __call__(self, parameters):
         """
         Gets the expanded curve associated with the given parameters.
@@ -153,7 +163,7 @@ class ExpandedModel(Model):
         else:
             return False
     
-    def quick_fit(self, data, error):
+    def quick_fit(self, data, error, quick_fit_parameters=[], prior=None):
         """
         Performs a quick fit of this model to the given data with (or without)
         a given noise level.
@@ -163,6 +173,9 @@ class ExpandedModel(Model):
                         parameter_mean and parameter_covariance will be
                         nonsense
                otherwise, error should a 1D array of same length as data
+        quick_fit_parameters: quick fit parameters to pass to underlying model
+        prior: either None or a GaussianDistribution object containing priors
+               (in space of underlying model)
         
         returns: (parameter_mean, parameter_covariance) which are 1D and 2D
                  arrays respectively
@@ -171,7 +184,17 @@ class ExpandedModel(Model):
             error = np.ones_like(data)
         smaller_data = self.expander.invert(data, error)
         smaller_error = self.expander.contract_error(error)
-        return self.model.quick_fit(smaller_data, smaller_error)
+        return self.model.quick_fit(smaller_data, smaller_error,\
+            quick_fit_parameters=quick_fit_parameters, prior=prior)
+    
+    @property
+    def quick_fit_parameters(self):
+        """
+        Property storing the parameters necessary to call quick_fit.
+        """
+        if not hasattr(self, '_quick_fit_parameters'):
+            self._quick_fit_parameters = self.model.quick_fit_parameters
+        return self._quick_fit_parameters
     
     @property
     def bounds(self):

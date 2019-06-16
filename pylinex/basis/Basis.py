@@ -237,7 +237,7 @@ class Basis(Savable, Loadable):
         Generates a Gaussian prior using this basis and the given curves.
         
         curves: the curves to fit to create the sample with which to create the
-                Gaussian prior
+                Gaussian prior (in the unexpanded space)
         error: error to use in the least square fit to the given curves. If
                error is None, a raw least square fit is done (default: None)
         covariance_expansion_factor: the factor by which the covariance matrix
@@ -268,6 +268,7 @@ class Basis(Savable, Loadable):
         if diagonal:
             cov_to_return = np.diag(np.diag(cov_to_return))
         self._gaussian_prior = GaussianDistribution(mean, cov_to_return)
+        return self._gaussian_prior
     
     @property
     def gaussian_prior(self):

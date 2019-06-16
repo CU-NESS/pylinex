@@ -6,6 +6,7 @@ Date: 2 Aug 2018
 Description: File containing a class which represents a model which simply
              scales the output of a different model.
 """
+import numpy as np
 from ..util import real_numerical_types
 from .Model import Model
 
@@ -44,6 +45,15 @@ class ScaledModel(Model):
             self._model = value
         else:
             raise TypeError("model was not a Model object.")
+    
+    @property
+    def num_channels(self):
+        """
+        Property storing the number of channels in outputs of this model.
+        """
+        if not hasattr(self, '_num_channels'):
+            self._num_channels = self.model.num_channels
+        return self._num_channels
     
     @property
     def scale_factor(self):
@@ -150,7 +160,7 @@ class ScaledModel(Model):
         else:
             return False
     
-    def quick_fit(self, data, error):
+    def quick_fit(self, data, error, quick_fit_parameters=[], prior=None):
         """
         Performs a quick fit of this model to the given data with (or without)
         a given noise level.
@@ -160,6 +170,9 @@ class ScaledModel(Model):
                         parameter_mean and parameter_covariance will be
                         nonsense
                otherwise, error should a 1D array of same length as data
+        quick_fit_parameters: quick fit parameters to pass to underlying model
+        prior: either None or a GaussianDistribution object containing priors
+               (in space of underlying model)
         
         returns: (parameter_mean, parameter_covariance) which are 1D and 2D
                  arrays respectively
@@ -167,8 +180,9 @@ class ScaledModel(Model):
         if type(error) is type(None):
             error = np.ones_like(data)
         data_to_fit = data / self.scale_factor
-        error_to_fit = error / self.scale_factor
-        return self.model.quick_fit(data_to_fit, error_to_fit)
+        error_to_fit = error / np.abs(self.scale_factor)
+        return self.model.quick_fit(data_to_fit, error_to_fit,\
+            quick_fit_parameters=quick_fit_parameters, prior=prior)
     
     @property
     def bounds(self):

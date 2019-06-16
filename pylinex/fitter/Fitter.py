@@ -39,7 +39,10 @@ class Fitter(Savable):
         error: 1D vector of same length as vectors in basis_sum containing only
                positive numbers
         **priors: keyword arguments where the keys are exactly the names of the
-                  basis sets with '_prior' appended to them
+                  basis sets with '_prior' appended to them and the values are
+                  GaussianDistribution objects. If only one basis is given as
+                  the basis_sum, then the priors should either be empty or a
+                  dictionary of the form {'sole_prior': gaussian_distribution}
         """
         self.basis_sum = basis_sum
         self.priors = priors
@@ -136,7 +139,7 @@ class Fitter(Savable):
                     self._prior_covariance.append(\
                         self._priors[key].covariance.A)
                     self._prior_inverse_covariance.append(\
-                        self._priors[key].invcov.A)
+                        self._priors[key].inverse_covariance.A)
                 else:
                     nparams = self.basis_sum[name].num_basis_vectors
                     self._prior_mean.append(np.zeros(nparams))

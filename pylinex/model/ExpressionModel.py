@@ -43,6 +43,21 @@ class ExpressionModel(LoadableModel):
         self.hessian_expressions = hessian_expressions
     
     @property
+    def num_channels(self):
+        """
+        Property which normally determines the number of channels in a given
+        model's outputs. However, the ExpressionModel does not implement this
+        property because there is no way of determining how many channels the
+        return value of an Expression will have.
+        """
+        if not hasattr(self, '_num_channels'):
+            raise AttributeError("num_channels property is not implemented " +\
+                "for the ExpressionModel class because there is no way of " +\
+                "determining how many channels the return value of an " +\
+                "Expression will have.")
+        return self._num_channels
+    
+    @property
     def expression(self):
         """
         Property storing the Expression object which takes parameters as inputs

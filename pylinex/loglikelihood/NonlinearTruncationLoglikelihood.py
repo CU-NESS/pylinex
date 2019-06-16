@@ -31,7 +31,7 @@ class NonlinearTruncationLoglikelihood(LoglikelihoodWithModel):
     likelihood.
     """
     def __init__(self, basis_set, data, error, expression,\
-        parameter_penalty=1, default_num_terms=None):
+        parameter_penalty=1):
         """
         Initializes a new TruncationLoglikelihood with the given basis_sum,
         data, and error.
@@ -47,20 +47,12 @@ class NonlinearTruncationLoglikelihood(LoglikelihoodWithModel):
                            any given model. Should be a non-negative constant.
                            It defaults to 1, which is the penalty used for the
                            Deviance Information Criterion (DIC)
-        default_num_terms: either an integer number of terms to default to
-                           (when performing quick fit's) for each basis, or a
-                           sequence of such integers if different bases should
-                           use different numbers of terms by default. None
-                           (either as the sole value or an element of a
-                           sequence) indicates all vectors should be used by
-                           default
         """
         self.basis_set = basis_set
         self.data = data
         self.error = error
         self.expression = expression
         self.parameter_penalty = parameter_penalty
-        self.default_num_terms = default_num_terms
         self.model =\
             CompositeModel(self.expression, self.basis_set.names, self.models)
     
@@ -167,61 +159,14 @@ class NonlinearTruncationLoglikelihood(LoglikelihoodWithModel):
             raise TypeError("parameter_penalty was set to a non-number.")
     
     @property
-    def default_num_terms(self):
-        """
-        Property storing a sequence of the default number of terms used for
-        each basis set name.
-        """
-        if not hasattr(self, '_default_num_terms'):
-            raise AttributeError("default_num_terms was referenced before " +\
-                "it was set.")
-        return self._default_num_terms
-    
-    @default_num_terms.setter
-    def default_num_terms(self, value):
-        """
-        Setter for the default number of terms to use for each basis 
-        
-        value: either an integer number of terms to default to (when performing
-               quick fit's) for each basis, or a sequence of such integers if
-               different bases should use different numbers of terms by default
-        """
-        if type(value) in sequence_types:
-            if len(value) == len(self.basis_set.names):
-                self._default_num_terms = []
-                for (name, element) in zip(self.basis_set.names, value):
-                    if type(element) is type(None):
-                        num_terms = self.basis_set[name].num_basis_vectors
-                    elif type(element) in int_types:
-                        num_terms = element
-                    else:
-                        raise TypeError("An element of the " +\
-                            "default_num_terms was neither None nor an " +\
-                            "integer.")
-                    self._default_num_terms.append(num_terms)
-            else:
-                raise ValueError("The default_num_terms sequence was not " +\
-                    "of the same length as the list of names in the given " +\
-                    "basis_set.")
-        elif type(value) is type(None):
-            self._default_num_terms = [self.basis_set[name].num_basis_vectors\
-                for name in self.basis_set.names]
-        elif type(value) in int_types:
-            self._default_num_terms = [value] * len(self.basis_set.names)
-        else:
-            raise TypeError("default_num_terms was neither None, an " +\
-                "integer, or a sequence.")
-    
-    @property
     def models(self):
         """
         Property storing the underlying models which are combined into the
         composite model.
         """
         if not hasattr(self, '_models'):
-            self._models = [TruncatedBasisHyperModel(self.basis_set[name],\
-                default_num_terms=term) for (name, term) in\
-                zip(self.basis_set.names, self.default_num_terms)]
+            self._models = [TruncatedBasisHyperModel(self.basis_set[name])\
+                for name in self.basis_set.names]
         return self._models
     
     def save_error(self, group, error_link=None):
@@ -249,7 +194,6 @@ class NonlinearTruncationLoglikelihood(LoglikelihoodWithModel):
         self.basis_set.fill_hdf5_group(group.create_group('basis_set'))
         self.expression.fill_hdf5_group(group.create_group('expression'))
         group.attrs['parameter_penalty'] = self.parameter_penalty
-        group.attrs['default_num_terms'] = self.default_num_terms
     
     @staticmethod
     def load_error(group):
@@ -283,10 +227,8 @@ class NonlinearTruncationLoglikelihood(LoglikelihoodWithModel):
         basis_set = BasisSet.load_from_hdf5_group(group['basis_set'])
         expression = Expression.load_from_hdf5_group(group['expression'])
         parameter_penalty = group.attrs['parameter_penalty']
-        default_num_terms = group.attrs['default_num_terms']
         return NonlinearTruncationLoglikelihood(basis_set, data, error,\
-            expression, parameter_penalty=parameter_penalty,\
-            default_num_terms=default_num_terms)
+            expression, parameter_penalty=parameter_penalty)
     
     @property
     def weighting_matrix(self):
@@ -472,10 +414,7 @@ class NonlinearTruncationLoglikelihood(LoglikelihoodWithModel):
             return False
         if self.expression != other.expression:
             return False
-        if self.parameter_penalty != other.parameter_penalty:
-            return False
-        return all([(sdnt == odnt) for (sdnt, odnt) in\
-            zip(self.default_num_terms, other.default_num_terms)])
+        return (self.parameter_penalty == other.parameter_penalty)
     
     def change_data(self, new_data):
         """
@@ -489,8 +428,7 @@ class NonlinearTruncationLoglikelihood(LoglikelihoodWithModel):
         """
         return NonlinearTruncationLoglikelihood(self.basis_set, new_data,\
             self.error, self.expression,\
-            parameter_penalty=self.parameter_penalty,\
-            default_num_terms=self.default_num_terms)
+            parameter_penalty=self.parameter_penalty)
     
     def change_model(self, new_model):
         """

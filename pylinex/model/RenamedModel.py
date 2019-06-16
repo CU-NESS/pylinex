@@ -68,6 +68,15 @@ class RenamedModel(Model):
         else:
             raise TypeError("parameters was set to a non-sequence.")
     
+    @property
+    def num_channels(self):
+        """
+        Property storing the number of channels in outputs of this model.
+        """
+        if not hasattr(self, '_num_channels'):
+            self._num_channels = self.model.num_channels
+        return self._num_channels
+    
     def __call__(self, parameters):
         """
         Evaluates the model at the given parameters.
@@ -146,17 +155,30 @@ class RenamedModel(Model):
         else:
             return False
     
-    def quick_fit(self, data, error):
+    def quick_fit(self, data, error, quick_fit_parameters=[], prior=None):
         """
         Fits the given data (with error given possibly).
         
         data: the data to fit with this model
         error: the error on the data given. If not given, all points assumed
                identical and returned parameter covariance is meaningless
+        quick_fit_parameters: quick fit parameters to pass to underlying model
+        prior: either None or a GaussianDistribution object containing priors
+               (in space of underlying model)
         
         returns: (parameter_mean, parameter_covariance)
         """
-        return self.model.quick_fit(data, error)
+        return self.model.quick_fit(data, error,\
+            quick_fit_parameters=quick_fit_parameters, prior=prior)
+    
+    @property
+    def quick_fit_parameters(self):
+        """
+        Property storing the names of the parameters passed to quick_fit.
+        """
+        if not hasattr(self, '_quick_fit_parameters'):
+            self._quick_fit_parameters = self.model.quick_fit_parameters
+        return self._quick_fit_parameters
     
     @property
     def bounds(self):

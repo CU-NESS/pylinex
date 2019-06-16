@@ -143,6 +143,15 @@ class TruncatedBasisHyperModel(LoadableModel):
             self._parameters.append('nterms')
         return self._parameters
     
+    @property
+    def num_channels(self):
+        """
+        Property storing the number of channels in outputs of this model.
+        """
+        if not hasattr(self, '_num_channels'):
+            self._num_channels = self.basis.num_larger_channel_set_indices
+        return self._num_channels
+    
     def __call__(self, parameters):
         """
         Gets the curve associated with the given parameters. Warning: if nterms
@@ -280,7 +289,7 @@ class TruncatedBasisHyperModel(LoadableModel):
             self._quick_fit_cache[nterms] = (error, covariance)
         return covariance
     
-    def quick_fit(self, data, error=None, nterms=None):
+    def quick_fit(self, data, error=None, quick_fit_parameters=[], prior=None):
         """
         Performs a quick fit of this model to the given data with (or without)
         a given noise level.
@@ -291,6 +300,9 @@ class TruncatedBasisHyperModel(LoadableModel):
                         nonsense
                otherwise, error should either be a single number or a 1D array
                           of same length as data
+        quick_fit_parameters: quick fit parameters to pass to underlying model
+        prior: either None or a GaussianDistribution object containing priors
+               (in space of underlying model)
         
         returns: (parameter_mean, parameter_covariance) where parameter_mean is
                  a length N (number of basis vectors) 1D array and
@@ -302,6 +314,16 @@ class TruncatedBasisHyperModel(LoadableModel):
             error = 1
         if type(error) in numerical_types:
             error = error * np.ones_like(data)
+        if len(quick_fit_parameters) == 1:
+            nterms = quick_fit_parameters[0]
+        else:
+            raise ValueError("quick_fit_parameters given to " +\
+                "TruncatedBasisHyperModel did not have length 1.")
+        if type(prior) is not type(None):
+            raise TypeError("prior usage is not implemented in the " +\
+                "quick_fit function of the TruncatedBasisHyperModel as " +\
+                "there are unresolved ambiguities about which covariance " +\
+                "should be given.")
         if type(nterms) is type(None):
             nterms = self.max_terms
         else:

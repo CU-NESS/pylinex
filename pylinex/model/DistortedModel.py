@@ -89,6 +89,15 @@ class DistortedModel(Model):
         """
         return self.model.parameters
     
+    @property
+    def num_channels(self):
+        """
+        Property storing the number of channels in output
+        """
+        if not hasattr(self, '_num_channels'):
+            self._num_channels = self.model.num_channels
+        return self._num_channels
+    
     def __call__(self, parameters):
         """
         Evaluates the model at the given parameters.
@@ -199,21 +208,34 @@ class DistortedModel(Model):
                 self._bounds[name] = (lower_bound, upper_bound)
         return self._bounds
     
-    def quick_fit(self, data, error):
+    def quick_fit(self, data, error, quick_fit_parameters=[], prior=None):
         """
         Performs a quick fit to the given data.
         
         data: curve to fit with the model
         error: noise level in the data
+        quick_fit_parameters: quick fit parameters to pass to underlying model
+        prior: either None or a GaussianDistribution object containing priors
+               (in space of underlying model)
         
         returns: (parameter_mean, parameter_covariance)
         """
         (transformed_mean, transformed_covariance) =\
-            self.model.quick_fit(data, error)
+            self.model.quick_fit(data, error,\
+            quick_fit_parameters=quick_fit_parameters, prior=prior)
         untransformed_mean =\
             self.transform_list.apply_inverse(transformed_mean)
         derivatives = self.transform_list.derivative(untransformed_mean)
         untransformed_covariance = transformed_covariance /\
             (derivatives[:,np.newaxis] * derivatives[np.newaxis,:])
         return (untransformed_mean, untransformed_covariance)
+    
+    @property
+    def quick_fit_parameters(self):
+        """
+        Property storing the parameters necessary to call quick_fit.
+        """
+        if not hasattr(self, '_quick_fit_parameters'):
+            self._quick_fit_parameters = self.model.quick_fit_parameters
+        return self._quick_fit_parameters
 

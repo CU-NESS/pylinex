@@ -83,6 +83,15 @@ class TransformedModel(Model):
         """
         return self.model.parameters
     
+    @property
+    def num_channels(self):
+        """
+        Property storing the number of channels in outputs of this model.
+        """
+        if not hasattr(self, '_num_channels'):
+            self._num_channels = self.model.num_channels
+        return self._num_channels
+    
     def __call__(self, parameters):
         """
         Evaluates the model at the given parameters.
@@ -162,12 +171,15 @@ class TransformedModel(Model):
         else:
             return False
     
-    def quick_fit(self, data, error):
+    def quick_fit(self, data, error, quick_fit_parameters=[], prior=None):
         """
         Performs a quick fit to the given data.
         
         data: curve to fit with the model
         error: noise level in the data
+        quick_fit_parameters: quick fit parameters to pass to underlying model
+        prior: either None or a GaussianDistribution object containing priors
+               (in space of underlying model)
         
         returns: (parameter_mean, parameter_covariance)
         """
@@ -177,7 +189,8 @@ class TransformedModel(Model):
         else:
             error_to_fit =\
                 error / np.abs(self.transform.derivative(data_to_fit))
-        return self.model.quick_fit(data_to_fit, error_to_fit)
+        return self.model.quick_fit(data_to_fit, error_to_fit,\
+            quick_fit_parameters=quick_fit_parameters, prior=prior)
     
     @property
     def bounds(self):

@@ -9,6 +9,7 @@ Description: File containing a class representing a special SumModel: one whose
 import numpy as np
 import scipy.linalg as scila
 import matplotlib.pyplot as pl
+from distpy import GaussianDistribution
 from ..expander import ExpanderSet
 from .BasisModel import BasisModel
 from .TruncatedBasisHyperModel import TruncatedBasisHyperModel
@@ -31,7 +32,12 @@ class DirectSumModel(SumModel):
         """
         self.names = names
         self.models = models
-        self.expanders
+        if not ExpanderSet(np.zeros(self.num_channels),\
+            np.ones(self.num_channels),\
+            **dict(zip(self.names, self.expanders))).separable:
+            raise ValueError("The expanders of the given model were not " +\
+                "separable, so you might as well use the SumModel class " +\
+                "instead of the DirectSumModel class.")
     
     @property
     def expanders(self):
@@ -49,36 +55,43 @@ class DirectSumModel(SumModel):
             self._expanders = expanders
         return self._expanders
     
-    def quick_fit(self, data, error, *extra_parameters):
+    def quick_fit(self, data, error, quick_fit_parameters=[], prior=None):
         """
         Performs a quick fit to the given data with the error.
         
         data: 1D vector in output space of all expanders
         error: non-negative 1D vector of errors on each data point
+        quick_fit_parameters: quick_fit_parameters to use for underlying models
+                              if necessary
         
         returns: (mean, covariance) where mean and covariance are those of the
                  parameter distribution
         """
         if type(error) is type(None):
             error = np.ones_like(data)
-        if type(extra_parameters) is type(None):
-            extra_parameters = []
-        if len(extra_parameters) != self.num_quick_fit_parameters:
-            raise ValueError("extra_parameters length was not equal to the " +\
-                "number of quick_fit_parameters of this model.")
-        expander_dict = {name: expander\
-            for (name, expander) in zip(self.names, self.expanders)}
-        if not ExpanderSet(data, error, **expander_dict).separable:
-            raise ValueError("The length of this data implies that the " +\
-                "model is not separable (i.e. that the individual models " +\
-                "cannot be used easily to find subfits which can then be " +\
-                "combined).")
+        if len(quick_fit_parameters) != self.num_quick_fit_parameters:
+            raise ValueError("quick_fit_parameters length was not equal to " +\
+                "the number of quick_fit_parameters of this model.")
+        if type(prior) is type(None):
+            priors = [None] * self.num_models
+        elif isinstance(prior, GaussianDistribution):
+            priors = []
+            pars_used = 0
+            for (imodel, model) in enumerate(self.models):
+                priors.append(prior.marginalize(\
+                    slice(pars_used, pars_used + model.num_parameters)))
+                pars_used += model.num_parameters
+        else:
+            raise TypeError("prior must either be None or a " +\
+                "GaussianDistribution object.")
         fits = []
         pars_used = 0
         for (imodel, model) in enumerate(self.models):
-            extras = extra_parameters[\
+            these_quick_fit_parameters = quick_fit_parameters[\
                 pars_used:pars_used+model.num_quick_fit_parameters]
-            fits.append(model.quick_fit(data, error, *extras))
+            fits.append(model.quick_fit(data, error,\
+                quick_fit_parameters=these_quick_fit_parameters,\
+                prior=priors[imodel]))
             pars_used = pars_used + model.num_quick_fit_parameters
         means = [fit[0] for fit in fits]
         covariances = [fit[1] for fit in fits]

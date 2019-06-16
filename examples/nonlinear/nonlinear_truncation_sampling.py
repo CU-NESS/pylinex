@@ -45,7 +45,7 @@ data = noise + true_curve
 expression = Expression('{0}+{1}', num_arguments=2)
 
 loglikelihood = NonlinearTruncationLoglikelihood(basis_set, data, error,\
-    expression, default_num_terms=None, parameter_penalty=1)
+    expression, parameter_penalty=1)
 
 file_name = 'TESTINGNONLINEARTRUNCATIONLOGLIKELIHOODDELETETHIS.hdf5'
 try:
@@ -61,8 +61,8 @@ else:
 even_model = loglikelihood.models[loglikelihood.basis_set.names.index('even')]
 even_loglikelihood =\
     GaussianLoglikelihood(even_amplitude * even_part, error, even_model)
-even_likelihood_distribution_harmonizer =\
-    LikelihoodDistributionHarmonizer(None, even_loglikelihood, [], ndraw)
+even_likelihood_distribution_harmonizer = LikelihoodDistributionHarmonizer(\
+    None, even_loglikelihood, [], ndraw, quick_fit_parameters=[len(bases[0])])
 even_distribution_set =\
     even_likelihood_distribution_harmonizer.joint_distribution_set
 even_distribution_set.modify_parameter_names(\
@@ -70,8 +70,8 @@ even_distribution_set.modify_parameter_names(\
 odd_model = loglikelihood.models[loglikelihood.basis_set.names.index('odd')]
 odd_loglikelihood =\
     GaussianLoglikelihood(odd_amplitude * odd_part, error, odd_model)
-odd_likelihood_distribution_harmonizer =\
-    LikelihoodDistributionHarmonizer(None, odd_loglikelihood, [], ndraw)
+odd_likelihood_distribution_harmonizer = LikelihoodDistributionHarmonizer(\
+    None, odd_loglikelihood, [], ndraw, quick_fit_parameters=[len(bases[1])])
 odd_distribution_set =\
     odd_likelihood_distribution_harmonizer.joint_distribution_set
 odd_distribution_set.modify_parameter_names(\

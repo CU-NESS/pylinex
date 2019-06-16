@@ -110,6 +110,14 @@ class ConditionalFitGaussianLoglikelihood(LoglikelihoodWithData):
         return self.conditional_fit_model.model
     
     @property
+    def prior(self):
+        """
+        Property storing the prior on the parameters which are not
+        conditionalized over (i.e. the ones which are marginalized over).
+        """
+        return self.conditional_fit_model.prior
+    
+    @property
     def full_loglikelihood(self):
         """
         Property storing the loglikelihood with the same data, error, and model
@@ -125,10 +133,6 @@ class ConditionalFitGaussianLoglikelihood(LoglikelihoodWithData):
         Fills the given hdf5 group with information about this Loglikelihood.
         
         group: the group to fill with information about this Loglikelihood
-        data_link: link like that returned by pylinex.h5py_extensions.HDF5Link
-        error_link: link like that returned by pylinex.h5py_extensions.HDF5Link
-        model_links: extra kwargs to pass on to the fill_hdf5_group of the
-                     model being saved
         """
         group.attrs['class'] = 'ConditionalFitGaussianLoglikelihood'
         self.conditional_fit_model.fill_hdf5_group(\
@@ -167,12 +171,17 @@ class ConditionalFitGaussianLoglikelihood(LoglikelihoodWithData):
         """
         self.check_parameter_dimension(parameters)
         try:
-            (recreation, conditional_covariance) =\
-                self.model(parameters, return_conditional_covariance=True)
+            (recreation, conditional_mean, conditional_covariance) =\
+                self.model(parameters, return_conditional_mean=True,\
+                return_conditional_covariance=True)
             weighted_bias = np.abs((self.data - recreation) / self.error)
             bias_term = np.sum(weighted_bias ** 2) / (-2.)
             covariance_term = (la.slogdet(conditional_covariance)[1] / 2)
-            logL_value = bias_term + covariance_term
+            if type(self.prior) is type(None):
+                prior_term = 0
+            else:
+                prior_term = self.prior.log_value(conditional_mean)
+            logL_value = bias_term + covariance_term + prior_term
         except (ValueError, ZeroDivisionError):
             logL_value = -np.inf
         if np.isnan(logL_value):

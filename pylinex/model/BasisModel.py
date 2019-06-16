@@ -9,6 +9,7 @@ Description: File containing a class representing a model which can be
 """
 import numpy as np
 import numpy.linalg as la
+from distpy import GaussianDistribution
 from ..util import numerical_types
 from ..basis import Basis
 from ..fitter import Fitter
@@ -129,7 +130,7 @@ class BasisModel(LoadableModel):
         """
         return np.zeros((self.num_channels,) + ((self.num_parameters,) * 2))
     
-    def quick_fit(self, data, error):
+    def quick_fit(self, data, error, prior=None, **kwargs):
         """
         Performs a quick fit of this model to the given data with (or without)
         a given noise level.
@@ -140,6 +141,8 @@ class BasisModel(LoadableModel):
                         nonsense
                otherwise, error should either be a single number or a 1D array
                           of same length as data
+        prior: either a GaussianDistribution prior with 1 parameter or None
+        **kwargs: unused for compatibility
         
         returns: (parameter_mean, parameter_covariance) where parameter_mean is
                  a length N (number of basis vectors) 1D array and
@@ -152,16 +155,25 @@ class BasisModel(LoadableModel):
         if type(error) in numerical_types:
             error = error * np.ones_like(data)
         if not hasattr(self, '_last_error') or\
+            (not hasattr(self, '_last_prior')) or\
             (not hasattr(self, '_last_covariance')) or\
-            (not hasattr(self, '_last_covariance_times_weighted_basis')) or\
-            np.any(error != self._last_error):
+            (not hasattr(self, '_last_offset')) or\
+            np.any(error != self._last_error) or (prior != self._last_prior):
             self._last_error = error
-            self._last_covariance = la.inv(self.basis.gram_matrix(error))
-            self._last_covariance_times_weighted_basis = np.dot(\
-                self._last_covariance,\
-                self.basis.expanded_basis / error[np.newaxis,:])
-        mean = np.dot(self._last_covariance_times_weighted_basis,\
-            data / self._last_error)
+            self._last_prior = prior
+            inverse_covariance = self.basis.gram_matrix(error)
+            self._last_offset = np.zeros(self.num_parameters)
+            if isinstance(prior, GaussianDistribution):
+                inverse_covariance =\
+                    inverse_covariance + prior.inverse_covariance.A
+                self._last_offset =\
+                    np.dot(prior.inverse_covariance.A, prior.mean.A[0])
+            elif type(prior) is not type(None):
+                raise TypeError("prior must either be None or a " +\
+                    "GaussianDistribution object.")
+            self._last_covariance = la.inv(inverse_covariance)
+        mean = np.dot(self._last_covariance, self._last_offset +\
+            np.dot(self.basis.expanded_basis, data / (error ** 2)))
         return (mean, self._last_covariance)
     
     def fill_hdf5_group(self, group):

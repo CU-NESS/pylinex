@@ -417,6 +417,16 @@ class InterpolatedModel(Model):
                 self.interpolator.combined_transform_list.transforms)
         return self._prior_set
     
+    @property
+    def num_channels(self):
+        """
+        Property storing the number of channels in outputs of this model
+        """
+        if not hasattr(self, '_num_channels'):
+            self._num_channels = self.expander.expanded_space_size(\
+                self.training_outputs.shape[-1])
+        return self._num_channels
+    
     def __call__(self, pars):
         """
         Evaluates the model at the given parameters by using the interpolator.

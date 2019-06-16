@@ -122,6 +122,14 @@ class RestrictedModel(Model):
         """
         return self.model.parameters
     
+    @property
+    def num_channels(self):
+        """
+        """
+        if not hasattr(self, '_num_channels'):
+            self._num_channels = self.model.num_channels
+        return self._num_channels
+    
     def __call__(self, parameters):
         """
         Evaluates the model at the given parameters.

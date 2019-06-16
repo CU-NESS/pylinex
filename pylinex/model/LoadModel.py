@@ -8,7 +8,8 @@ Description: File containing a function which can load a Model object from an
 """
 import importlib
 import numpy as np
-from distpy import Expression, load_transform_from_hdf5_group, TransformList
+from distpy import Expression, load_transform_from_hdf5_group, TransformList,\
+    GaussianDistribution
 from ..util import get_hdf5_value, RectangularBinner
 from ..expander import load_expander_from_hdf5_group
 from ..basis import Basis
@@ -105,8 +106,13 @@ def load_model_from_hdf5_group(group):
                 error = get_hdf5_value(group['error'])
                 unknown_name_chain =\
                     get_hdf5_value(group['unknown_name_chain'])
-                return\
-                    ConditionalFitModel(model, data, error, unknown_name_chain)
+                if 'prior' in group:
+                    prior = GaussianDistribution.load_from_hdf5_group(\
+                        group['prior'])
+                else:
+                    prior = None
+                return ConditionalFitModel(model, data, error,\
+                    unknown_name_chain, prior=prior)
             elif class_name == 'TransformedModel':
                 transform = load_transform_from_hdf5_group(group['transform'])
                 return TransformedModel(model, transform)

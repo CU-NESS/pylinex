@@ -9,6 +9,7 @@ Description: File containing class representing a model where part(s) of the
              maximize a likelihood.
 """
 import numpy as np
+from distpy import GaussianDistribution
 from ..util import create_hdf5_dataset, numerical_types, sequence_types
 from .Model import Model
 from .SumModel import SumModel
@@ -27,7 +28,7 @@ class ConditionalFitModel(Model):
     conditionalized and the parameters of the other part(s) of the model are
     automatically evaluated at parameters that maximize a likelihood.
     """
-    def __init__(self, model, data, error, unknown_name_chain):
+    def __init__(self, model, data, error, unknown_name_chain, prior=None):
         """
         Creates a new ConditionalFitModel with the given full model, data, and
         error, assuming the specified parameters are unknown.
@@ -40,11 +41,42 @@ class ConditionalFitModel(Model):
         unknown_name_chain: name (or chain of names) of the single submodel
                             which has a quick_fit function which will be solved
                             for
+        prior: either None or a GaussianDistribution object for all of the
+               parameters of the unknown submodel
         """
         self.model = model
         self.data = data
         self.error = error
         self.unknown_name_chain = unknown_name_chain
+        self.prior = prior
+    
+    @property
+    def prior(self):
+        """
+        Property storing the prior to use when calling the 
+        """
+        if not hasattr(self, '_prior'):
+            raise AttributeError("prior was referenced before it was set.")
+        return self._prior
+    
+    @prior.setter
+    def prior(self, value):
+        """
+        Setter for the prior distribution to use, if applicable.
+        
+        value: either None or a GaussianDistribution object
+        """
+        if type(value) is type(None):
+            self._prior = None
+        elif isinstance(value, GaussianDistribution):
+            if value.numparams == self.unknown_submodel.num_parameters:
+                self._prior = value
+            else:
+                raise ValueError("The prior given did not have the same " +\
+                    "number of parameters as the unknown submodel.")
+        else:
+            raise TypeError("prior was neither None nor a " +\
+                "GaussianDistribution object.")
     
     @property
     def model(self):
@@ -291,7 +323,8 @@ class ConditionalFitModel(Model):
             self._num_links = len(self.unknown_name_chain)
         return self._num_links
     
-    def __call__(self, parameters, return_conditional_covariance=False):
+    def __call__(self, parameters, return_conditional_mean=False,\
+        return_conditional_covariance=False):
         """
         Evaluates the model at the given parameters.
         
@@ -323,7 +356,7 @@ class ConditionalFitModel(Model):
         try:
             (conditional_mean, conditional_covariance) =\
                 self.unknown_submodel.quick_fit(data_to_fit, error_to_fit,\
-                *parameters[pars_used:])
+                quick_fit_parameters=parameters[pars_used:], prior=self.prior)
         except NotImplementedError:
             raise NotImplementedError(("The submodel (class: {!s}) " +\
                 "concerning the parameters whose distribution is not known " +\
@@ -336,10 +369,14 @@ class ConditionalFitModel(Model):
                 recreation = recreation + known_model_values[index]
             else:
                 recreation = recreation * known_model_values[index]
+        return_value = (recreation,)
+        if return_conditional_mean:
+            return_value = return_value + (conditional_mean,)
         if return_conditional_covariance:
-            return (recreation, conditional_covariance)
-        else:
-            return recreation
+            return_value = return_value + (conditional_covariance,)
+        if len(return_value) == 1:
+            return_value = return_value[0]
+        return return_value
     
     @property
     def gradient_computable(self):
@@ -369,6 +406,8 @@ class ConditionalFitModel(Model):
         create_hdf5_dataset(group, 'error', data=self.error)
         create_hdf5_dataset(group, 'unknown_name_chain',\
             data=self.unknown_name_chain)
+        if type(self.prior) is not type(None):
+            self.prior.fill_hdf5_group(group.create_group('prior'))
     
     def change_data(self, new_data):
         """

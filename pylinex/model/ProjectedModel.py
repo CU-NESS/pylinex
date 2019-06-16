@@ -76,12 +76,24 @@ class ProjectedModel(Model):
             raise TypeError("basis was set to a non-Basis object.")
     
     @property
+    def unprojected_num_channels(self):
+        """
+        Property storing the integer number of channels in the unprojected.
+        """
+        if not hasattr(self, '_unprojected_num_channels'):
+            self._unprojected_num_channels =\
+                self.basis.num_larger_channel_set_indices
+        return self._unprojected_num_channels
+    
+    @property
     def num_channels(self):
         """
-        Property storing the integer number of channels.
+        Property storing the number of channels in the outputs of this model,
+        which is the same as the number of basis vectors in the basis at its
+        heart.
         """
         if not hasattr(self, '_num_channels'):
-            self._num_channels = self.basis.num_larger_channel_set_indices
+            self._num_channels = self.basis.num_basis_vectors
         return self._num_channels
     
     @property
@@ -103,10 +115,10 @@ class ProjectedModel(Model):
                otherwise, a 1D array of length equal to number of channels
         """
         if type(value) is type(None):
-            self._error = np.ones(self.num_channels)
+            self._error = np.ones(self.unprojected_num_channels)
         elif type(value) in sequence_types:
             value = np.array(value)
-            if value.shape == (self.num_channels,):
+            if value.shape == (self.unprojected_num_channels,):
                 self._error = value
             else:
                 raise ValueError("error was set to an array of the wrong " +\

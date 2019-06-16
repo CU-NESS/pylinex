@@ -146,6 +146,15 @@ class SlicedModel(Model):
             filled_template[self.indices_of_parameters] = parameters
             return filled_template
     
+    @property
+    def num_channels(self):
+        """
+        Property storing the number of channels in outputs of this model.
+        """
+        if not hasattr(self, '_num_channels'):
+            self._num_channels = self.model.num_channels
+        return self._num_channels
+    
     def __call__(self, parameters):
         """
         Evaluates the model at the given parameters.
@@ -235,7 +244,7 @@ class SlicedModel(Model):
                 return False
         return True
     
-    def quick_fit(self, data, error):
+    def quick_fit(self, data, error, quick_fit_parameters=[], prior=None):
         """
         Fits this SlicedModel by marginalizing out the constant parameters of
         the posterior parameter distribution of the unsliced model.
@@ -243,16 +252,29 @@ class SlicedModel(Model):
         data: 1D numpy.ndarray of data points to fit with this model
         error: 1D array of same length as data containing errors on the data
                if None, all channels are treated equally
+        quick_fit_parameters: quick fit parameters to pass to underlying model
+        prior: either None or a GaussianDistribution object containing priors
+               (in space of underlying model)
         
         returns: (parameter_mean, parameter_covariance) where both are
                  marginalized over the constant parameters, not conditionalized
         """
         (parameter_mean, parameter_covariance) =\
-            self.model.quick_fit(data, error)
+            self.model.quick_fit(data, error,\
+            quick_fit_parameters=quick_fit_parameters, prior=prior)
         to_retain = np.isnan(self.parameter_template)
         parameter_mean = parameter_mean[to_retain]
         parameter_covariance = parameter_covariance[to_retain,:][:,to_retain]
         return (parameter_mean, parameter_covariance)
+    
+    @property
+    def quick_fit_parameters(self):
+        """
+        Property storing the names of the parameters passed to quick_fit.
+        """
+        if not hasattr(self, '_quick_fit_parameters'):
+            self._quick_fit_parameters = self.model.quick_fit_parameters
+        return self._quick_fit_parameters
     
     @property
     def bounds(self):
