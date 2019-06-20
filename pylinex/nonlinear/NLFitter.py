@@ -1792,6 +1792,15 @@ class NLFitter(object):
         steps = np.arange(0, self.nsteps, thin)
         axes_per_side = int(np.ceil(np.sqrt(num_parameter_plots)))
         fig = pl.figure(figsize=figsize)
+        if type(self.prior_distribution_set) is type(None):
+            minima = {parameter: -np.inf for parameter in self.parameters}
+            maxima = {parameter: +np.inf for parameter in self.parameters}
+        else:
+            minima = self.prior_distribution_set.minimum
+            maxima = self.prior_distribution_set.maximum
+            if apply_transforms_to_chain:
+                minima = self.transform_set(minima)
+                maxima = self.transform_set(maxima)
         for index in range(num_parameter_plots):
             parameter_index = parameter_indices[index]
             parameter_name = self.parameters[parameter_index]
@@ -1810,12 +1819,14 @@ class NLFitter(object):
                             (2 * np.power(erfinv(confidence_level), 2))
                         this_error = np.sqrt(this_variance *\
                             variance_expansion_for_1D_confidence)
-                        ax.plot([steps[0], steps[-1]],\
-                            [this_mean - this_error] * 2, color='k',\
-                            linewidth=2, linestyle='--')
-                        ax.plot([steps[0], steps[-1]],\
-                            [this_mean + this_error] * 2, color='k',\
-                            linewidth=2, linestyle='--')
+                        lower_bound =\
+                            max(this_mean - this_error, minima[parameter_name])
+                        upper_bound =\
+                            min(this_mean + this_error, maxima[parameter_name])
+                        ax.plot([steps[0], steps[-1]], [lower_bound] * 2,\
+                            color='k', linewidth=2, linestyle='--')
+                        ax.plot([steps[0], steps[-1]], [upper_bound] * 2,\
+                            color='k', linewidth=2, linestyle='--')
             ax.set_title(renamed_parameter)
             ax.set_xlim((steps[0], steps[-1]))
         fig.subplots_adjust(left=0.05, bottom=0.05, right=0.95, top=0.95,\
@@ -1984,10 +1995,37 @@ class NLFitter(object):
             for parameter_index in parameter_indices]
         if type(parameter_renamer) is not type(None):
             labels = [parameter_renamer(label) for label in labels]
+        if type(self.prior_distribution_set) is type(None):
+            minima = np.array([-np.inf] * len(parameter_indices))
+            maxima = np.array([+np.inf] * len(parameter_indices))
+        else:
+            (minima, maxima) = ([], [])
+            for parameter_index in parameter_indices:
+                parameter_name = self.parameters[parameter_index]
+                if type(self.prior_distribution_set.minimum[parameter_name])\
+                    is type(None):
+                    minima.append(-np.inf)
+                else:
+                    minima.append(\
+                        self.prior_distribution_set.minimum[parameter_name])
+                if type(self.prior_distribution_set.maximum[parameter_name])\
+                    is type(None):
+                    maxima.append(+np.inf)
+                else:
+                    maxima.append(\
+                        self.prior_distribution_set.maximum[parameter_name])
+            minima = np.array(minima)
+            maxima = np.array(maxima)
         if apply_transforms_to_chain:
             samples = [self.transform_list[parameter_index](\
                 self.chain[:,:,parameter_index])[walkers,:][:,::thin].flatten(\
                 ) for parameter_index in parameter_indices]
+            minima = np.array([self.transform_list[parameter_index](\
+                minima[index]) for (index, parameter_index) in\
+                enumerate(parameter_indices)])
+            maxima = np.array([self.transform_list[parameter_index](\
+                maxima[index]) for (index, parameter_index) in\
+                enumerate(parameter_indices)])
         else:
             samples = [\
                 self.chain[:,:,parameter_index][walkers,:][:,::thin].flatten()\
@@ -2006,6 +2044,7 @@ class NLFitter(object):
             reference_value_mean=reference_value_mean,\
             reference_value_covariance=reference_value_covariance,\
             contour_confidence_levels=contour_confidence_levels, fig=fig,\
+            minima=minima, maxima=maxima,\
             tick_label_format_string=tick_label_format_string)
     
     def plot_univariate_histogram(self, parameter_index, walkers=None, thin=1,\
@@ -2119,11 +2158,41 @@ class NLFitter(object):
             walkers = np.arange(self.nwalkers)
         elif type(walkers) in int_types:
             walkers = np.arange(walkers)
+        if type(self.prior_distribution_set) is type(None):
+            minima = np.array([-np.inf, -np.inf])
+            maxima = np.array([+np.inf, +np.inf])
+        else:
+            (minima, maxima) = ([], [])
+            for parameter_index in [parameter_index1, parameter_index2]:
+                parameter_name = self.parameters[parameter_index]
+                if type(self.prior_distribution_set.minimum[parameter_name])\
+                    is type(None):
+                    minima.append(-np.inf)
+                else:
+                    minima.append(\
+                        self.prior_distribution_set.minimum[parameter_name])
+                if type(self.prior_distribution_set.maximum[parameter_name])\
+                    is type(None):
+                    maxima.append(+np.inf)
+                else:
+                    maxima.append(\
+                        self.prior_distribution_set.maximum[parameter_name])
+            minima = np.array(minima)
+            maxima = np.array(maxima)
         if apply_transforms_to_chain:
-            xsample = self.transform_list[parameter_index1](\
-                self.chain[:,:,parameter_index1])[walkers,:][:,::thin].flatten()
-            ysample = self.transform_list[parameter_index2](\
-                self.chain[:,:,parameter_index2])[walkers,:][:,::thin].flatten()
+            xsample = self.transform_list[parameter_index1](self.chain[\
+                :,:,parameter_index1])[walkers,:][:,::thin].flatten()
+            ysample = self.transform_list[parameter_index2](self.chain[\
+                :,:,parameter_index2])[walkers,:][:,::thin].flatten()
+            minima = [self.transform_list[parameter_index1](minima[0]),\
+                self.transform_list[parameter_index2](minima[1])]
+            maxima = [self.transform_list[parameter_index1](maxima[0]),\
+                self.transform_list[parameter_index2](maxima[1])]
+        else:
+            xsample =\
+                self.chain[:,:,parameter_index1][walkers,:][:,::thin].flatten()
+            ysample =\
+                self.chain[:,:,parameter_index2][walkers,:][:,::thin].flatten()
         if apply_transforms_to_reference_value:
             transform_list = TransformList(\
                 self.transform_list[parameter_index1],\
@@ -2138,17 +2207,13 @@ class NLFitter(object):
                     (type(reference) is type(None)) else transform(reference)\
                     for (transform, reference) in\
                     zip(transform_list, reference_value_mean)]
-        else:
-            xsample =\
-                self.chain[:,:,parameter_index1][walkers,:][:,::thin].flatten()
-            ysample =\
-                self.chain[:,:,parameter_index2][walkers,:][:,::thin].flatten()
         return bivariate_histogram(xsample, ysample,\
             reference_value_mean=reference_value_mean,\
             reference_value_covariance=reference_value_covariance, bins=bins,\
             matplotlib_function=matplotlib_function, xlabel=xlabel,\
             ylabel=ylabel, title=title, fontsize=fontsize, ax=ax, show=show,\
-            contour_confidence_levels=contour_confidence_levels, **kwargs)
+            contour_confidence_levels=contour_confidence_levels,\
+            minima=minima, maxima=maxima, **kwargs)
     
     def plot_lnprobability(self, walkers=None, log_scale=False,\
         which='posterior', fontsize=24, ax=None, show=False):

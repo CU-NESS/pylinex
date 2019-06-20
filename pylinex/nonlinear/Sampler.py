@@ -1587,9 +1587,14 @@ class Sampler(object):
         """
         Runs this sampler for a single checkpoint.
         """
-        (self.pos, self.lnprob, self.rstate) = self.sampler.run_mcmc(self.pos,\
-            self.steps_per_checkpoint, initial_random_state=self.rstate,\
-            initial_lnprob=self.lnprob)
+        if self.use_ensemble_sampler:
+            (self.pos, self.lnprob, self.rstate) = self.sampler.run_mcmc(\
+                self.pos, self.steps_per_checkpoint, rstate0=self.rstate,\
+                lnprob0=self.lnprob)
+        else:
+            (self.pos, self.lnprob, self.rstate) = self.sampler.run_mcmc(\
+                self.pos, self.steps_per_checkpoint,\
+                initial_random_state=self.rstate, initial_lnprob=self.lnprob)
         self.update_file()
         self.sampler.reset()
         self.checkpoint_index = self.checkpoint_index + 1

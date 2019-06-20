@@ -246,4 +246,31 @@ class ConditionalFitGaussianLoglikelihood(LoglikelihoodWithData):
         """
         return ConditionalFitGaussianLoglikelihood(\
             self.conditional_fit_model.change_data(new_data))
+    
+    def change_prior(self, new_prior):
+        """
+        Creates a copy of this ConditionalFitGaussianLoglikelihood that has the
+        given prior on the model which is marginalized over (the one specified
+        by the model's unknown_name_chain property).
+        
+        new_prior: either None or a GaussianDistribution object describing new
+                   priors on the marginalized model
+        
+        returns: a copy of this ConditionalFitGaussianLoglikelihood with the
+                 given prior on the marginalized model
+        """
+        return ConditionalFitGaussianLoglikelihood(\
+            self.conditional_fit_model.change_prior(new_prior))
+    
+    def priorless(self):
+        """
+        Creates a copy of this ConditionalFitGaussianLoglikelihood that has no
+        prior on the model which is marginalized over (the one specified by the
+        model's unknown_name_chain property).
+        
+        returns: a copy of this ConditionalFitGaussianLoglikelihood with no
+                 prior on the marginalized model
+        """
+        return ConditionalFitGaussianLoglikelihood(\
+            self.conditional_fit_model.priorless())
 

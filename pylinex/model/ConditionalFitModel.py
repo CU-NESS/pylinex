@@ -50,6 +50,29 @@ class ConditionalFitModel(Model):
         self.unknown_name_chain = unknown_name_chain
         self.prior = prior
     
+    def change_prior(self, new_prior):
+        """
+        Creates a copy of this ConditionalFitModel with the given prior
+        replacing the current prior.
+        
+        new_prior: either None or a GaussianPrior object
+        
+        returns: new ConditionalFitModel with the given prior replacing the
+                 current prior
+        """
+        return ConditionalFitModel(self.model, self.data, self.error,\
+            self.unknown_name_chain, new_prior)
+    
+    def priorless(self):
+        """
+        Creates a new ConditionalFitModel with no prior but has everything else
+        the same.
+        
+        returns: a new ConditionalFitModel copied from this one without any
+                 priors
+        """
+        return self.change_prior(None)
+    
     @property
     def prior(self):
         """
