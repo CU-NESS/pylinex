@@ -240,7 +240,14 @@ class Sampler(object):
         allowed_modes = ['continue', 'update', 'trimmed_update',\
             'reinitialize', 'trimmed_reinitialize', 'fisher_update']
         if (type(value) is type(None)) or (value in allowed_modes):
-            self._restart_mode = value
+            if self.use_ensemble_sampler:
+                if value != 'continue':
+                    print("emcee's EnsembleSampler does not support " +\
+                        "updates, so 'restart_mode' is being set to " +\
+                        "'continue'.")
+                self._restart_mode = 'continue'
+            else:
+                self._restart_mode = value
         else:
             raise ValueError("restart_mode was set to neither None, " +\
                 "'continue', nor 'reinitialize'")
