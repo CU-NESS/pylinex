@@ -1095,7 +1095,7 @@ class Sampler(object):
                     "not the same as the loglikelihood given at " +\
                     "initialization. The loglikelihood from the file is " +\
                     "the one being used because otherwise the posterior " +\
-                    "has changed since the before the restart.")
+                    "has changed since before the restart.")
                 self.loglikelihood = loglikelihood_from_file
             self.chunk_index = self.file.attrs['max_chunk_index']
             chunk_string = 'chunk{0:d}'.format(self.chunk_index)

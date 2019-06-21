@@ -220,7 +220,7 @@ class ConditionalFitModel(Model):
                     "unknown_name_chain was not a string.")
         else:
             raise TypeError("unknown_name_chain was set to neither a " +\
-                "string or a sequence of strings.")
+                "string nor a sequence of strings.")
     
     def _load_parameters_and_models(self):
         """

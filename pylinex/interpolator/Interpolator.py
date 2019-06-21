@@ -373,7 +373,7 @@ class Interpolator(object):
                  is a 2D numpy.ndarray of shape (npoints, output_dimension)
         """
         distances = np.sum((self.inputs - point[np.newaxis,:]) ** 2, axis=1)
-        points = np.argsort(distances)[:npoints]
+        points = np.argpartition(distances, npoints)[:npoints]
         values = self.outputs[points,:]
         points = self.inputs[points,:]
         return (points, values)
