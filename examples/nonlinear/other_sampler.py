@@ -49,21 +49,23 @@ if not os.path.exists(file_name):
 
 burn_rule = BurnRule(min_checkpoints=5, desired_fraction=0.5)
 fitter = NLFitter(file_name, burn_rule)
+flattened_chain = np.reshape(fitter.chain, (-1, 2))
 
-burned_chain = np.reshape(fitter.chain, (-1, 2))
-x_chain = burned_chain[...,0]
-y_chain = burned_chain[...,1]
+x_chain = flattened_chain[:,0]
+y_chain = flattened_chain[:,1]
 
-burned_mean = np.mean(burned_chain, axis=0)
-burned_covariance = np.cov(burned_chain, rowvar=False)
+approximate_posterior = fitter.approximate_gaussian_posterior._data[0][0]
+approximate_posterior_mean = approximate_posterior.mean.A[0]
+approximate_posterior_covariance = approximate_posterior.covariance.A
 
 true_mean = data
 true_covariance = np.diag(error ** 2)
 
 print('true_mean={}'.format(true_mean))
-print('burned_mean={}'.format(burned_mean))
+print('approximate_posterior_mean={}'.format(approximate_posterior_mean))
 print('true_covariance={}'.format(true_covariance))
-print('burned_covariance={}'.format(burned_covariance))
+print('approximate_posterior_covariance={}'.format(\
+    approximate_posterior_covariance))
 
 
 

@@ -12,7 +12,8 @@ import numpy as np
 from scipy.special import erfinv
 import matplotlib.pyplot as pl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from distpy import TransformList, DistributionSet, JumpingDistributionSet
+from distpy import TransformList, GaussianDistribution, DistributionSet,\
+    JumpingDistributionSet
 from ..util import sequence_types, real_numerical_types, bool_types,\
     int_types, univariate_histogram, bivariate_histogram, triangle_plot
 from ..model import CompoundModel
@@ -803,16 +804,15 @@ class NLFitter(object):
         """
         Property storing the parameter covariance matrix described by the
         flattened chain in a 2D numpy.ndarray of shape (ndim, ndim). This
-        covariance applies in the same space as the proposal distribution,
-        which may be transformed.
+        covariance applies in untransformed space.
         """
         if not hasattr(self, '_parameter_covariance'):
-            if len(self.parameter_mean) == 1:
-                self._parameter_covariance = np.array(\
-                    [[np.var(self.transform_list(self.flattened_chain)[:,0])]])
+            if self.num_parameters == 1:
+                self._parameter_covariance =\
+                    np.array([[np.var(self.flattened_chain[:,0])]])
             else:
-                self._parameter_covariance = np.cov(\
-                    self.transform_list(self.flattened_chain), rowvar=False)
+                self._parameter_covariance =\
+                    np.cov(self.flattened_chain, rowvar=False)
         return self._parameter_covariance
     
     @property
@@ -828,6 +828,74 @@ class NLFitter(object):
             self._parameter_correlation = covariance /\
                 np.sqrt(variances[np.newaxis,:] * variances[:,np.newaxis])
         return self._parameter_correlation
+    
+    @property
+    def approximate_gaussian_posterior(self):
+        """
+        Property storing a Gaussian distribution (in untransformed space) with
+        the same mean and covariance as the chain.
+        """
+        if not hasattr(self, '_approximate_gaussian_posterior'):
+            self._approximate_gaussian_posterior = DistributionSet([(\
+                GaussianDistribution(self.parameter_mean,\
+                self.parameter_covariance), self.parameters, None)])
+        return self._approximate_gaussian_posterior
+    
+    @property
+    def transformed_parameter_mean(self):
+        """
+        Property storing the mean of transformed parameters (the transformation
+        is that which defines the proposal distribution).
+        """
+        if not hasattr(self, '_transformed_parameter_mean'):
+            self._transformed_parameter_mean =\
+                np.mean(self.transform_list(self.flattened_chain), axis=0)
+        return self._transformed_parameter_mean
+    
+    @property
+    def transformed_parameter_covariance(self):
+        """
+        Property storing the parameter covariance matrix described by the
+        flattened chain in a 2D numpy.ndarray of shape (ndim, ndim). This
+        covariance applies in the same space as the proposal distribution,
+        which may be transformed.
+        """
+        if not hasattr(self, '_transformed_parameter_covariance'):
+            if self.num_parameters == 1:
+                self._transformed_parameter_covariance = np.array(\
+                    [[np.var(self.transform_list(self.flattened_chain)[:,0])]])
+            else:
+                self._transformed_parameter_covariance = np.cov(\
+                    self.transform_list(self.flattened_chain), rowvar=False)
+        return self._transformed_parameter_covariance
+    
+    @property
+    def transformed_parameter_correlation(self):
+        """
+        Property storing the parameter correlation matrix described by the
+        flattened chain in a 2D numpy.ndarray of shape (ndim, ndim) with 1's on
+        the diagonal.
+        """
+        if not hasattr(self, '_transformed_parameter_correlation'):
+            covariance = self.transformed_parameter_covariance
+            variances = np.diag(covariance)
+            self._transformed_parameter_correlation = covariance /\
+                np.sqrt(variances[np.newaxis,:] * variances[:,np.newaxis])
+        return self._transformed_parameter_correlation
+    
+    @property
+    def approximate_transformed_gaussian_posterior(self):
+        """
+        Property storing a Gaussian distribution (in untransformed space) with
+        the same transformed mean and covariance as the chain.
+        """
+        if not hasattr(self, '_approximate_transformed_gaussian_posterior'):
+            self._approximate_transformed_gaussian_posterior =\
+                DistributionSet([(GaussianDistribution(\
+                self.transformed_parameter_mean,\
+                self.transformed_parameter_covariance), self.parameters,\
+                self.transform_list)])
+        return self._approximate_transformed_gaussian_posterior
     
     @property
     def mean_deviance(self):
