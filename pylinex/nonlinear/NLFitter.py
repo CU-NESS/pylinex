@@ -174,6 +174,16 @@ class NLFitter(object):
         return self._loglikelihood
     
     @property
+    def use_ensemble_sampler(self):
+        """
+        Property storing whether emcee's ensemble sampler was used.
+        """
+        if not hasattr(self, '_use_ensemble_sampler'):
+            self._use_ensemble_sampler =\
+                self.file.attrs['use_ensemble_sampler']
+        return self._use_ensemble_sampler
+    
+    @property
     def error(self):
         """
         Property storing the error vector used in the loglikelihood explored by

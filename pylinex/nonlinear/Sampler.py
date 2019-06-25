@@ -1088,6 +1088,14 @@ class Sampler(object):
             self._file = h5py.File(self.file_name, 'r+')
             loglikelihood_from_file =\
                 load_loglikelihood_from_hdf5_group(self.file['loglikelihood'])
+            if self.file.attrs['use_ensemble_sampler'] !=\
+                self.use_ensemble_sampler:
+                print("WARNING: The value of use_ensemble_sampler in" +\
+                    "the existing file differs from the one given at " +\
+                    "initialization. For consistency, the one from the " +\
+                    "file is being used.")
+                self.use_ensemble_sampler =\
+                    self.file.attrs['use_ensemble_sampler']
             if type(self.loglikelihood) is type(None):
                 self.loglikelihood = loglikelihood_from_file
             elif loglikelihood_from_file != self.loglikelihood:
@@ -1143,6 +1151,7 @@ class Sampler(object):
         self._file = h5py.File(self.file_name, 'w')
         (self.chunk_index, self.checkpoint_index) = (0, 0)
         self.file.attrs['max_chunk_index'] = self.chunk_index
+        self.file.attrs['use_ensemble_sampler'] = self.use_ensemble_sampler
         group = self.file.create_group('guess_distribution_sets')
         self.guess_distribution_set.fill_hdf5_group(\
             group.create_group('chunk0'))
