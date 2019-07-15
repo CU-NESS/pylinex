@@ -1875,7 +1875,11 @@ class NLFitter(object):
             maxima = {parameter: +np.inf for parameter in self.parameters}
         else:
             minima = self.prior_distribution_set.minimum
+            minima = {parameter: ((-np.inf) if (type(minima[parameter])\
+                is type(None)) else minima[parameter]) for parameter in minima}
             maxima = self.prior_distribution_set.maximum
+            maxima = {parameter: ((+np.inf) if (type(maxima[parameter])\
+                is type(None)) else maxima[parameter]) for parameter in maxima}
             if apply_transforms_to_chain:
                 minima = self.transform_set(minima)
                 maxima = self.transform_set(maxima)

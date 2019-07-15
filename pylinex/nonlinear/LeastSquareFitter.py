@@ -598,9 +598,15 @@ class LeastSquareFitter(object):
                               default value is np.inf
         verbose: if True, a message is printed at the beginning of each
                           iteration of this LeastSquareFitter
-        run_if_iterations_exist: if False (default: True), iterations are only
-                                                           run if they don't
-                                                           already exist
+        run_if_iterations_exist: if False, iterations are only run if they
+                                           don't already exist. If N iterations
+                                           have run and M iterations are
+                                           specified to run, then max(0, M-N)
+                                           additional iterations will be run
+                                 if True (default), the specified number of
+                                                    iterations are run
+                                                    regardless of the number of
+                                                    iterations already run
         kwargs: Keyword arguments to pass on as options to
                 scipy.optimize.minimize(method='SLSQP'). They can include:
                     ftol : float, precision goal for the loglikelihood in the
@@ -610,10 +616,13 @@ class LeastSquareFitter(object):
                     disp : bool, set to True to print convergence messages.
                     maxiter : int, maximum number of iterations.
         """
-        if (not run_if_iterations_exist) and\
-            (self.num_iterations >= iterations):
+        if run_if_iterations_exist:
+            iterations_to_run = iterations
+        elif self.num_iterations >= iterations:
             return
-        for index in range(iterations):
+        else:
+            iterations_to_run = iterations - self.num_iterations
+        for index in range(iterations_to_run):
             if verbose:
                 print(("Starting iteration #{0:d} of LeastSquareFitter " +\
                     "at {1!s}.").format(1 + index, time.ctime()))

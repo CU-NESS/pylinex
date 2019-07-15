@@ -37,6 +37,7 @@ from .ExpandedModel import ExpandedModel
 from .ScaledModel import ScaledModel
 from .SlicedModel import SlicedModel
 from .InterpolatedModel import InterpolatedModel
+from .EmulatedModel import EmulatedModel
 from .BasisFitModel import BasisFitModel
 from .ConditionalFitModel import ConditionalFitModel
 
@@ -47,7 +48,8 @@ self_loadable_model_classes =\
 [\
     'BasisModel', 'ConstantModel', 'ExpressionModel', 'GaussianModel',\
     'SinusoidalModel', 'TanhModel', 'TruncatedBasisHyperModel',\
-    'LorentzianModel', 'FixedModel', 'InterpolatedModel', 'BasisFitModel'\
+    'LorentzianModel', 'FixedModel', 'InterpolatedModel', 'BasisFitModel',\
+    'EmulatedModel'\
 ]
 
 # Model classes which are simple wrappers around exactly one other Model class

@@ -399,6 +399,10 @@ class LeastSquareFitCluster(object):
                           the gradient.
                     disp : bool, set to True to print convergence messages.
                     maxiter : int, maximum number of iterations.
+                run_if_iterations_exist: (default: True) determines if
+                                         iterations should be run on the main
+                                         LeastSquareFitter if some have already
+                                         been run.
         """
         prior_set = self.prior_set
         if os.path.exists(self.summary_file_name):
@@ -420,8 +424,7 @@ class LeastSquareFitCluster(object):
                     least_square_fitter.run(iterations=iterations,\
                         attempt_threshold=attempt_threshold,\
                         cutoff_loglikelihood=cutoff_loglikelihood,\
-                        verbose=doubly_verbose, run_if_iterations_exist=False,\
-                        **kwargs)
+                        verbose=doubly_verbose, **kwargs)
                     is_successful = bool(np.max(least_square_fitter.successes))
                     self._data_realizations.append(loglikelihood.data)
                     self._argmins.append(least_square_fitter.argmin)
