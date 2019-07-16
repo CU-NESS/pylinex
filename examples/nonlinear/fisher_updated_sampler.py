@@ -10,8 +10,9 @@ Description: Example showing a simple use case of the Sampler class to sample
 import os
 import numpy as np
 import matplotlib.pyplot as pl
-from distpy import UniformDistribution, GaussianDistribution, DistributionSet,\
-    GaussianJumpingDistribution, JumpingDistributionSet
+from distpy import InfiniteUniformDistribution, UniformDistribution,\
+    GaussianDistribution, DistributionSet, GaussianJumpingDistribution,\
+    JumpingDistributionSet
 from pylinex import GaussianModel, GaussianLoglikelihood, BurnRule, Sampler,\
     NLFitter
 
@@ -49,6 +50,14 @@ guess_distribution_set.add_distribution(\
 guess_distribution_set.add_distribution(\
     UniformDistribution(-1.25, -0.75), 'scale', 'log10')
 
+prior_distribution_set = DistributionSet()
+prior_distribution_set.add_distribution(InfiniteUniformDistribution(),\
+    'amplitude')
+prior_distribution_set.add_distribution(InfiniteUniformDistribution(),\
+    'center')
+prior_distribution_set.add_distribution(InfiniteUniformDistribution(minima=0),\
+    'scale')
+
 jumping_distribution_set = JumpingDistributionSet()
 jumping_distribution_set.add_distribution(GaussianJumpingDistribution(0.1),\
     'amplitude')
@@ -63,14 +72,15 @@ try:
     sampler = Sampler(file_name, num_walkers, loglikelihood,\
         jumping_distribution_set=jumping_distribution_set,\
         guess_distribution_set=guess_distribution_set,\
-        prior_distribution_set=None, num_threads=num_threads,\
-        steps_per_checkpoint=steps_per_checkpoint, restart_mode=None)
+        prior_distribution_set=prior_distribution_set,\
+        num_threads=num_threads, steps_per_checkpoint=steps_per_checkpoint,\
+        restart_mode=None)
     sampler.run_checkpoints(half_ncheckpoints, silence_error=True)
     sampler.close()
     sampler = Sampler(file_name, num_walkers, loglikelihood,\
         jumping_distribution_set=None, guess_distribution_set=None,\
-        prior_distribution_set=None, num_threads=num_threads,\
-        steps_per_checkpoint=steps_per_checkpoint,\
+        prior_distribution_set=prior_distribution_set,\
+        num_threads=num_threads, steps_per_checkpoint=steps_per_checkpoint,\
         restart_mode='fisher_update',\
         desired_acceptance_fraction=desired_acceptance_fraction)
     sampler.run_checkpoints(half_ncheckpoints, silence_error=True)
@@ -82,16 +92,16 @@ try:
     reference_value_covariance = (model, error)
     fitter.plot_chain(show=False, reference_value_mean=reference_value_mean,\
         reference_value_covariance=reference_value_covariance, figsize=(8,8))
+    fitter.close()
+    burn_rule = BurnRule(min_checkpoints=10, desired_fraction=0.25)
+    fitter = NLFitter(file_name, burn_rule)
+    fitter.plot_rescaling_factors(ax=None, show=False)
     fig = fitter.triangle_plot(parameters='.*', plot_type='contourf',\
         reference_value_mean=reference_value_mean,\
         reference_value_covariance=reference_value_covariance, figsize=(8, 8),\
-        contour_confidence_levels=[0.40, 0.95], fontsize=16,\
+        contour_confidence_levels=[0.95], fontsize=16,\
         kwargs_2D={'reference_alpha': 0.3}, show=False)
     fig.subplots_adjust(left=0.2)
-    fitter.close()
-    burn_rule = BurnRule(min_checkpoints=10, desired_fraction=0.5)
-    fitter = NLFitter(file_name, burn_rule)
-    fitter.plot_rescaling_factors(ax=None, show=False)
     fig = pl.figure()
     ax = fig.add_subplot(111)
     number = 1000

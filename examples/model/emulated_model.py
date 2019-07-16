@@ -22,7 +22,7 @@ except:
         "installed.")
 
 hdf5_file = 'TESTINGEMULATEDMODEL.hdf5'
-
+verbose = True
 np.random.seed(0)
 
 nchannels = 501
@@ -64,7 +64,7 @@ sigma_scale = 0.1
 
 kernel = Matern(np.array([amplitude_scale, center_scale, sigma_scale]), nu=2.5)
 emulated_model = EmulatedModel(true_model.parameters, inputs1, true_outputs1,\
-    error=None, num_modes=nbasis_vectors, kernel=kernel, verbose=False)
+    error=None, num_modes=nbasis_vectors, kernel=kernel, verbose=verbose)
 
 emulated_outputs2 = np.array([emulated_model(inp) for inp in inputs2])
 emulated_model.save(hdf5_file)

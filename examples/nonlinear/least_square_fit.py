@@ -78,24 +78,22 @@ print('reduced_chi_squared({0:d})={1:.4g}'.format(\
     least_square_fitter.reduced_chi_squared_statistic))
 
 solution = model(argmin)
-residual = input_data - solution
+residual = (input_data - solution) / error
 (correlation, correlation_noise_level) = autocorrelation(residual)
 length = len(correlation)
 indices = np.arange(length)
 
 fig = pl.figure()
 ax = fig.add_subplot(111)
-ax.scatter(indices[1:], np.abs(correlation[1:]), color='k',\
+ax.scatter(indices[1:], correlation[1:], color='k',\
     label='Observed points')
-ax.fill_between(indices[1:], np.ones_like(indices[1:]) * 1e-4,\
+ax.fill_between(indices[1:], -correlation_noise_level[1:],\
     correlation_noise_level[1:], color='r',\
     alpha=0.2, linewidth=3, label='$1\sigma$ error')
-ax.fill_between(indices[1:], np.ones_like(indices[1:]) * 1e-4,\
+ax.fill_between(indices[1:], -2 * correlation_noise_level[1:],\
     2 * correlation_noise_level[1:], color='r',\
     alpha=0.1, linewidth=3, label='$3\sigma$ error')
 ax.legend()
-ax.set_xscale('log')
-ax.set_yscale('log')
 ax.set_xlim((indices[0], indices[-1]))
 ax.set_ylim((1e-4, 1e0))
 

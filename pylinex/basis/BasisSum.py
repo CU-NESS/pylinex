@@ -36,6 +36,8 @@ class BasisSum(BasisSet, Basis):
             self.basis = np.concatenate(\
                 [basis.expanded_basis for basis in self.component_bases],\
                 axis=0)
+        except KeyboardInterrupt:
+            raise
         except:
             raise ValueError("The shapes of the given bases were not " +\
                 "compatible. They can be put into a BasisSet but not a " +\

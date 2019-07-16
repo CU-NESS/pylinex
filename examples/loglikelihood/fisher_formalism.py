@@ -44,7 +44,7 @@ distribution_set = loglikelihood.parameter_distribution_fisher_formalism(\
     max_standard_deviations=max_standard_deviations,\
     prior_to_impose_in_transformed_space=prior_distribution_list)
 
-ndraw = int(1e6)
+ndraw = int(1e5)
 parameters = model.parameters
 in_transformed_space = True
 figsize = (12, 12)
