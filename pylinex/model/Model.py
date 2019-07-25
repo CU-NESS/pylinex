@@ -80,7 +80,7 @@ class Model(Savable):
         draw = np.array([draw[parameter] for parameter in self.parameters]).T
         curve_set = np.array([self(parameters) for parameters in draw])
         if return_parameters:
-            return (curve_set, parameters)
+            return (curve_set, draw)
         else:
             return curve_set
     
