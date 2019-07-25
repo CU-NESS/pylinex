@@ -8,6 +8,7 @@ Description: File containing a class that uses the emupy package's emulator to
              very slow and a large training set has been built up.
 """
 import numpy as np
+from distpy import TransformList
 from ..util import bool_types, int_types, numerical_types, sequence_types,\
     create_hdf5_dataset, get_hdf5_value
 from .LoadableModel import LoadableModel
@@ -126,7 +127,8 @@ class EmulatedModel(LoadableModel):
     set has been built up.
     """
     def __init__(self, parameters, inputs, outputs, error=None,\
-        num_modes=None, kernel=None, verbose=True):
+        num_modes=None, kernel=None, transform_list=None,\
+        num_optimizer_restarts=5, verbose=True):
         """
         Initializes a new EmulatedModel object with the given training set.
         
@@ -142,6 +144,12 @@ class EmulatedModel(LoadableModel):
         kernel: kernel to pass to Gaussian process regressor. A sequence of
                 num_modes kernels can also be passed here, in which case it is
                 assumed that the Emulator is already trained
+        transform_list: something that can be cast to a TransformList object
+                        defining the space in which the emulator should work
+                        (the inputs are transformed internally before training
+                        and when calling)
+        num_optimizer_restarts: integer number of restarts of the optimizer
+                                when finding kernal hyperparameters, default: 5
         verbose: boolean determining if messages should be printed during train
                  (default: True). Not used if kernel given is a sequence
         """
@@ -156,7 +164,60 @@ class EmulatedModel(LoadableModel):
         self.error = error
         self.num_modes = num_modes
         self.kernel = kernel
+        self.transform_list = transform_list
+        self.num_optimizer_restarts = num_optimizer_restarts
         self.emulator
+    
+    @property
+    def transform_list(self):
+        """
+        Property storing the transform list defining the space in which the
+        emulator should work (inputs are transformed when this model is called)
+        """
+        if not hasattr(self, '_transform_list'):
+            raise AttributeError("transform_list was referenced before it " +\
+                "was set.")
+        return self._transform_list
+    
+    @transform_list.setter
+    def transform_list(self, value):
+        """
+        Sets the TransformList defining the space in which the emulator should
+        work (inputs are transformed with this object when the model is called)
+        
+        value: something that can be cast to a TransformList object
+        """
+        self._transform_list = TransformList.cast(value,\
+            num_transforms=self.num_parameters)
+    
+    @property
+    def num_optimizer_restarts(self):
+        """
+        Property storing the number of times to restart the optimizer which
+        computes kernel hyperparameters.
+        """
+        if not hasattr(self, '_num_optimizer_restarts'):
+            raise AttributeError("num_optimizer_restarts was referenced " +\
+                "before it was set.")
+        return self._num_optimizer_restarts
+    
+    @num_optimizer_restarts.setter
+    def num_optimizer_restarts(self, value):
+        """
+        Setter for the number of times to restart the optimizer which computes
+        kernel hyperparameters.
+        
+        value: positive number of restarts for optimizer which computes
+               hyperparameters
+        """
+        if type(value) in int_types:
+            if value > 0:
+                self._num_optimizer_restarts = value
+            else:
+                raise ValueError("num_optimizer_restarts was set to a " +\
+                    "non-positive integer.")
+        else:
+            raise TypeError("num_optimizer_restarts was set to a non-int.")
     
     @property
     def verbose(self):
@@ -370,14 +431,15 @@ class EmulatedModel(LoadableModel):
         """
         Computes fiducial inputs and outputs to give to emulator.
         """
-        mean_input = np.mean(self.inputs, axis=0)
-        input_ranges =\
-            np.max(self.inputs, axis=0) - np.min(self.inputs, axis=0)
+        transformed_inputs = self.transform_list(self.inputs)
+        mean_input = np.mean(transformed_inputs, axis=0)
+        input_ranges = np.max(transformed_inputs, axis=0) -\
+            np.min(transformed_inputs, axis=0)
         squared_scaled_input_distances =\
-            np.sum(np.power((self.inputs - mean_input[np.newaxis,:]) /\
+            np.sum(np.power((transformed_inputs - mean_input[np.newaxis,:]) /\
             input_ranges[np.newaxis,:], 2), axis=-1)
         index_closest_to_mean = np.argmin(squared_scaled_input_distances)
-        self._fiducial_input = self.inputs[index_closest_to_mean]
+        self._fiducial_input = transformed_inputs[index_closest_to_mean]
         self._fiducial_output = self.outputs[index_closest_to_mean]
     
     @property
@@ -454,7 +516,8 @@ class EmulatedModel(LoadableModel):
             emulator.lognorm = False
             emulator.use_pca = True
             emulator.fid_grid = self.fiducial_input
-            emulator.sphere(self.inputs, fid_grid=emulator.fid_grid,\
+            transformed_inputs = self.transform_list(self.inputs)
+            emulator.sphere(transformed_inputs, fid_grid=emulator.fid_grid,\
                 save_chol=True, norotate=True)
             emulator.fid_data = self.fiducial_output / self.error
             weighted_outputs = self.outputs / self.error[np.newaxis,:]
@@ -465,11 +528,11 @@ class EmulatedModel(LoadableModel):
                 verbose = False
             else:
                 gp_kwargs_arr = None
-                emulator.gp_kwargs =\
-                    {'kernel': self.kernel, 'n_restarts_optimizer': 5}
+                emulator.gp_kwargs = {'kernel': self.kernel,\
+                    'n_restarts_optimizer': self.num_optimizer_restarts}
                 verbose = self.verbose
-            emulator.train(weighted_outputs, self.inputs, verbose=verbose,\
-                gp_kwargs_arr=gp_kwargs_arr)
+            emulator.train(weighted_outputs, transformed_inputs,\
+                verbose=verbose, gp_kwargs_arr=gp_kwargs_arr)
             self._emulator = emulator
             self._kernel = [self._emulator.GP[index].kernel_\
                 for index in range(len(self._emulator.GP))]
@@ -481,8 +544,9 @@ class EmulatedModel(LoadableModel):
         
         parameters: 1D array of length num_parameters
         """
-        return self.error * self.emulator.predict(parameters,\
-            fast=True, sphere=True, output=True)[0][0]
+        return self.error * self.emulator.predict(\
+            self.transform_list(parameters), fast=True, sphere=True,\
+            output=True)[0][0]
     
     def fill_hdf5_group(self, group):
         """
@@ -496,6 +560,8 @@ class EmulatedModel(LoadableModel):
         create_hdf5_dataset(group, 'inputs', data=self.inputs)
         create_hdf5_dataset(group, 'outputs', data=self.outputs)
         create_hdf5_dataset(group, 'error', data=self.error)
+        self.transform_list.fill_hdf5_group(\
+            group.create_group('transform_list'))
         subgroup = group.create_group('kernel')
         if hasattr(self, '_emulator'):
             for (ikernel, kernel) in enumerate(self.kernel):
@@ -522,6 +588,8 @@ class EmulatedModel(LoadableModel):
             inputs = get_hdf5_value(group['inputs'])
             outputs = get_hdf5_value(group['outputs'])
             error = get_hdf5_value(group['error'])
+            transform_list =\
+                TransformList.load_from_hdf5_group(group['transform_list'])
             subgroup = group['kernel']
             if 'sole' in subgroup:
                 kernel = load_kernel_from_hdf5_group(subgroup['sole'])
