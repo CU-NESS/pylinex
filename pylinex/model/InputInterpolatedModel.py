@@ -1,5 +1,5 @@
 """
-File: pylinex/model/InterpolatedModel.py
+File: pylinex/model/InputInterpolatedModel.py
 Author: Keith Tauscher
 Date: 15 Jan 2018
 
@@ -23,7 +23,7 @@ except:
     # this try/except allows for python 2/3 compatible string type checking
     basestring = str
 
-class InterpolatedModel(Model):
+class InputInterpolatedModel(Model):
     """
     Class representing a model based on multidimensional linear interpolation
     on a Delaunay mesh.
@@ -443,7 +443,7 @@ class InterpolatedModel(Model):
     @property
     def gradient_computable(self):
         """
-        The gradient of the InterpolatedModel is computable because the
+        The gradient of the InputInterpolatedModel is computable because the
         gradient is estimated at each simplex of input points.
         """
         return True
@@ -465,8 +465,8 @@ class InterpolatedModel(Model):
     @property
     def hessian_computable(self):
         """
-        At this point, the hessian of InterpolatedModel objects has not been
-        implemented. It may be at some point in the future.
+        At this point, the hessian of InputInterpolatedModel objects has not
+        been implemented. It may be at some point in the future.
         """
         return True
     
@@ -497,7 +497,7 @@ class InterpolatedModel(Model):
         
         group: hdf5 file group to fill with information about this model
         """
-        group.attrs['class'] = 'InterpolatedModel'
+        group.attrs['class'] = 'InputInterpolatedModel'
         group.attrs['parameter_names'] = self.parameters
         create_hdf5_dataset(group, 'training_inputs',\
             data=self.training_inputs, link=training_inputs_link)
@@ -517,9 +517,10 @@ class InterpolatedModel(Model):
     @staticmethod
     def load_from_hdf5_group(group):
         """
-        Loads an InterpolatedModel from the given hdf5 group.
+        Loads an InputInterpolatedModel from the given hdf5 group.
         
-        group: hdf5 file group which has had an InterpolatedModel saved to it
+        group: hdf5 file group which has had an InputInterpolatedModel saved to
+               it
         """
         parameter_names = [name for name in group.attrs['parameter_names']]
         training_inputs = get_hdf5_value(group['training_inputs'])
@@ -538,7 +539,7 @@ class InterpolatedModel(Model):
         else:
             error = None
         interpolation_method = group.attrs['interpolation_method']
-        return InterpolatedModel(parameter_names, training_inputs,\
+        return InputInterpolatedModel(parameter_names, training_inputs,\
             training_outputs, should_compress=should_compress,\
             transform_list=transform_list, scale_to_cube=scale_to_cube,\
             num_basis_vectors=num_basis_vectors, expander=expander,\
@@ -546,14 +547,15 @@ class InterpolatedModel(Model):
     
     def __eq__(self, other):
         """
-        Checks if other is essentially equivalent to this InterpolatedModel.
+        Checks if other is essentially equivalent to this
+        InputInterpolatedModel.
         
         other: the object to check for equality
         
-        returns: False unless other is an InterpolatedModel. In that case, it
-                 throws a NotImplementedError.
+        returns: False unless other is an InputInterpolatedModel. In that case,
+                 it throws a NotImplementedError.
         """
-        if not isinstance(other, InterpolatedModel):
+        if not isinstance(other, InputInterpolatedModel):
             return False
         if self.scale_to_cube != other.scale_to_cube:
             return False

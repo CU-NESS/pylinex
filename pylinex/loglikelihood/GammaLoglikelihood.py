@@ -32,6 +32,21 @@ class GammaLoglikelihood(LoglikelihoodWithModel):
         self.model = model
         self.num_averaged = num_averaged
     
+    @staticmethod
+    def create_from_data_and_error(data, error, model):
+        """
+        Creates a new GammaLoglikelihood with the given data, error, and model.
+        
+        data: 1D numpy.ndarray of data being fit
+        error: the error to which the returned Loglikelihood should have as its
+               standard deviation
+        model: the Model object with which to describe the data
+        
+        returns: GammaLoglikelihood object with the given data and model with
+                 approximately the given error
+        """
+        return GammaLoglikelihood(data, model, np.power(error / data, -2))
+    
     @property
     def num_averaged(self):
         """
@@ -39,7 +54,8 @@ class GammaLoglikelihood(LoglikelihoodWithModel):
         into the data of this likelihood.
         """
         if not hasattr(self, '_num_averaged'):
-            raise AttributeError("num_averaged was referenced before it was set.")
+            raise AttributeError("num_averaged was referenced before it " +\
+                "was set.")
         return self._num_averaged
     
     @num_averaged.setter

@@ -36,7 +36,8 @@ from .RestrictedModel import RestrictedModel
 from .ExpandedModel import ExpandedModel
 from .ScaledModel import ScaledModel
 from .SlicedModel import SlicedModel
-from .InterpolatedModel import InterpolatedModel
+from .InputInterpolatedModel import InputInterpolatedModel
+from .OutputInterpolatedModel import OutputInterpolatedModel
 from .EmulatedModel import EmulatedModel
 from .BasisFitModel import BasisFitModel
 from .ConditionalFitModel import ConditionalFitModel
@@ -48,8 +49,8 @@ self_loadable_model_classes =\
 [\
     'BasisModel', 'ConstantModel', 'ExpressionModel', 'GaussianModel',\
     'SinusoidalModel', 'TanhModel', 'TruncatedBasisHyperModel',\
-    'LorentzianModel', 'FixedModel', 'InterpolatedModel', 'BasisFitModel',\
-    'EmulatedModel'\
+    'LorentzianModel', 'FixedModel', 'InputInterpolatedModel',\
+    'BasisFitModel', 'EmulatedModel'\
 ]
 
 # Model classes which are simple wrappers around exactly one other Model class
@@ -57,7 +58,7 @@ meta_model_classes =\
 [\
     'ExpandedModel', 'RenamedModel', 'RestrictedModel', 'TransformedModel',\
     'DistortedModel', 'ProjectedModel', 'SlicedModel', 'ScaledModel',\
-    'BinnedModel', 'ConditionalFitModel'\
+    'BinnedModel', 'OutputInterpolatedModel', 'ConditionalFitModel'\
 ]
 
 # Model classes which are wrappers around an arbitrary number of Model classes
@@ -154,6 +155,12 @@ def load_model_from_hdf5_group(group):
                 binner =\
                     RectangularBinner.load_from_hdf5_group(group['binner'])
                 return BinnedModel(model, binner)
+            elif class_name == 'OutputInterpolatedModel':
+                order = group.attrs['order']
+                old_xs = get_hdf5_value(group['old_xs'])
+                new_xs = get_hdf5_value(group['new_xs'])
+                return\
+                    OutputInterpolatedModel(model, old_xs, new_xs, order=order)
             else:
                 raise RuntimeError("This should never happen. Is there a " +\
                     "model loading function missing from LoadModel.py?")

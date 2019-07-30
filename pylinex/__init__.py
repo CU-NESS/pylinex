@@ -34,8 +34,9 @@ from pylinex.model import Model, LoadableModel, FixedModel,\
     TiedModel, DirectSumModel, ProductModel, CompositeModel, ExpressionModel,\
     ExpandedModel, ScaledModel, TransformedModel, DistortedModel, BinnedModel,\
     ProjectedModel, RenamedModel, RestrictedModel, SlicedModel,\
-    InterpolatedModel, EmulatedModel, TruncatedBasisHyperModel, BasisFitModel,\
-    ConditionalFitModel, load_model_from_hdf5_group, TrainingSetCreator
+    InputInterpolatedModel, OutputInterpolatedModel, EmulatedModel,\
+    TruncatedBasisHyperModel, BasisFitModel, ConditionalFitModel,\
+    load_model_from_hdf5_group, TrainingSetCreator
 from pylinex.loglikelihood import Loglikelihood, RosenbrockLoglikelihood,\
     LoglikelihoodWithData, LoglikelihoodWithModel, GaussianLoglikelihood,\
     PoissonLoglikelihood, GammaLoglikelihood, LinearTruncationLoglikelihood,\

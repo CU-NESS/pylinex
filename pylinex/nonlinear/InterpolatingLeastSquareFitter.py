@@ -14,7 +14,7 @@ import numpy as np
 from distpy import TransformList
 from ..util import int_types, sequence_types
 from ..expander import Expander, NullExpander
-from ..model import InterpolatedModel
+from ..model import InputInterpolatedModel
 from ..loglikelihood import GaussianLoglikelihood
 from .LeastSquareFitter import LeastSquareFitter
 
@@ -67,7 +67,8 @@ class InterpolatingLeastSquareFitter(object):
         interpolation_method: either 'linear' or 'quadratic'
         loglikelihood_callable: a function which, when passed a
                                 GaussianLoglikelihood made out of an
-                                InterpolatedModel and a data and error vector
+                                InputInterpolatedModel and a data and error
+                                vector
         """
         self.error = error
         self.expander = expander
@@ -416,7 +417,7 @@ class InterpolatingLeastSquareFitter(object):
     
     def fit(self, data, iterations=1):
         """
-        Fits the given data curve with an InterpolatedModel created using
+        Fits the given data curve with an InputInterpolatedModel created using
         training set examples near the data.
         
         data: data curve to fit
@@ -438,7 +439,7 @@ class InterpolatingLeastSquareFitter(object):
         truncated_training_outputs =\
             self.training_outputs[argsort,:][:self.ntrain,:]
         interpolated_model =\
-            InterpolatedModel(self.parameters, truncated_training_inputs,\
+            InputInterpolatedModel(self.parameters, truncated_training_inputs,\
             truncated_training_outputs, should_compress=self.compressed,\
             transform_list=self.transform_list,\
             scale_to_cube=self.scale_to_cube,\

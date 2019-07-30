@@ -1,15 +1,15 @@
 """
-File: examples/model/interpolated_model.py
+File: examples/model/input_interpolated_model.py
 Author: Keith Tauscher
 Date: 24 Mar 2018
 
-Description: Example showing how to initialize and use the InterpolatedModel
-             class.
+Description: Example showing how to initialize and use the
+             InputInterpolatedModel class.
 """
 from __future__ import division
 import numpy as np
 from distpy import GaussianDistribution, DistributionSet
-from pylinex import GaussianModel, InterpolatedModel
+from pylinex import GaussianModel, InputInterpolatedModel
 
 interpolation_method = 'quadratic'
 
@@ -50,7 +50,7 @@ true_outputs2 = np.array([true_model(inp) for inp in inputs2])
 
 
 transform_list = [None, None, 'log10']
-interpolated_model = InterpolatedModel(true_model.parameters, inputs1,\
+interpolated_model = InputInterpolatedModel(true_model.parameters, inputs1,\
     true_outputs1, should_compress=True, transform_list=transform_list,\
     scale_to_cube=True, num_basis_vectors=nbasis_vectors, expander=None,\
     error=None, interpolation_method=interpolation_method)

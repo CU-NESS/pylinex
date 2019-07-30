@@ -27,7 +27,8 @@ from pylinex.model.DirectSumModel import DirectSumModel
 from pylinex.model.ProductModel import ProductModel
 from pylinex.model.CompositeModel import CompositeModel
 from pylinex.model.ExpressionModel import ExpressionModel
-from pylinex.model.InterpolatedModel import InterpolatedModel
+from pylinex.model.InputInterpolatedModel import InputInterpolatedModel
+from pylinex.model.OutputInterpolatedModel import OutputInterpolatedModel
 from pylinex.model.EmulatedModel import EmulatedModel
 from pylinex.model.BinnedModel import BinnedModel
 from pylinex.model.TransformedModel import TransformedModel
