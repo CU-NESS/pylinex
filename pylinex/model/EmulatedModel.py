@@ -548,6 +548,34 @@ class EmulatedModel(LoadableModel):
             self.transform_list(parameters), fast=True, sphere=True,\
             output=True)[0][0]
     
+    def __eq__(self, other):
+        """
+        Checks to see if this model is the same as other.
+        
+        other: object to check for equality
+        
+        returns: True if other is the same model as this one
+        """
+        if not isinstance(other, EmulatedModel):
+            return False
+        if self.parameters != other.parameters:
+            return False
+        if self.inputs.shape != other.inputs.shape:
+            return False
+        if np.any(self.inputs != other.inputs):
+            return False
+        if self.outputs.shape != other.outputs.shape:
+            return False
+        if np.any(self.outputs != other.outputs):
+            return False
+        if np.any(self.error != other.error):
+            return False
+        if self.num_modes != other.num_modes:
+            return False
+        if not kernel_equal(self.kernel, other.kernel):
+            return False
+        return self.transform_list == other.transform_list
+    
     def fill_hdf5_group(self, group):
         """
         Saves this model to group in a way such that it can be loaded later.

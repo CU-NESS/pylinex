@@ -11,9 +11,9 @@ from distpy import TransformList
 from ..util import Savable
 
 # an error indicating everything which should be implemented by subclass
-shouldnt_instantiate_model_error = NotImplementedError("Model shouldn't be " +\
-    "substantiated directly. Each subclass must implement its own __call__ " +\
-    "function.")
+shouldnt_instantiate_model_error = (lambda name, kind:\
+    NotImplementedError(("Model shouldn't be substantiated directly. Each " +\
+    "subclass must implement its own {0!s} {1!s}.").format(name, kind)))
 
 class Model(Savable):
     """
@@ -24,14 +24,14 @@ class Model(Savable):
         Since the Model class should not be directly instantiated, an error is
         thrown if its initializer is called.
         """
-        raise shouldnt_instantiate_model_error
+        raise shouldnt_instantiate_model_error('__init__', 'function')
     
     @property
     def num_channels(self):
         """
         Property storing the number of channels in outputs of this model.
         """
-        raise shouldnt_instantiate_model_error
+        raise shouldnt_instantiate_model_error('num_channels', 'property')
     
     @property
     def num_parameters(self):
@@ -48,7 +48,7 @@ class Model(Savable):
         Property storing a list of strings associated with the parameters
         necessitated by this model.
         """
-        raise shouldnt_instantiate_model_error
+        raise shouldnt_instantiate_model_error('parameters', 'property')
     
     def __call__(self, parameters):
         """
@@ -58,7 +58,7 @@ class Model(Savable):
         
         returns: array of size (num_channels,)
         """
-        raise shouldnt_instantiate_model_error
+        raise shouldnt_instantiate_model_error('__call__', 'function')
     
     def curve_sample(self, distribution_set, ndraw, return_parameters=False):
         """
@@ -90,7 +90,8 @@ class Model(Savable):
         Property storing a boolean describing whether the gradient of this
         model is computable.
         """
-        raise shouldnt_instantiate_model_error
+        raise shouldnt_instantiate_model_error('gradient_computable',\
+            'property')
     
     def gradient(self, parameters):
         """
@@ -100,7 +101,34 @@ class Model(Savable):
         
         returns: array of shape (num_channels, num_parameters)
         """
-        raise shouldnt_instantiate_model_error
+        if self.gradient_computable:
+            raise shouldnt_instantiate_model_error('gradient', 'function')
+        else:
+            raise NotImplementedError("gradient is not implemented because " +\
+                "gradient_computable is False.")
+    
+    @property
+    def hessian_computable(self):
+        """
+        Property storing a boolean describing whether the hessian of this model
+        is computable.
+        """
+        raise shouldnt_instantiate_model_error('hessian_computable',\
+            'property')
+    
+    def hessian(self, parameters):
+        """
+        Evaluates the hessian of this model at the given parameters.
+        
+        parameters: 1D numpy.ndarray of parameter values
+        
+        returns: array of shape (num_channels, num_parameters, num_parameters)
+        """
+        if self.hessian_computable:
+            raise shouldnt_instantiate_model_error('hessian', 'function')
+        else:
+            raise NotImplementedError("hessian is not implemented because " +\
+                "hessian_computable is False.")
     
     def numerical_gradient(self, parameters, differences=1e-6,\
         transform_list=None):
@@ -282,24 +310,6 @@ class Model(Savable):
                 smaller_differences=smaller_differences,\
                 transform_list=transform_list)
     
-    @property
-    def hessian_computable(self):
-        """
-        Property storing a boolean describing whether the hessian of this model
-        is computable.
-        """
-        raise shouldnt_instantiate_model_error
-    
-    def hessian(self, parameters):
-        """
-        Evaluates the hessian of this model at the given parameters.
-        
-        parameters: 1D numpy.ndarray of parameter values
-        
-        returns: array of shape (num_channels, num_parameters, num_parameters)
-        """
-        raise shouldnt_instantiate_model_error
-    
     def quick_fit(self, data, error, quick_fit_parameters=[], prior=None):
         """
         Performs a quick fit of this model to the given data with (or without)
@@ -366,7 +376,7 @@ class Model(Savable):
         
         group: hdf5 file group to fill with information about this model
         """
-        raise shouldnt_instantiate_model_error
+        raise shouldnt_instantiate_model_error('fill_hdf5_group', 'function')
     
     def __eq__(self, other):
         """
@@ -376,7 +386,7 @@ class Model(Savable):
         
         returns: True if other is equal to this mode, False otherwise
         """
-        raise shouldnt_instantiate_model_error
+        raise shouldnt_instantiate_model_error('__eq__', 'function')
     
     def __ne__(self, other):
         """

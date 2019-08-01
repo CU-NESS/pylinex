@@ -15,7 +15,7 @@ import os, time, h5py
 import numpy as np
 from distpy import TransformList, GaussianDistribution,\
     DeterministicDistribution, KroneckerDeltaDistribution, DistributionSet
-from ..util import int_types, bool_types
+from ..util import int_types, bool_types, real_numerical_types, sequence_types
 from ..loglikelihood import GaussianLoglikelihood
 from .LeastSquareFitter import LeastSquareFitter
 try:
@@ -35,7 +35,7 @@ class LeastSquareFitCluster(object):
     properties, as is done in the Fisher matrix approach.
     """
     def __init__(self, seed_loglikelihood, prior_set, prefix, num_fits,\
-        transform_list=None, save_all=False, **bounds):
+        transform_list=None, minimum_variances=0, save_all=False, **bounds):
         """
         Initializes a new LeastSquareFitCluster.
         
@@ -58,6 +58,8 @@ class LeastSquareFitCluster(object):
         transform_list: TransformList (or something which can be cast to a
                         TransformList object) describing the space in which
                         the parameters of the loglikelihood exist
+        minimum_variances: the minimum variances to include in covariance when
+                           making an approximate Gaussian distribution
         save_all: if True, all LeastSquareFitter objects are saved if prefix is
                            not None.
                   if False (default), only the first fit is saved
@@ -71,16 +73,51 @@ class LeastSquareFitCluster(object):
         self.prior_set = prior_set
         self.prefix = prefix
         self.num_fits = num_fits
+        self.minimum_variances = minimum_variances
         self.transform_list = transform_list
         self.bounds = bounds
     
+    @property
+    def minimum_variances(self):
+        """
+        Property storing the array of minimum variances to allow for the
+        parameters (in the space of the loglikelihood).
+        """
+        if not hasattr(self, '_minimum_variances'):
+            raise AttributeError("minimum_variances was referenced before " +\
+                "it was set.")
+        return self._minimum_variances
+    
+    @minimum_variances.setter
+    def minimum_variances(self, value):
+        """
+        Setter for the array of minimum variances to allow for the parameters
+        (in the space of the loglikelihood).
+        
+        value: either a single number or an array of length num_parameters
+        """
+        if type(minimum_variances) in real_numerical_types:
+            self._minimum_variances = value * np.ones(self.num_parameters)
+        elif type(minimum_variances) in sequence_types:
+            value = np.array(value)
+            if value.shape == (self.num_parameters,):
+                self._minimum_variances = value
+            else:
+                raise ValueError("minimum_variances was set to an array " +\
+                    "that has an unexpected shape.")
+        else:
+            raise TypeError("minimum_variances was set to neither a number " +\
+                "nor an array.")
+    
     @staticmethod
-    def load_from_first_file(file_name, num_fits):
+    def load_from_first_file(file_name, num_fits, minimum_variances=0):
         """
         Loads a LeastSquareFitCluster from its first saved LeastSquareFitter.
         
         file_name: name of file where first LeastSquareFitter was saved
         num_fits: number of noise realizations to run
+        minimum_variances: the minimum variances to include in covariance when
+                           making an approximate Gaussian distribution
         
         returns: a LeastSquareFitCluster object 
         """
@@ -92,7 +129,8 @@ class LeastSquareFitCluster(object):
         bounds = {name: least_square_fitter.bounds[iname]\
             for (iname, name) in enumerate(seed_loglikelihood.parameters)}
         return LeastSquareFitCluster(seed_loglikelihood, prior_set, prefix,\
-            num_fits, transform_list=transform_list, save_all=False, **bounds)
+            num_fits, transform_list=transform_list,\
+            minimum_variances=minimum_variances, save_all=False, **bounds)
     
     @property
     def save_all(self):
@@ -514,6 +552,7 @@ class LeastSquareFitCluster(object):
                 covariance = np.var(self.argmins[:,0])
             else:
                 covariance = np.cov(self.argmins, rowvar=False)
+            covariance = covariance + np.diag(self.minimum_variances)
             self._approximate_gaussian_distribution =\
                 GaussianDistribution(mean, covariance)
         return self._approximate_gaussian_distribution

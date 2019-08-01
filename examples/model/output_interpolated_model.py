@@ -3,7 +3,7 @@ File: examples/model/output_interpolated_model.py
 Author: Keith Tauscher
 Date: 30 Jul 2019
 
-Description: 
+Description: Shows a usage of the OutputInterpolatedModel class.
 """
 import os
 import numpy as np
