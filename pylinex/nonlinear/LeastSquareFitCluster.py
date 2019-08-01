@@ -96,9 +96,9 @@ class LeastSquareFitCluster(object):
         
         value: either a single number or an array of length num_parameters
         """
-        if type(minimum_variances) in real_numerical_types:
+        if type(value) in real_numerical_types:
             self._minimum_variances = value * np.ones(self.num_parameters)
-        elif type(minimum_variances) in sequence_types:
+        elif type(value) in sequence_types:
             value = np.array(value)
             if value.shape == (self.num_parameters,):
                 self._minimum_variances = value
