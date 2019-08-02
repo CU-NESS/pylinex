@@ -273,7 +273,7 @@ class Basis(Savable, Loadable):
             np.dot(max_likelihood_parameters.T, max_likelihood_parameters) /\
             (len(curves) - 1)
         if diagonal:
-            cov_to_return = np.diag(np.diag(cov_to_return))
+            covariance = np.diag(np.diag(covariance))
         if type(covariance_expansion_factor) is type(None):
             sigma_squareds = np.sum(max_likelihood_parameters *\
                 np.dot(max_likelihood_parameters, la.inv(covariance)), axis=1)
