@@ -1065,13 +1065,13 @@ class ExtractionPlotter(object):
             pl.show()
     
     def plot_histogram(self, quantity_name, quantity_to_minimize=None,\
-        color=None, ax=None, bins=None, cumulative=False, normed=False,\
+        color=None, ax=None, bins=None, cumulative=False, density=False,\
         label=None, restricted=False, show=False):
         """
         Plots a histogram (or multiple if many quantities to minimize are
         given) of the given quantity. NOTE: matplotlib's histogram functions
         may yield strange and subtly wrong results when using cumulative=True
-        AND normed=True!
+        AND density=True!
         
         quantity_name: the name of the quantity for which to plot a histogram
         quantity_to_minimize: the quantity which was calculated by this
@@ -1085,7 +1085,7 @@ class ExtractionPlotter(object):
             new figure is created.
         bins: the bins to use for the Axes.hist function
         cumulative: True for cdf, False for pdf
-        normed: boolean determining whether to norm the histogram
+        density: boolean determining whether to norm the histogram
         label: the label to add associated with the histogram. If
                quantity_to_minimize is a sequence, label goes unused.
         restricted: if True, grid is restricted at ranks when minimizing
@@ -1115,7 +1115,7 @@ class ExtractionPlotter(object):
                         "the same length as the number of quantities to " +\
                         "minimize.")
                 bins_to_return.append(self.plot_histogram(quantity_name,\
-                    quantity, ax=ax, normed=normed, cumulative=cumulative,\
+                    quantity, ax=ax, density=density, cumulative=cumulative,\
                     bins=bins, color=this_color, label=quantity,\
                     restricted=restricted, show=False))
                 ax.legend()
@@ -1136,7 +1136,7 @@ class ExtractionPlotter(object):
                         "{1!s}.").format(quantity_name,\
                         [key for key in statistics.keys()]))
             (nums, bins, patches) = ax.hist(to_hist, bins=bins,\
-                histtype='step', cumulative=cumulative, normed=normed,\
+                histtype='step', cumulative=cumulative, density=density,\
                 color=color, label=label)
             return bins
     
@@ -1196,7 +1196,7 @@ class ExtractionPlotter(object):
             ax = fig.add_subplot(111)
         bins = self.plot_histogram('normalized_bias_statistic',\
             quantity_to_minimize=quantity_to_minimize, color=color, ax=ax,\
-            bins=bins, cumulative=False, normed=True, restricted=restricted,\
+            bins=bins, cumulative=False, density=True, restricted=restricted,\
             label=label, show=False)
         if type(quantity_to_minimize) not in sequence_types:
             quantity_to_minimize = [quantity_to_minimize]

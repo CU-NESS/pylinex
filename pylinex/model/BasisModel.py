@@ -7,6 +7,7 @@ Description: File containing a class representing a model which can be
              encapsulated by a single matrix (i.e. one described entirely by an
              ordered set of basis vectors).
 """
+from __future__ import division
 import numpy as np
 import numpy.linalg as la
 from distpy import GaussianDistribution

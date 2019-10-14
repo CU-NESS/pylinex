@@ -48,8 +48,7 @@ def weighted_SVD_basis(curves, error=None, Neigen=None):
     if type(Neigen) is type(None):
         Neigen = curves.shape[-1]
     SVD_U, SVD_S, SVD_V = weighted_SVD(curves.T, error=error)
-    total_importance = np.sum(SVD_S)
-    return SVD_U.T[:Neigen], SVD_S[:Neigen], SVD_V.T[:Neigen], total_importance
+    return (SVD_U.T[:Neigen], SVD_S, SVD_V.T[:Neigen])
 
 class TrainedBasis(Basis):
     """
@@ -78,9 +77,8 @@ class TrainedBasis(Basis):
         SVD_basis = weighted_SVD_basis(training_set,\
             error=error, Neigen=num_basis_vectors)
         self.basis = SVD_basis[0]
-        self.importances = SVD_basis[1]
         self.training_set_space_singular_vectors = SVD_basis[2]
-        self.total_importance = SVD_basis[3]
+        self.full_importances = SVD_basis[1]
         self.expander = expander
     
     @property
@@ -116,6 +114,28 @@ class TrainedBasis(Basis):
                              "a 2D numpy.ndarray.")
     
     @property
+    def num_curves(self):
+        """
+        Property storing the number of training set curves used to seed this
+        SVD basis.
+        """
+        if not hasattr(self, '_num_curves'):
+            self._num_curves =\
+                self.training_set_space_singular_vectors.shape[1]
+        return self._num_curves
+    
+    @property
+    def training_set_size(self):
+        """
+        Property storing the total number of numbers supplied in the training
+        set.
+        """
+        if not hasattr(self, '_training_set_size'):
+            self._training_set_size =\
+                self.num_curves * self.num_smaller_channel_set_indices
+        return self._training_set_size
+    
+    @property
     def summed_training_set_space_singular_vectors(self):
         """
         Property storing the training set space singular vectors summed over
@@ -127,32 +147,45 @@ class TrainedBasis(Basis):
         return self._summed_training_set_space_singular_vectors
     
     @property
+    def full_importances(self):
+        """
+        Property storing the full importances array (including modes that are
+        not in this basis).
+        """
+        if not hasattr(self, '_full_importances'):
+            raise AttributeError("full_importances was referenced before " +\
+                "it was set.")
+        return self._full_importances
+    
+    @full_importances.setter
+    def full_importances(self, value):
+        """
+        Setter for the full_importances property.
+        
+        value: 1D array of min(num_curves, num_channels) positive numbers in
+               decreasing order
+        """
+        value = np.array(value)
+        if value.shape ==\
+            (min(self.num_curves, self.num_smaller_channel_set_indices),):
+            if np.all(value >= 0):
+                self._full_importances = value
+            else:
+                raise ValueError("Some of the importances given aren't " +\
+                                 "nonnegative, which makes no sense.")
+        else:
+            raise ValueError("importances don't have the correct number of " +\
+                "elements.")
+    
+    @property
     def importances(self):
         """
         Property storing a 1D numpy.ndarray giving the importances of the modes
         in this TrainedBasis.
         """
         if not hasattr(self, '_importances'):
-            raise AttributeError("importances haven't been set.")
+            self._importances = self.full_importances[:self.num_basis_vectors]
         return self._importances
-    
-    @importances.setter
-    def importances(self, value):
-        """
-        Setter for the importances property.
-        
-        value: 1D numpy.ndarray of length num_basis_vectors
-        """
-        value = np.array(value)
-        if value.shape == (self.num_basis_vectors,):
-            if np.all(value >= 0):
-                self._importances = value
-            else:
-                raise ValueError("Some of the importances given aren't " +\
-                                 "nonnegative, which makes no sense.")
-        else:
-            raise ValueError("importances don't have the same number of " +\
-                             "elements as the basis.")
     
     @property
     def training_set_fit_coefficients(self):
@@ -167,17 +200,6 @@ class TrainedBasis(Basis):
         return self._training_set_fit_coefficients
     
     @property
-    def training_set_length(self):
-        """
-        Property storing the number of curves in the training set used to
-        generate this basis.
-        """
-        if not hasattr(self, '_training_set_length'):
-            self._training_set_length =\
-                self.training_set_space_singular_vectors.shape[-1]
-        return self._training_set_length
-    
-    @property
     def prior_mean(self):
         """
         Property storing the mean vector of the prior parameter distribution.
@@ -187,7 +209,7 @@ class TrainedBasis(Basis):
         if not hasattr(self, '_prior_mean'):
             self._prior_mean = (self.importances *\
                 self.summed_training_set_space_singular_vectors) /\
-                self.training_set_length
+                self.num_curves
         return self._prior_mean
     
     @property
@@ -202,8 +224,7 @@ class TrainedBasis(Basis):
                 self.summed_training_set_space_singular_vectors[:,np.newaxis]
             self._prior_covariance =\
                 (self._prior_covariance * self._prior_covariance.T)
-            self._prior_covariance =\
-                self._prior_covariance / self.training_set_length
+            self._prior_covariance = self._prior_covariance / self.num_curves
             self._prior_covariance =\
                 np.identity(self.num_basis_vectors) - self._prior_covariance
             self._prior_covariance =\
@@ -211,7 +232,7 @@ class TrainedBasis(Basis):
             self._prior_covariance =\
                 (self.importances[np.newaxis,:] * self._prior_covariance)
             self._prior_covariance =\
-                self._prior_covariance / (self.training_set_length - 1)
+                self._prior_covariance / (self.num_curves - 1)
         return self._prior_covariance
     
     @property
@@ -279,24 +300,8 @@ class TrainedBasis(Basis):
         Property storing the sum of the importances of all modes.
         """
         if not hasattr(self, '_total_importance'):
-            raise AttributeError("total_importance was not set before " +\
-                                 "being referenced.")
+            self._total_importance = np.sum(self.full_importances)
         return self._total_importance
-    
-    @total_importance.setter
-    def total_importance(self, value):
-        """
-        Setter for the total_importance property.
-        
-        value: must be a single positive number
-        """
-        if type(value) in real_numerical_types:
-            if value > 0:
-                self._total_importance = value
-            else:
-                raise ValueError("total_importance must be a positive number.")
-        else:
-            raise TypeError("total_importance must be a single number.")
     
     @property
     def truncated_normed_importance_loss(self):
@@ -308,68 +313,102 @@ class TrainedBasis(Basis):
             self._truncated_normed_importance_loss =\
                 1 - np.cumsum(self.normed_importances)
         return self._truncated_normed_importance_loss
+    
+    def plot_RMS_spectrum(self, threshold=1, ax=None, show=False, title='',\
+        fontsize=24, **kwargs):
+        """
+        Plots the RMS values (in number of noise levels) achieved in the
+        training set as a function of number of modes.
+        
+        show: if True, matplotlib.pyplot.show() is called before this function
+                       is returned
+        title: string title of the plot (can have LaTeX inside)
+        kwargs: extra keyword arguments to pass on to matplotlib.pyplot.scatter
+        """
+        plot_xs = np.arange(1 + self.num_basis_vectors)
+        cumulative_squared_importance_loss = np.cumsum(np.concatenate(\
+            [[0], np.power(self.full_importances[-1::-1], 2)]))[-1::-1]
+        cumulative_squared_importance_loss =\
+            cumulative_squared_importance_loss[:len(plot_xs)]
+        plot_ys = np.sqrt(cumulative_squared_importance_loss /\
+            self.training_set_size)
+        if ax is None:
+            fig = pl.figure(figsize=(12,9))
+            ax = fig.add_subplot(111)
+        ax.scatter(plot_xs, plot_ys, **kwargs)
+        ax.plot(plot_xs, np.ones_like(plot_xs) * threshold, color='k',\
+            linestyle='--')
+        ylim = (10 ** int(np.log10(np.min(plot_ys)) - 1),\
+            10 ** int(np.log10(np.max(plot_ys)) + 1))
+        ax.plot([plot_xs[np.argmax(plot_ys < threshold)]] * 2, ylim,\
+            color='k', linestyle='--')
+        ax.set_xlim((plot_xs[0], plot_xs[-1]))
+        ax.set_ylim(ylim)
+        ax.set_yscale('log')
+        ax.set_xlabel('# of modes', size=fontsize)
+        ax.set_ylabel('Total RMS in noise levels', size=fontsize)
+        ax.set_title(title, size=fontsize)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+            which='major')
+        ax.tick_params(labelsize=fontsize, width=1.5, length=4.5,\
+            which='minor')
+        if show:
+            pl.show()
 
     def plot_importance_spectrum(self, normed=False,\
-        plot_importance_loss=False, plot_xs=None, show=False, title='',\
-        **kwargs):
+        plot_importance_loss=False, ax=None, show=False, title='',\
+        fontsize=24, **kwargs):
         """
         Plots the spectrum of importances of the modes in this TrainedBasis.
         
         normed: if True, importances shown add to 1
         plot_importance_loss: if True, importance loss from truncation at
                                        various points is plotted
-        plot_xs: if None, x-values for plot are assumed to be the first
-                          num_basis_vectors natural numbers
-                 otherwise, plot_xs should be a 1D numpy.ndarray of length
-                            num_basis_vectors containing x-values for the plot
         show: if True, matplotlib.pyplot.show() is called before this function
                        is returned
         title: string title of the plot (can have LaTeX inside)
         kwargs: extra keyword arguments to pass on to matplotlib.pyplot.scatter
         """
-        if type(plot_xs) is type(None):
-            plot_xs = np.arange(self.num_basis_vectors)
-        fig = pl.figure()
-        ax = fig.add_subplot(111)
+        plot_xs = np.arange(self.num_basis_vectors)
+        if ax is None:
+            fig = pl.figure(figsize=(12,9))
+            ax = fig.add_subplot(111)
         to_show = np.where(self.normed_importances > 0)[0]
         if plot_importance_loss:
             if normed:
-                ax.scatter(plot_xs, self.truncated_normed_importance_loss,\
-                    **kwargs)
+                plot_ys = self.truncated_normed_importance_loss
                 y_max = 1
                 y_min = min(self.truncated_normed_importance_loss[to_show])
+                ylabel = 'Normalized importance of modes above index'
             else:
-                ax.scatter(plot_xs, self.truncated_normed_importance_loss *\
-                    self.total_importance, **kwargs)
+                plot_ys = self.truncated_normed_importance_loss *\
+                    self.total_importance
                 y_max = self.total_importance
                 y_min = min(self.truncated_normed_importance_loss[to_show]) *\
                      self.total_importance
-        else:
-            if normed:
-                ax.scatter(plot_xs, self.normed_importances, **kwargs)
-                y_min = min(self.normed_importances[to_show])
-                y_max = max(self.normed_importances[to_show])
-            else:
-                ax.scatter(plot_xs, self.importances, **kwargs)
-                y_min = min(self.importances[to_show])
-                y_max = max(self.importances[to_show])
-        y_max = 10 ** int(np.log10(y_max) + 1)
-        y_min = 10 ** int(np.log10(y_min) - 1)
-        ax.set_ylim((y_min, y_max))
-        ax.set_yscale('log')
-        pl.xlabel('Mode index')
-        if plot_importance_loss:
-            if normed:
-                ylabel = 'Normalized importance of modes above index'
-            else:
                 ylabel = 'Importance of modes above index'
         else:
             if normed:
+                plot_ys = self.normed_importances
+                y_min = min(self.normed_importances[to_show])
+                y_max = max(self.normed_importances[to_show])
                 ylabel = 'Normalized mode importance'
             else:
+                plot_ys = self.importances
+                y_min = min(self.importances[to_show])
+                y_max = max(self.importances[to_show])
                 ylabel = 'Mode importance'
-        pl.ylabel(ylabel)
-        pl.title(title)
+        ax.scatter(plot_xs, plot_ys, **kwargs)
+        ylim = (10 ** int(np.log10(y_min) - 1), 10 ** int(np.log10(y_max) + 1))
+        ax.set_ylim(ylim)
+        ax.set_yscale('log')
+        ax.set_xlabel('Mode index', size=fontsize)
+        ax.set_ylabel(ylabel, size=fontsize)
+        ax.set_title(title, size=fontsize)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+            which='major')
+        ax.tick_params(labelsize=fontsize, width=1.5, length=4.5,\
+            which='minor')
         if show:
             pl.show()
 

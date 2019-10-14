@@ -419,7 +419,9 @@ class NLFitter(object):
         kwargs_1D={}, kwargs_2D={}, fontsize=28, nbins=100,\
         plot_type='contour', reference_value_mean=None,\
         reference_value_covariance=None, contour_confidence_levels=0.95,\
-        parameter_renamer=(lambda x: x)):
+        parameter_renamer=(lambda x: x), tick_label_format_string='{x:.3g}',\
+        num_ticks=3, minor_ticks_per_major_tick=1, xlabel_rotation=0,\
+        xlabelpad=None, ylabel_rotation=90, ylabelpad=None):
         """
         Makes a triangle plot out of ndraw samples from the distribution which
         last generated new walker positions.
@@ -444,6 +446,18 @@ class NLFitter(object):
                                    bivariate histograms. Only used if plot_type
                                    is 'contour' or 'contourf'. Can be single
                                    number or sequence of numbers
+        parameter_renamer: function that renames parameters for labeling
+        tick_label_format_string: format string that can be called using
+                                  tick_label_format_string.format(x=loc) where
+                                  loc is the location of the tick in data
+                                  coordinates
+        num_ticks: integer number of ticks per panel, default: 3
+        minor_ticks_per_major_tick: integer number of minor ticks per major
+                                    tick
+        xlabel_rotation: rotation of x-label in degrees, default: 0
+        xlabelpad: pad size for xlabel, default: None
+        ylabel_rotation: rotation of y-label in degrees, default: 90
+        ylabelpad: pad size for ylabel, default: None
         """
         parameter_indices = self.get_parameter_indices(parameters=parameters)
         parameters = [self.parameters[index] for index in parameter_indices]
@@ -454,14 +468,21 @@ class NLFitter(object):
             plot_type=plot_type, reference_value_mean=reference_value_mean,\
             reference_value_covariance=reference_value_covariance,\
             contour_confidence_levels=contour_confidence_levels,\
-            parameter_renamer=parameter_renamer)
+            parameter_renamer=parameter_renamer,\
+            tick_label_format_string=tick_label_format_string,\
+            num_ticks=num_ticks,\
+            minor_ticks_per_major_tick=minor_ticks_per_major_tick,\
+            xlabel_rotation=xlabel_rotation, xlabelpad=xlabelpad,\
+            ylabel_rotation=ylabel_rotation, ylabelpad=ylabelpad)
     
     def jumping_distribution_set_triangle_plot(self, ndraw, source=None,\
         parameters=None, in_transformed_space=True, figsize=(8, 8), fig=None,\
         show=False, kwargs_1D={}, kwargs_2D={}, fontsize=28, nbins=100,\
         plot_type='contour', reference_value_mean=None,\
         reference_value_covariance=None, contour_confidence_levels=0.95,\
-        parameter_renamer=(lambda x: x)):
+        parameter_renamer=(lambda x: x), tick_label_format_string='{x:.3g}',\
+        num_ticks=3, minor_ticks_per_major_tick=1, xlabel_rotation=0,\
+        xlabelpad=None, ylabel_rotation=90, ylabelpad=None):
         """
         Makes a triangle plot out of ndraw samples from the proposal
         distribution.
@@ -489,6 +510,18 @@ class NLFitter(object):
                                    bivariate histograms. Only used if plot_type
                                    is 'contour' or 'contourf'. Can be single
                                    number or sequence of numbers
+        parameter_renamer: function that renames parameters for labeling
+        tick_label_format_string: format string that can be called using
+                                  tick_label_format_string.format(x=loc) where
+                                  loc is the location of the tick in data
+                                  coordinates
+        num_ticks: integer number of ticks per panel, default: 3
+        minor_ticks_per_major_tick: integer number of minor ticks per major
+                                    tick
+        xlabel_rotation: rotation of x-label in degrees, default: 0
+        xlabelpad: pad size for xlabel, default: None
+        ylabel_rotation: rotation of y-label in degrees, default: 90
+        ylabelpad: pad size for ylabel, default: None
         """
         if type(source) is type(None):
             source =\
@@ -502,7 +535,12 @@ class NLFitter(object):
             plot_type=plot_type, reference_value_mean=reference_value_mean,\
             reference_value_covariance=reference_value_covariance,\
             contour_confidence_levels=contour_confidence_levels,\
-            parameter_renamer=parameter_renamer)
+            parameter_renamer=parameter_renamer,\
+            tick_label_format_string=tick_label_format_string,\
+            num_ticks=num_ticks,\
+            minor_ticks_per_major_tick=minor_ticks_per_major_tick,\
+            xlabel_rotation=xlabel_rotation, xlabelpad=xlabelpad,\
+            ylabel_rotation=ylabel_rotation, ylabelpad=ylabelpad)
     
     @property
     def chain(self):
@@ -2018,7 +2056,9 @@ class NLFitter(object):
         reference_value_mean=None, reference_value_covariance=None,\
         contour_confidence_levels=0.95, apply_transforms_to_chain=True,\
         apply_transforms_to_reference_value=True,\
-        tick_label_format_string='{x:.3g}'):
+        tick_label_format_string='{x:.3g}', num_ticks=3,\
+        minor_ticks_per_major_tick=1, xlabel_rotation=0, xlabelpad=None,\
+        ylabel_rotation=90, ylabelpad=None):
         """
         Makes a triangle plot.
         
@@ -2065,12 +2105,24 @@ class NLFitter(object):
                                    Fisher matrix ellipses if
                                    reference_value_covariance is given as a
                                    tuple.
-        apply_transforms: if True (default), transforms are applied before
-                                             histogram-ing
+        apply_transforms_to_chain: if True (default), transforms are applied to
+                                                      chain before
+                                                      histogram-ing
+        apply_transforms_to_reference_value: if True (default), reference value
+                                                                is given in
+                                                                untransformed
+                                                                space
         tick_label_format_string: format string that can be called using
                                   tick_label_format_string.format(x=loc) where
                                   loc is the location of the tick in data
                                   coordinates
+        num_ticks: integer number of major ticks, default: 3
+        minor_ticks_per_major_tick: integer number of minor ticks per major
+                                    tick
+        xlabel_rotation: rotation of x-label in degrees, default: 0
+        xlabelpad: pad size for xlabel, default: None
+        ylabel_rotation: rotation of y-label in degrees, default: 90
+        ylabelpad: pad size for ylabel, default: None
         """
         parameter_indices = self.get_parameter_indices(parameters=parameters)
         labels = [self.parameters[parameter_index]\
@@ -2127,7 +2179,11 @@ class NLFitter(object):
             reference_value_covariance=reference_value_covariance,\
             contour_confidence_levels=contour_confidence_levels, fig=fig,\
             minima=minima, maxima=maxima,\
-            tick_label_format_string=tick_label_format_string)
+            tick_label_format_string=tick_label_format_string,\
+            num_ticks=num_ticks,\
+            minor_ticks_per_major_tick=minor_ticks_per_major_tick,\
+            xlabel_rotation=xlabel_rotation, xlabelpad=xlabelpad,\
+            ylabel_rotation=ylabel_rotation, ylabelpad=ylabelpad)
     
     def plot_univariate_histogram(self, parameter_index, walkers=None, thin=1,\
         ax=None, show=False, reference_value=None,\

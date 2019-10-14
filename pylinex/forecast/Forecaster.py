@@ -315,7 +315,7 @@ class Forecaster(object):
             if take_sqrt:
                 statistics = np.sqrt(statistics)
             (numbers, bins, patches) = ax.hist(statistics, bins=bins,\
-                histtype='step', cumulative=True, normed=True,\
+                histtype='step', cumulative=True, density=True,\
                 color=this_color, label=label, **kwargs)
             return bins
         if type(quantity_to_minimize) is type(None):
@@ -333,7 +333,8 @@ class Forecaster(object):
                     label='{!s}'.format(quantity)))
             bins = np.sort(np.concatenate(final_bins))
         if plot_reference_curve:
-            x_values = np.linspace(bins[0], bins[-1], 10 * len(bins))
+            x_values = np.concatenate([[0],\
+                np.linspace(bins[0], bins[-1], 10 * len(bins))])
             if take_sqrt:
                 y_values = stats.chi.cdf(x_values, 1)
             else:
@@ -348,6 +349,8 @@ class Forecaster(object):
         ax.legend(loc='lower right', fontsize=fontsize)
         if show:
             pl.show()
+        else:
+            return ax
     
     def close(self):
         """

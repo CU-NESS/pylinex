@@ -6,6 +6,7 @@ Date: 15 Jan 2018
 Description: File containing a simple Model which is a constant across
              channels. That constant is the sole parameter of the model.
 """
+from __future__ import division
 import numpy as np
 from distpy import GaussianDistribution
 from ..util import int_types, numerical_types
