@@ -82,7 +82,7 @@ larger_differences = 1e-5
 smaller_differences = 1e-6
 fisher_distribution_set =\
     loglikelihood.parameter_distribution_fisher_formalism(\
-    gaussian_distribution.mean.A[0], transform_list=transform_list,\
+    gaussian_distribution.internal_mean.A[0], transform_list=transform_list,\
     max_standard_deviations=max_standard_deviations,\
     prior_to_impose_in_transformed_space=prior_distribution,\
     larger_differences=larger_differences,\

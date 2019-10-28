@@ -167,8 +167,8 @@ class BasisModel(LoadableModel):
             if isinstance(prior, GaussianDistribution):
                 inverse_covariance =\
                     inverse_covariance + prior.inverse_covariance.A
-                self._last_offset =\
-                    np.dot(prior.inverse_covariance.A, prior.mean.A[0])
+                self._last_offset = np.dot(prior.inverse_covariance.A,\
+                    prior.internal_mean.A[0])
             elif type(prior) is not type(None):
                 raise TypeError("prior must either be None or a " +\
                     "GaussianDistribution object.")

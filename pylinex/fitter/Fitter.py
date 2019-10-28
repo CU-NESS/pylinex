@@ -135,7 +135,8 @@ class Fitter(Savable):
             for name in self.names:
                 key = '{!s}_prior'.format(name)
                 if key in self._priors:
-                    self._prior_mean.append(self._priors[key].mean.A[0])
+                    self._prior_mean.append(\
+                        self._priors[key].internal_mean.A[0])
                     self._prior_covariance.append(\
                         self._priors[key].covariance.A)
                     self._prior_inverse_covariance.append(\
@@ -828,8 +829,8 @@ class Fitter(Savable):
                 key = '{!s}_prior'.format(name)
                 if key in self.priors:
                     prior = self.priors[key]
-                    prior_mean = prior.mean.A[0]
-                    prior_inverse_covariance = prior.invcov.A
+                    prior_mean = prior.internal_mean.A[0]
+                    prior_inverse_covariance = prior.inverse_covariance.A
                     posterior_mean = self.subbasis_parameter_mean(name=name)
                     mean_sum = posterior_mean + prior_mean
                     mean_difference = posterior_mean - prior_mean
@@ -1160,8 +1161,8 @@ class Fitter(Savable):
             self._subbasis_prior_significances = {}
         if name not in self._subbasis_prior_significances:
             prior = self.priors[name + '_prior']
-            mean = prior.mean.A[0]
-            inverse_covariance = prior.invcov.A
+            mean = prior.internal_mean.A[0]
+            inverse_covariance = prior.inverse_covariance.A
             self._subbasis_prior_significances[name] =\
                 np.dot(mean, np.dot(inverse_covariance, mean))
         return self._subbasis_prior_significances[name]

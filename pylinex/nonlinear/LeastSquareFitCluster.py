@@ -641,7 +641,7 @@ class LeastSquareFitCluster(object):
         """
         if plot_reference_gaussian and in_transformed_space:
             reference_value_mean =\
-                self.approximate_gaussian_distribution.mean.A[0]
+                self.approximate_gaussian_distribution.internal_mean.A[0]
             reference_value_covariance =\
                 self.approximate_gaussian_distribution.covariance.A
         else:

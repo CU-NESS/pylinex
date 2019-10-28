@@ -146,7 +146,8 @@ class ConstantModel(LoadableModel):
         mean = np.sum(data * inverse_squared_error)
         if isinstance(prior, GaussianDistribution):
             inverse_variance += prior.inverse_covariance.A[0,0]
-            mean += (prior.inverse_covariance.A[0,0] * prior.mean.A[0,0])
+            mean += (prior.inverse_covariance.A[0,0] *\
+                prior.internal_mean.A[0,0])
         elif type(prior) is not type(None):
             raise TypeError("prior must be either None or a " +\
                 "GaussianDistribution object.")

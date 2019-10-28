@@ -2127,6 +2127,10 @@ class NLFitter(object):
         parameter_indices = self.get_parameter_indices(parameters=parameters)
         labels = [self.parameters[parameter_index]\
             for parameter_index in parameter_indices]
+        if type(walkers) is type(None):
+            walkers = np.arange(self.nwalkers)
+        elif type(walkers) in int_types:
+            walkers = np.arange(walkers)
         if type(parameter_renamer) is not type(None):
             labels = [parameter_renamer(label) for label in labels]
         if type(self.prior_distribution_set) is type(None):
@@ -2184,6 +2188,76 @@ class NLFitter(object):
             minor_ticks_per_major_tick=minor_ticks_per_major_tick,\
             xlabel_rotation=xlabel_rotation, xlabelpad=xlabelpad,\
             ylabel_rotation=ylabel_rotation, ylabelpad=ylabelpad)
+    
+    def univariate_confidence_intervals(self, parameters,\
+        confidence_level=0.95, walkers=None, thin=1,\
+        apply_transforms_to_chain=False, interval_type='central',\
+        include_mean=False):
+        """
+        Computes the central, left, or right confidence intervals of the given
+        confidence level for samples of one or more parameters of this fitter.
+        
+        parameters: integer index, string name, or sequence of such identifiers
+        confidence_level: confidence level of the interval(s), default: 0.95
+        walkers: the walkers to include when collecting sample
+        thin: the stride of the sample in the chain of each walker
+        apply_transforms_to_chain: if True, transforms are applied before
+                                   computing confidence intervals
+        interval_type: 'central', 'left', or 'right' specifying which way to
+                       compute the confidence interval from each sample
+        include_mean: if True, mean is included in the intervals
+        
+        returns: numpy.ndarray of shape ((3 if include_mean else 2,) if
+                 parameters is string or int else
+                 (len(parameters), (3 if include_mean else 2))) where the axis
+                 of shape 2 or 3 contains either (left, right) or
+                 (left, mean, right) and the first axis (if present) indexes
+                 the parameters for which confidence intervals were computed
+        """
+        if type(walkers) is type(None):
+            walkers = np.arange(self.nwalkers)
+        elif type(walkers) in int_types:
+            walkers = np.arange(walkers)
+        originally_single_parameter = (isinstance(parameters, basestring) or\
+            (type(parameters) in int_types))
+        if originally_single_parameter:
+            parameters = [parameters]
+        parameter_indices = self.get_parameter_indices(parameters)
+        endpoints = []
+        for parameter_index in parameter_indices:
+            sample =\
+                self.chain[:,:,parameter_index][walkers,:][:,::thin].flatten()
+            if apply_transforms_to_chain:
+                sample = self.transform_list[parameter_index](sample)
+            sample = np.sort(sample)
+            if interval_type == 'central':
+                half_of_one_minus_confidence_level = (1 - confidence_level) / 2
+                left_index = int(np.floor(\
+                    half_of_one_minus_confidence_level * (len(sample) - 1)))
+                right_index = int(np.ceil((1 -\
+                    half_of_one_minus_confidence_level) * (len(sample) - 1)))
+            elif interval_type == 'left':
+                left_index = 0
+                right_index =\
+                    int(np.ceil(confidence_level * (len(sample) - 1)))
+            elif interval_type == 'right':
+                left_index =\
+                    int(np.floor((1 - confidence_level) * (len(sample) - 1)))
+                right_index = len(sample) - 1
+            else:
+                raise ValueError("interval_type must be one of ['central', " +\
+                    "'left', 'right'].")
+            if include_mean:
+                these_endpoints =\
+                    (sample[left_index], np.mean(sample), sample[right_index])
+            else:
+                these_endpoints = (sample[left_index], sample[right_index])
+            endpoints.append(these_endpoints)
+        endpoints = np.array(endpoints)
+        if originally_single_parameter:
+            return endpoints[0]
+        else:
+            return endpoints
     
     def plot_univariate_histogram(self, parameter_index, walkers=None, thin=1,\
         ax=None, show=False, reference_value=None,\
@@ -2531,13 +2605,7 @@ class NLFitter(object):
         """
         Plots both types of lnprobability plots on a single matplotlib.Figure
         
-        walkers: if None, all walkers are shown.
-                 if int, describes the number of walkers shown in the plot
-                 if sequence, describes which walkers are shown in the plot
-        log_scale: if False (default), everything is plotted on linear scale
-                   if True, difference from maximum likelihood is plotted on a
-                            log scale (on y-axis)
-        title: string title to put on top of Figure
+        fontsize: size of font for labels
         fig: Figure instance on which to plot the log_probability chain
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns

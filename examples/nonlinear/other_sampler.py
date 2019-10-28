@@ -55,8 +55,8 @@ x_chain = flattened_chain[:,0]
 y_chain = flattened_chain[:,1]
 
 approximate_posterior = fitter.approximate_gaussian_posterior._data[0][0]
-approximate_posterior_mean = approximate_posterior.mean.A[0]
-approximate_posterior_covariance = approximate_posterior.covariance.A
+approximate_posterior_mean = approximate_posterior.mean
+approximate_posterior_covariance = approximate_posterior.variance
 
 true_mean = data
 true_covariance = np.diag(error ** 2)
