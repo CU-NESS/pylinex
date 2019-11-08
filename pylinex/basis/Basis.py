@@ -45,15 +45,19 @@ class Basis(Savable, Loadable):
     
     def dot(self, other, error=None):
         """
-        Finds the degree of overlap between the two basis objects.
+        Finds the degree of overlap between the two basis objects. The returned
+        value can be thought of as the fraction of this basis that can be fit
+        by the other basis. Due to its construction,
+        basis1.dot(basis2)*basis1.num_basis_vectors is the same as
+        basis2.dot(basis1)*basis2.num_basis_vectors. Therefore, this operation
+        is not commutative.
         
         other: another Basis object with the same number of channels (in the
                expanded space) as this one
+        error: error with which to define inner product of basis vectors
         
-        returns: a single number in [0,1) indicating the degree of overlap of
-                 the two Basis objects. This number gives a measure of how
-                 successful a simultaneous least square fit with the two bases
-                 and the given data error would be.
+        returns: a single number in [0,1] indicating the degree of overlap of
+                 the two Basis objects. Lower numbers indicate less similarity.
         """
         if not isinstance(other, Basis):
             raise TypeError("Basis objects can only be multiplied by other " +\
@@ -74,24 +78,28 @@ class Basis(Savable, Loadable):
             la.inv(np.dot(this_expanded_basis, this_expanded_basis.T))
         other_normalization =\
             la.inv(np.dot(other_expanded_basis, other_expanded_basis.T))
-        to_trace = np.dot(overlap_matrix, other_normalization)
-        to_trace = np.dot(this_normalization, to_trace)
-        to_trace = np.dot(overlap_matrix.T, to_trace)
-        return np.trace(to_trace)
+        to_trace = np.dot(this_normalization, overlap_matrix)
+        to_trace = np.dot(to_trace, other_normalization)
+        to_trace = np.dot(to_trace, overlap_matrix.T)
+        return np.trace(to_trace) / self.num_basis_vectors
     
     def __mul__(self, other):
         """
-        Finds the degree of overlap using the dot() function between this Basis
-        and other. When the '*' operator is used, the error in the data is
-        assumed to be flat across the different data channels
+        Finds the degree of overlap between the two basis objects. The returned
+        value can be thought of as the fraction of this basis that can be fit
+        by the other basis. Due to its construction,
+        (basis1*basis2)*basis1.num_basis_vectors is the same as
+        (basis2*basis1)*basis2.num_basis_vectors. Therefore, this operation
+        is not commutative. When using the * operator, the inner product
+        between basis vectors assume a weighting matrix equal to the identity
+        matrix. To use a non-identity weighting matrix, use the Basis.dot
+        function instead of the * operator and give an error keyword argument.
         
         other: another Basis object with the same number of channels (in the
                expanded space) as this one
         
-        returns: a single number in [0,1) indicating the degree of overlap of
-                 the two Basis objects. This number gives a measure of how
-                 successful a simultaneous least square fit with the two bases
-                 and a flat error spectrum would be.
+        returns: a single number in [0,1] indicating the degree of overlap of
+                 the two Basis objects. Lower numbers indicate less similarity.
         """
         return self.dot(other)
     
