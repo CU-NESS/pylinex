@@ -342,10 +342,18 @@ class Forecaster(object):
             ax.plot(x_values, y_values, color='k', linestyle='--',\
                 label='$\chi(1)$')
         ax.set_xlim((bins[0], bins[-1]))
-        ax.set_xlabel('$\\varepsilon$', size=fontsize)
-        ax.set_ylabel('CDF', size=fontsize)
+        ax.set_xlabel('# of $\sigma$', size=fontsize)
+        ax.set_ylabel('Confidence level [%]', size=fontsize)
+        ax.set_yticks(np.linspace(0, 1, 6), minor=False)
+        ax.set_yticklabels(['{:d}'.format(20 * integer)\
+            for integer in range(6)], minor=False)
+        ax.set_yticks(np.linspace(0, 1, 21), minor=True)
+        ax.set_yticklabels([], minor=True)
         ax.set_title('Signal bias statistic histogram', size=fontsize)
-        ax.tick_params(length=7.5, width=2.5, labelsize=fontsize)
+        ax.tick_params(length=7.5, width=2.5, labelsize=fontsize,\
+            which='major')
+        ax.tick_params(length=4.5, width=1.5, labelsize=fontsize,\
+            which='minor')
         ax.legend(loc='lower right', fontsize=fontsize)
         if show:
             pl.show()
