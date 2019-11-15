@@ -247,7 +247,7 @@ class Forecaster(object):
     
     def plot_subbasis_fits(self, indices, width, height, nsigma=[1, 2],\
         x_values=None, subtract_truth=False, scale_factor=1, verbose=True,\
-        xlabel=None, ylabel=None, fontsize=24, show=False):
+        xlabel=None, ylabel=None, fontsize=24, figsize=(20,20), show=False):
         """
         Plots individual fits of the target subbasis on a grid.
         
@@ -267,7 +267,7 @@ class Forecaster(object):
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
         """
-        fig = pl.figure()
+        fig = pl.figure(figsize=figsize)
         for (iindex, index) in enumerate(indices):
             ax = fig.add_subplot(width, height, iindex + 1)
             self.plotter.plot_subbasis_fit(icurve=index, nsigma=nsigma,\
@@ -282,7 +282,8 @@ class Forecaster(object):
     
     def plot_subbasis_bias_statistic_histogram(self, take_sqrt=True,\
         bins=1000, quantity_to_minimize=None, label=None, ax=None, color=None,\
-        plot_reference_curve=True, fontsize=24, show=False, **kwargs):
+        plot_reference_curve=True, fontsize=24, figsize=(12,9), show=False,\
+        **kwargs):
         """
         Plots the subbasis bias statistic histogram for the target subbasis
         name given when this Forecaster was written.
@@ -305,7 +306,7 @@ class Forecaster(object):
         """
         self.close()
         if type(ax) is type(None):
-            fig = pl.figure()
+            fig = pl.figure(figsize=figsize)
             ax = fig.add_subplot(111)
         def plot_single_histogram(qtm, this_color=None, bins=None, label=None):
             statistics = self.statistics_by_minimized_quantity(\
