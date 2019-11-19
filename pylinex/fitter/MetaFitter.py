@@ -321,12 +321,13 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
             subgroup = group.create_group('optimal_fitters')
             left_format_string = 'optimal_fitters/data_curve' +\
                 ('_{}' * (self.data.ndim - 1))
+            minimize_verbose = True
             for data_indices in np.ndindex(*self.data.shape[:-1]):
                 left_group_name = left_format_string.format(*data_indices)
                 if save_all_fitters:
                     for quantity in self.compiled_quantity:
                         indices = self.minimize_quantity(quantity.name,\
-                            data_indices)
+                            data_indices, verbose=minimize_verbose)
                         right_format_string =\
                             'fitters/{}' + ('_{}' * (self.ndim - 1))
                         right_group_name = right_format_string.format(*indices)
@@ -336,7 +337,8 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
                             group[left_group_name] = group[right_group_name]
                 else:
                     indices = self.minimize_quantity(\
-                        self.quantity_to_minimize, data_indices)
+                        self.quantity_to_minimize, data_indices,\
+                        verbose=minimize_verbose)
                     subsubgroup = group.create_group(left_group_name)
                     basis_links = basis_links_from_indices(indices)
                     (prior_mean_links, prior_covariance_links) =\
@@ -348,6 +350,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
                         prior_mean_links=prior_mean_links,\
                         prior_covariance_links=prior_covariance_links,\
                         save_channel_estimates=save_channel_estimates)
+                minimize_verbose = False
     
     def plot_grid(self, grid, title='', fig=None, ax=None, xticks=None,\
         yticks=None, xlabel='', ylabel='', show=False, norm=None, **kwargs):
