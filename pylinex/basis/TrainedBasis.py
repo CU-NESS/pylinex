@@ -314,6 +314,28 @@ class TrainedBasis(Basis):
                 1 - np.cumsum(self.normed_importances)
         return self._truncated_normed_importance_loss
     
+    @property
+    def terms_necessary_to_reach_noise_level(self):
+        """
+        Property storing the approximate number of terms needed to reach the
+        noise level of the training set that sourced this basis. It is
+        approximate because it is the number needed for the mean squared error
+        across all channels and all training set curves to be equal to 1. This
+        allows some individual training set curves to be fit slightly worse
+        than the noise level.
+        """
+        if not hasattr(self, '_terms_necessary_to_reach_noise_level'):
+            truncations = np.arange(1 + self.num_basis_vectors)
+            cumulative_squared_importance_loss = np.cumsum(np.concatenate(\
+                [[0], np.power(self.full_importances[-1::-1], 2)]))[-1::-1]
+            cumulative_squared_importance_loss =\
+                cumulative_squared_importance_loss[:len(truncations)]
+            mean_squared_error = cumulative_squared_importance_loss /\
+                self.training_set_size
+            self._terms_necessary_to_reach_noise_level =\
+                truncations[np.argmax(mean_squared_error < 1)]
+        return self._terms_necessary_to_reach_noise_level
+    
     def plot_RMS_spectrum(self, threshold=1, ax=None, show=False, title='',\
         fontsize=24, **kwargs):
         """

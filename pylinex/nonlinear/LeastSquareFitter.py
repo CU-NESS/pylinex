@@ -94,9 +94,7 @@ class LeastSquareFitter(object):
         group = hdf5_file['iterations']
         self._num_iterations = group.attrs['num_iterations']
         (successes, mins, argmins, transformed_argmins) = ([], [], [], [])
-        covariance_estimates = []
-        if isinstance(self.loglikelihood, GaussianLoglikelihood):
-            reduced_chi_squared_statistics = []
+        (covariance_estimates, reduced_chi_squared_statistics) = ([], [])
         for iteration in range(self.num_iterations):
             subgroup = group['{:d}'.format(iteration)]
             successes.append(subgroup.attrs['success'])

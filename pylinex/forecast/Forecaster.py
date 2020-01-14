@@ -279,6 +279,8 @@ class Forecaster(object):
                 fontsize=fontsize)
         if show:
             pl.show()
+        else:
+            return fig
     
     def plot_subbasis_bias_statistic_histogram(self, take_sqrt=True,\
         bins=1000, quantity_to_minimize=None, label=None, ax=None, color=None,\
