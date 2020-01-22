@@ -10,7 +10,7 @@ import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as pl
 from distpy import GaussianDistribution
-from ..util import real_numerical_types
+from ..util import real_numerical_types, sequence_types
 from ..expander import NullExpander
 from .Basis import Basis
 
@@ -64,22 +64,73 @@ class TrainedBasis(Basis):
         training_set: numpy.ndarray of shape (ncurves, nchannels)
         num_basis_vectors: number of basis vectors to keep from SVD
         error: if None, no weighting is used
+               if error is a single number, it is set to a constant array with
+                                            that value. This will yield the
+                                            same basis vectors as setting error
+                                            to None but will affect things like
+                                            the scaling of the RMS spectrum
                if error is a numpy.ndarray, it should be 1D and of length
-                                            nchannels
+                                            nchannels (i.e. expanded training
+                                            set curve length)
         expander: Expander object which expands from training set space to
                   final basis vector space
         """
-        if type(error) is type(None):
-            error = np.ones(training_set.shape[-1])
-        if type(expander) is type(None):
-            expander = NullExpander()
-        error = expander.contract_error(error)
+        self._training_set_curve_length = training_set.shape[-1]
+        self.expander = expander
+        self.error = error
         SVD_basis = weighted_SVD_basis(training_set,\
-            error=error, Neigen=num_basis_vectors)
+            error=self.error, Neigen=num_basis_vectors)
         self.basis = SVD_basis[0]
         self.training_set_space_singular_vectors = SVD_basis[2]
         self.full_importances = SVD_basis[1]
-        self.expander = expander
+    
+    @property
+    def training_set_curve_length(self):
+        """
+        Property storing the length of the training set curves that made this
+        basis.
+        """
+        if not hasattr(self, '_training_set_curve_length'):
+            raise AttributeError("training_set_curve_length was referenced " +\
+                "before it was set.")
+        return self._training_set_curve_length
+    
+    @property
+    def error(self):
+        """
+        Property storing the error used in computing SVD for this basis.
+        """
+        if not hasattr(self, '_error'):
+            raise AttributeError("error was referenced before it was set.")
+        return self._error
+    
+    @error.setter
+    def error(self, value):
+        """
+        Setter for the error property (error will be contracted to size of
+        training set curves inside this function).
+        
+        value: 1D array of same length as expanded training set curves
+        """
+        expanded_space_size =\
+            self.expander.expanded_space_size(self.training_set_curve_length)
+        if type(value) is type(None):
+            value = np.ones(expanded_space_size)
+        elif type(value) in real_numerical_types:
+            value = value * np.ones(expanded_space_size)
+        elif type(value) in sequence_types:
+            value = np.array(value)
+            if value.shape != (expanded_space_size,):
+                raise ValueError("error did not have the same shape as an " +\
+                    "expanded training set curve.")
+        else:
+            raise TypeError("error was set to neither None, a number, or " +\
+                "an array.")
+        if np.all(value > 0):
+            self._error = self.expander.contract_error(value)
+        else:
+            raise ValueError("At least one value in the error array was " +\
+                "negative.")
     
     @property
     def training_set_space_singular_vectors(self):
@@ -325,16 +376,55 @@ class TrainedBasis(Basis):
         than the noise level.
         """
         if not hasattr(self, '_terms_necessary_to_reach_noise_level'):
-            truncations = np.arange(1 + self.num_basis_vectors)
+            if np.all(self.RMS_spectrum > 1):
+                self._terms_necessary_to_reach_noise_level = None
+            else:
+                self._terms_necessary_to_reach_noise_level =\
+                    np.argmax(self.RMS_spectrum < 1)
+        return self._terms_necessary_to_reach_noise_level
+    
+    def weighted_basis_similarity_statistic(self, basis):
+        """
+        Computes the weighted basis similarity statistic between this
+        TrainedBasis and the given Basis. Note that this is different than the
+        similarity statistic between the given Basis and this TrainedBasis.
+        
+        basis: a Basis object that will be used to fit curves similar to those
+               in this training set
+        
+        returns: a statistic between 0 and 1 indicating a weighted similarity
+                 based on the training set at the heart of this basis
+        """
+        GT_sqrt_Cinv = self.basis / self.error[np.newaxis,:]
+        FT_sqrt_Cinv = basis.basis / self.error[np.newaxis,:]
+        GT_Cinv_F = np.dot(GT_sqrt_Cinv, FT_sqrt_Cinv.T)
+        _FT_Cinv_F_inv = la.inv(np.dot(FT_sqrt_Cinv, FT_sqrt_Cinv.T))
+        GT_Cinv_F__FT_Cinv_F_inv__FT_Cinv_G = np.dot(GT_Cinv_F,\
+            np.dot(_FT_Cinv_F_inv, GT_Cinv_F.T))
+        numerator_mu_term = np.dot(self.prior_mean,\
+            np.dot(GT_Cinv_F__FT_Cinv_F_inv__FT_Cinv_G, self.prior_mean))
+        denominator_mu_term = np.sum(np.power(self.prior_mean, 2))
+        numerator_sigma_term = np.trace(\
+            np.dot(self.prior_covariance, GT_Cinv_F__FT_Cinv_F_inv__FT_Cinv_G))
+        denominator_sigma_term = np.trace(self.prior_covariance)
+        numerator = numerator_mu_term + numerator_sigma_term
+        denominator = denominator_mu_term + denominator_sigma_term
+        return numerator / denominator
+    
+    @property
+    def RMS_spectrum(self):
+        """
+        Property storing the spectrum of normalized RMS values when the
+        training set at the heart of this basis is fit by this basis.
+        """
+        if not hasattr(self, '_RMS_spectrum'):
             cumulative_squared_importance_loss = np.cumsum(np.concatenate(\
                 [[0], np.power(self.full_importances[-1::-1], 2)]))[-1::-1]
             cumulative_squared_importance_loss =\
-                cumulative_squared_importance_loss[:len(truncations)]
-            mean_squared_error = cumulative_squared_importance_loss /\
-                self.training_set_size
-            self._terms_necessary_to_reach_noise_level =\
-                truncations[np.argmax(mean_squared_error < 1)]
-        return self._terms_necessary_to_reach_noise_level
+                cumulative_squared_importance_loss[:1+self.num_basis_vectors]
+            self._RMS_spectrum = np.sqrt(cumulative_squared_importance_loss /\
+                self.training_set_size)
+        return self._RMS_spectrum
     
     def plot_RMS_spectrum(self, threshold=1, ax=None, show=False, title='',\
         fontsize=24, **kwargs):
@@ -348,21 +438,15 @@ class TrainedBasis(Basis):
         kwargs: extra keyword arguments to pass on to matplotlib.pyplot.scatter
         """
         plot_xs = np.arange(1 + self.num_basis_vectors)
-        cumulative_squared_importance_loss = np.cumsum(np.concatenate(\
-            [[0], np.power(self.full_importances[-1::-1], 2)]))[-1::-1]
-        cumulative_squared_importance_loss =\
-            cumulative_squared_importance_loss[:len(plot_xs)]
-        plot_ys = np.sqrt(cumulative_squared_importance_loss /\
-            self.training_set_size)
         if ax is None:
             fig = pl.figure(figsize=(12,9))
             ax = fig.add_subplot(111)
-        ax.scatter(plot_xs, plot_ys, **kwargs)
+        ax.scatter(plot_xs, self.RMS_spectrum, **kwargs)
         ax.plot(plot_xs, np.ones_like(plot_xs) * threshold, color='k',\
             linestyle='--')
-        ylim = (10 ** int(np.log10(np.min(plot_ys)) - 1),\
-            10 ** int(np.log10(np.max(plot_ys)) + 1))
-        ax.plot([plot_xs[np.argmax(plot_ys < threshold)]] * 2, ylim,\
+        ylim = (10 ** int(np.log10(np.min(self.RMS_spectrum)) - 1),\
+            10 ** int(np.log10(np.max(self.RMS_spectrum)) + 1))
+        ax.plot([plot_xs[np.argmax(self.RMS_spectrum < threshold)]] * 2, ylim,\
             color='k', linestyle='--')
         ax.set_xlim((plot_xs[0], plot_xs[-1]))
         ax.set_ylim(ylim)

@@ -17,7 +17,7 @@ import numpy.linalg as la
 import matplotlib.pyplot as pl
 from distpy import GaussianDistribution
 from ..util import Savable, Loadable, get_hdf5_value, create_hdf5_dataset,\
-    numerical_types, sequence_types
+    numerical_types, sequence_types, real_numerical_types
 from ..expander import Expander, NullExpander, load_expander_from_hdf5_group
 
 class Basis(Savable, Loadable):
@@ -42,6 +42,97 @@ class Basis(Savable, Loadable):
         """
         self.basis = basis_vectors
         self.expander = expander
+    
+    def RMS_of_training_set_fits(self, training_set, error=None):
+        """
+        Finds the RMS vs number of terms when using this basis to fit the
+        curves in the given training set.
+        
+        training_set: training_set to fit, 2D array of shape
+                      (num_curves, num_channels)
+        error: error vector used to define dot product (usually a 1D array)
+               if error is None, function uses error=np.ones(num_channels)
+               if error is a single number, function uses that noise level at
+                                            every channel
+        
+        returns: single number representing the RMS residual when fitting the
+                 given training set with this basis. If error is None, then
+                 this number is given in the same units and scale as the
+                 training set itself. If error is a single number noise level
+                 or a 1D array of noise levels, then the error is used to
+                 normalize residuals before RMS'ing
+        """
+        if type(training_set) in sequence_types:
+            training_set = np.array(training_set)
+        else:
+            raise TypeError("training_set was not array-like.")
+        if type(error) in sequence_types:
+            error = np.array(error)
+            if error.shape != (self.basis.shape[1],):
+                raise ValueError("error was not a 1D array of length " +\
+                    "num_channels.")
+        elif type(error) is type(None):
+            error = np.ones(self.basis.shape[1])
+        elif type(error) in real_numerical_types:
+            error = error * np.ones(self.basis.shape[1])
+        else:
+            raise TypeError("error was not None, a single number, or a 1D " +\
+                "array.")
+        if training_set.ndim != 2:
+            raise ValueError("training_set was not a 2D array.")
+        if training_set.shape[1] != self.basis.shape[1]:
+            raise ValueError("training_set curves do not have same length " +\
+                "as (unexpanded) basis vectors.")
+        if type(error) is type(None):
+            weighted_basis = self.basis
+            weighted_training_set = training_set
+            inverse_self_overlap = la.inv(np.dot(self.basis, self.basis.T))
+            training_set_overlap = np.dot(self.basis, training_set.T)
+        else:
+            weighted_basis = self.basis / error[np.newaxis,:]
+            weighted_training_set = training_set / error[np.newaxis,:]
+            inverse_self_overlap =\
+                la.inv(np.dot(weighted_basis, weighted_basis.T))
+            training_set_overlap =\
+                np.dot(weighted_basis, weighted_training_set.T)
+        fit_parameters = np.dot(inverse_self_overlap, training_set_overlap).T
+        fit_residuals =\
+            weighted_training_set - np.dot(fit_parameters, weighted_basis)
+        return np.sqrt(np.mean(np.power(fit_residuals, 2)))
+    
+    def RMS_spectrum_of_training_set_fits(self, training_set, error=None):
+        """
+        Finds the RMS spectrum of this training set when fit with this basis,
+        i.e. the RMS of all residuals in the training set after fits with this
+        basis.
+        
+        training_set: training_set to fit, 2D array of shape
+                      (num_curves, num_channels)
+        error: error vector used to define dot product (usually a 1D array)
+               if error is None, function uses error=np.ones(num_channels)
+               if error is a single number, function uses that noise level at
+                                            every channel
+        
+        returns: 1D array of RMS's when using np.arange(1 + num_basis_vectors)
+                 terms. If error is None, the RMS values are the same units and
+                 scale as the training_set. If error is a single number or 1D
+                 array, the residuals are normalized by this noise level before
+                 being RMS'd
+        """
+        if type(error) is type(None):
+            spectrum = [np.sqrt(np.mean(np.power(training_set, 2)))]
+        elif type(error) in real_numerical_types:
+            spectrum = [np.sqrt(np.mean(np.power(training_set / error, 2)))]
+        elif type(error) in sequence_types:
+            spectrum = [np.sqrt(np.mean(\
+                np.power(training_set / np.array(error)[np.newaxis,:], 2)))]
+        else:
+            raise ValueError("error was not None, a single number, or a 1D " +\
+                "array.")
+        for num_terms in range(1, 1 + self.num_basis_vectors):
+            spectrum.append(self[:num_terms].RMS_of_training_set_fit(\
+                training_set, error=error))
+        return np.array(spectrum)
     
     def dot(self, other, error=None):
         """
