@@ -47,8 +47,9 @@ class Forecaster(object):
         names=None, training_sets=None, input_curve_sets=None,\
         dimensions=None, compiled_quantity=CompiledQuantity('empty'),\
         quantity_to_minimize='bias_score', expanders=None,\
-        num_curves_to_score=None, use_priors_in_fit=False, seed=None,\
-        target_subbasis_name=None, verbose=True):
+        num_curves_to_score=None, use_priors_in_fit=False,\
+        prior_covariance_expansion_factor=1., prior_covariance_diagonal=False,\
+        seed=None, target_subbasis_name=None, verbose=True):
         """
         Initializes a Forecaster.
         
@@ -93,6 +94,14 @@ class Forecaster(object):
                                       bias_score function (this may be slow)
         use_priors_in_fit: boolean determining whether priors derived from the
                            training sets should be used in the fits
+        prior_covariance_expansion_factor: factor by which prior covariance
+                                           matrices should be expanded (if they
+                                           are used), default 1
+        prior_covariance_diagonal: boolean determining whether off-diagonal
+                                   elements of the prior covariance are used or
+                                   not, default False (meaning they are used).
+                                   Setting this to true will weaken priors but
+                                   should enhance numerical stability
         seed: seed for random number generator. if None, this exact calculation
               may be difficult (not impossible) to reproduce
         target_subbasis_name: the name of the subbasis for which statistics
@@ -128,7 +137,11 @@ class Forecaster(object):
                 dimensions, compiled_quantity=compiled_quantity,\
                 quantity_to_minimize=quantity_to_minimize,\
                 expanders=expanders, num_curves_to_score=num_curves_to_score,\
-                use_priors_in_fit=use_priors_in_fit, verbose=verbose)
+                use_priors_in_fit=use_priors_in_fit,\
+                prior_covariance_expansion_factor=\
+                prior_covariance_expansion_factor,\
+                prior_covariance_diagonal=prior_covariance_diagonal,\
+                verbose=verbose)
             hdf5_file = h5py.File(self.file_name, 'w')
             if type(target_subbasis_name) is not type(None):
                 hdf5_file.attrs['target'] = target_subbasis_name

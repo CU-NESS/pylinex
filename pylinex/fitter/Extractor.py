@@ -42,7 +42,9 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
     def __init__(self, data, error, names, training_sets, dimensions,\
         compiled_quantity=CompiledQuantity('empty'),\
         quantity_to_minimize='bias_score', expanders=None,\
-        num_curves_to_score=None, use_priors_in_fit=False, verbose=True):
+        num_curves_to_score=None, use_priors_in_fit=False,\
+        prior_covariance_expansion_factor=1., prior_covariance_diagonal=False,\
+        verbose=True):
         """
         Initializes an Extractor object with the given data and error vectors,
         names, training sets, dimensions, compiled quantity, quantity to
@@ -70,6 +72,14 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         use_priors_in_fit: if True, priors derived from training set will be
                                     used in fits
                            if False, no priors are used in fits
+        prior_covariance_expansion_factor: factor by which prior covariance
+                                           matrices should be expanded (if they
+                                           are used), default 1
+        prior_covariance_diagonal: boolean determining whether off-diagonal
+                                   elements of the prior covariance are used or
+                                   not, default False (meaning they are used).
+                                   Setting this to true will weaken priors but
+                                   should enhance numerical stability
         verbose: if True, messages should be printed to the screen
         """
         self.data = data
@@ -87,6 +97,9 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             self.compiled_quantity =\
                 compiled_quantity + self.bias_score_quantity
         self.quantity_to_minimize = quantity_to_minimize
+        self.prior_covariance_expansion_factor =\
+            prior_covariance_expansion_factor
+        self.prior_covariance_diagonal = prior_covariance_diagonal
         self.use_priors_in_fit = use_priors_in_fit
         self.verbose = verbose
     
@@ -479,6 +492,57 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         return self._basis_sum
     
     @property
+    def prior_covariance_expansion_factor(self):
+        """
+        Property storing the factor by which the prior covariance matrix should
+        be expanded (default 1).
+        """
+        if not hasattr(self, '_prior_covariance_expansion_factor'):
+            raise AttributeError("prior_covariance_expansion_factor was " +\
+                "referenced before it was set.")
+        return self._prior_covariance_expansion_factor
+    
+    @prior_covariance_expansion_factor.setter
+    def prior_covariance_expansion_factor(self, value):
+        """
+        Setter for the expansion factor of the prior covariance matrix
+        
+        value: positive number (usually greater than 1)
+        """
+        if type(value) in real_numerical_types:
+            if value > 0:
+                self._prior_covariance_expansion_factor = value
+            else:
+                raise ValueError("prior_covariance_expansion_factor was " +\
+                    "set to a non-positive number.")
+        else:
+            raise TypeError("prior_covariance_expansion_factor was set to " +\
+                "a non-number.")
+    
+    @property
+    def prior_covariance_diagonal(self):
+        """
+        Property storing whether the prior covariance matrix should be taken to
+        be diagonal or not (default False).
+        """
+        if not hasattr(self, '_prior_covariance_diagonal'):
+            raise AttributeError("prior_covariance_diagonal was referenced " +\
+                "before it was set.")
+        return self._prior_covariance_diagonal
+    
+    @prior_covariance_diagonal.setter
+    def prior_covariance_diagonal(self, value):
+        """
+        Setter for whether prior covariance used should be diagonal or not.
+        
+        value: True or False
+        """
+        if type(value) in bool_types:
+            self._prior_covariance_diagonal = value
+        else:
+            raise TypeError("prior_covariance_diagonal was set to a non-bool.")
+    
+    @property
     def priors(self):
         """
         Property storing a dictionary whose keys are names of bases with
@@ -488,6 +552,10 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             self._priors = {}
             for name in self.names:
                 if self.use_priors_in_fit[name]:
+                    self.basis_sum[name].generate_gaussian_prior(\
+                    covariance_expansion_factor=\
+                    self.prior_covariance_expansion_factor,\
+                    diagonal=self.prior_covariance_diagonal)
                     self._priors['{!s}_prior'.format(name)] =\
                         self.basis_sum[name].gaussian_prior
         return self._priors
