@@ -9,7 +9,7 @@ Description: Class which uses the rest of the module to perform an end-to-end
 """
 import numpy as np
 from ..util import Savable, VariableGrid, create_hdf5_dataset, sequence_types,\
-    int_types, bool_types
+    int_types, bool_types, real_numerical_types
 from ..quantity import QuantityFinder, FunctionQuantity, CompiledQuantity
 from ..expander import Expander, NullExpander, ExpanderSet
 from ..basis import TrainedBasis, BasisSum, effective_training_set_rank
