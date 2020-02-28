@@ -8,7 +8,7 @@ Description: File containing an abstract class representing a model.
 from __future__ import division
 import numpy as np
 from distpy import TransformList
-from ..util import Savable
+from ..util import real_numerical_types, Savable, chi_squared
 
 # an error indicating everything which should be implemented by subclass
 shouldnt_instantiate_model_error = (lambda name, kind:\
@@ -369,6 +369,27 @@ class Model(Savable):
         (parameter_mean, parameter_covariance) =\
             self.quick_fit(data, error, *quick_fit_parameters)
         return data - self(parameter_mean)
+    
+    def quick_chi_squared(self, data, error, *quick_fit_parameters):
+        """
+        Computes the chi squared value associated with the residual when the
+        given data is fit with this model subject to the given error.
+        
+        data: 1D array to fit with this model
+        error: either be a single number or a 1D array of same length as data
+        
+        returns: the (reduced) chi-squared value associated with the residual
+                 when this model is used to fit the given data with the given
+                 error.
+        """
+        if type(error) == type(None):
+            raise TypeError("error cannot be None when computing chi_squared.")
+        elif type(error) in real_numerical_types:
+            error = np.ones_like(data) * error
+        residual = self.quick_residual(data, error, *quick_fit_parameters)
+        return chi_squared(residual, error=error,\
+            return_null_hypothesis_error=False,\
+            num_parameters=self.num_parameters)
     
     def fill_hdf5_group(self, group):
         """
