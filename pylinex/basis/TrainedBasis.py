@@ -365,6 +365,24 @@ class TrainedBasis(Basis):
                 1 - np.cumsum(self.normed_importances)
         return self._truncated_normed_importance_loss
     
+    def terms_necessary_to_reach_noise_level_multiple(self, multiple):
+        """
+        Function that computes the approximate number of terms needed to reach
+        the given multiple  noise level of the training set that sourced this
+        basis. It is approximate because it is the number needed for the mean
+        squared error across all channels and all training set curves to be
+        equal to multiple**2. This allows some individual training set curves
+        to be fit slightly worse than the noise level.
+        
+        multiple: multiple of noise level under consideration
+        
+        returns: 
+        """
+        if np.all(self.RMS_spectrum > multiple):
+            return None
+        else:
+            return np.argmax(self.RMS_spectrum < multiple)
+    
     @property
     def terms_necessary_to_reach_noise_level(self):
         """
@@ -376,11 +394,8 @@ class TrainedBasis(Basis):
         than the noise level.
         """
         if not hasattr(self, '_terms_necessary_to_reach_noise_level'):
-            if np.all(self.RMS_spectrum > 1):
-                self._terms_necessary_to_reach_noise_level = None
-            else:
-                self._terms_necessary_to_reach_noise_level =\
-                    np.argmax(self.RMS_spectrum < 1)
+            self._terms_necessary_to_reach_noise_level =\
+                self.terms_necessary_to_reach_noise_level_multiple(1)
         return self._terms_necessary_to_reach_noise_level
     
     def weighted_basis_similarity_statistic(self, basis):

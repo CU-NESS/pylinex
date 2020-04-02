@@ -35,7 +35,7 @@ class Fitter(Savable):
         basis_sum: a BasisSum object (or a Basis object, which is converted
                    internally to a BasisSum of one Basis with the name 'sole')
         data: 1D vector of same length as vectors in basis_sum or 2D
-              numpy.ndarray of shape (ncurves, )
+              numpy.ndarray of shape (ncurves, nchannels)
         error: 1D vector of same length as vectors in basis_sum containing only
                positive numbers
         **priors: keyword arguments where the keys are exactly the names of the
