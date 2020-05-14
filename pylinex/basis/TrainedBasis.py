@@ -459,7 +459,8 @@ class TrainedBasis(Basis):
         ax.scatter(plot_xs, self.RMS_spectrum, **kwargs)
         ax.plot(plot_xs, np.ones_like(plot_xs) * threshold, color='k',\
             linestyle='--')
-        ylim = (10 ** int(np.log10(np.min(self.RMS_spectrum)) - 1),\
+        ylim = (10 ** int(np.log10(\
+            np.min(self.RMS_spectrum[self.RMS_spectrum > 0])) - 1),\
             10 ** int(np.log10(np.max(self.RMS_spectrum)) + 1))
         ax.plot([plot_xs[np.argmax(self.RMS_spectrum < threshold)]] * 2, ylim,\
             color='k', linestyle='--')

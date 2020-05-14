@@ -12,7 +12,7 @@ import numpy.linalg as npla
 import scipy.linalg as scila
 import matplotlib.pyplot as pl
 from distpy import GaussianDistribution
-from ..util import Savable, create_hdf5_dataset
+from ..util import Savable, create_hdf5_dataset, psi_squared
 from ..basis import Basis, BasisSum
 from .TrainingSetIterator import TrainingSetIterator
 try:
@@ -539,7 +539,7 @@ class Fitter(Savable):
     def likelihood_bias_statistic(self):
         """
         Property storing the maximum value of the loglikelihood. This is a
-        negative number equal to (delta^T C^{-1} delta) where delta is the
+        number equal to (delta^T C^{-1} delta) where delta is the
         likelihood_channel_bias. It is equal to -2 times the loglikelihood.
         """
         if not hasattr(self, '_likelihood_bias_statistic'):
@@ -558,6 +558,8 @@ class Fitter(Savable):
     @property
     def degrees_of_freedom(self):
         """
+        Property storing the difference between the number of channels and the
+        number of parameters.
         """
         if not hasattr(self, '_degrees_of_freedom'):
             self._degrees_of_freedom = self.num_channels - self.num_parameters
@@ -574,6 +576,30 @@ class Fitter(Savable):
             self._normalized_likelihood_bias_statistic =\
                 self.likelihood_bias_statistic / self.degrees_of_freedom
         return self._normalized_likelihood_bias_statistic
+    
+    @property
+    def chi_squared(self):
+        """
+        Property that returns the reduced chi-squared values of the fit(s) in
+        this Fitter.
+        """
+        return self.normalized_likelihood_bias_statistic
+    
+    @property
+    def psi_squared(self):
+        """
+        Property storing the reduced psi-squared values of the fit(s) in this
+        Fitter.
+        """
+        if not hasattr(self, '_psi_squared'):
+            if self.multiple_data_curves:
+                self._psi_squared =\
+                    np.array([psi_squared(bias, error=self.error)\
+                    for bias in self.channel_bias])
+            else:
+                self._psi_squared =\
+                    psi_squared(self.channel_bias, error=self.error)
+        return self._psi_squared
     
     @property
     def maximum_loglikelihood(self):

@@ -12,8 +12,8 @@ import numpy as np
 from scipy.special import erfinv
 import matplotlib.pyplot as pl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from distpy import TransformList, GaussianDistribution, DistributionSet,\
-    JumpingDistributionSet
+from distpy import TransformList, TransformSet, GaussianDistribution,\
+    DistributionSet, JumpingDistributionSet
 from ..util import sequence_types, real_numerical_types, bool_types,\
     int_types, univariate_histogram, bivariate_histogram, triangle_plot
 from ..model import CompoundModel
@@ -369,9 +369,14 @@ class NLFitter(object):
                 gc.collect()
         self._guess_distribution_set = DistributionSet.load_from_hdf5_group(\
             self.file['guess_distribution_sets/chunk{:d}'.format(ichunk)])
-        self._jumping_distribution_set =\
-            JumpingDistributionSet.load_from_hdf5_group(\
-            self.file['jumping_distribution_sets/chunk{:d}'.format(ichunk)])
+        if 'chunk{:d}'.format(ichunk) in\
+            self.file['jumping_distribution_sets']:
+            self._jumping_distribution_set =\
+                JumpingDistributionSet.load_from_hdf5_group(\
+                self.file['jumping_distribution_sets/chunk{:d}'.format(\
+                ichunk)])
+        else:
+            self._jumping_distribution_set = None
         if 'chunk{:d}'.format(ichunk) in self.file['prior_distribution_sets']:
             self._prior_distribution_set =\
                 DistributionSet.load_from_hdf5_group(\
@@ -733,7 +738,12 @@ class NLFitter(object):
         JumpingDistributionSet.
         """
         if not hasattr(self, '_transform_set'):
-            self._transform_set = self.jumping_distribution_set.transform_set
+            if type(self.jumping_distribution_set) is type(None):
+                self._transform_set = TransformSet({parameter: None\
+                    for parameter in self.parameters})
+            else:
+                self._transform_set =\
+                    self.jumping_distribution_set.transform_set
         return self._transform_set
     
     @property
