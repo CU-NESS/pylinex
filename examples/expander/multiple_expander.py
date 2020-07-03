@@ -1,10 +1,11 @@
 """
-File: examples/expander/null_expander.py
+File: examples/expander/multiple_expander.py
 Author: Keith Tauscher
-Date: 10 Sep 2017
+Date: 1 Jul 2020
 
-Description: Example of how to create and use a NullExpander object, which does
-             nothing to its inputs.
+Description: Example of how to create and use a MultipleExpander object, which
+             multiplies one spectra by (possibly) multiple factors,
+             concatenating the results.
 """
 import os
 import numpy as np
@@ -25,7 +26,7 @@ for array in arrays:
 contracted_error = np.ones(100) / np.sqrt(np.sum(np.power(multiples, 2)))
 assert np.all(contracted_error == expander.contract_error(error))
 
-file_name = 'test_null_expander_TEMP.hdf5'
+file_name = 'test_multiple_expander_TEMP.hdf5'
 expander.save(file_name)
 try:
     assert expander == load_expander_from_hdf5_file(file_name)

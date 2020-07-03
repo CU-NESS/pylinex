@@ -1,10 +1,10 @@
 """
-File: examples/expander/null_expander.py
+File: examples/expander/derivative_expander.py
 Author: Keith Tauscher
-Date: 10 Sep 2017
+Date: 1 Jul 2020
 
-Description: Example of how to create and use a NullExpander object, which does
-             nothing to its inputs.
+Description: Example of how to create and use a DerivativeExpander object,
+             which performs a finite difference calculation on its inputs.
 """
 from __future__ import division
 import os

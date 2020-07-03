@@ -60,6 +60,32 @@ class MatrixExpander(Expander):
             raise TypeError("matrix was set to an array of less than 2 " +\
                             "dimensions.")
     
+    def make_expansion_matrix(self, original_space_size):
+        """
+        Computes the matrix of this expander.
+        
+        original_space_size: size of unexpanded space
+        
+        returns: expansion matrix of this expander
+        """
+        if original_space_size != self.matrix.shape[-1]:
+            raise ValueError("Given original_space_size is not the number " +\
+                "of columns of the matrix this MatrixExpander is based upon.")
+        return self.matrix
+    
+    def expansion_matrix(self, original_space_size):
+        """
+        Computes the matrix of this expander.
+        
+        original_space_size: size of unexpanded space
+        
+        returns: expansion matrix of this expander
+        """
+        if original_space_size != self.matrix.shape[-1]:
+            raise ValueError("Given original_space_size is not the number " +\
+                "of columns of the matrix this MatrixExpander is based upon.")
+        return self.matrix
+    
     def copy(self):
         """
         Finds and returns a deep copy of this expander.

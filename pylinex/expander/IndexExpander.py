@@ -16,7 +16,9 @@ class IndexExpander(Expander):
     """
     Class representing an Expander that interprets input as flattened version
     of an ND shape and expands it to the given output shape before
-    reflattening.
+    reflattening. make_expansion_matrix method is intentionally left off so
+    that the default one defined in the Expander class is used. This default
+    method computes the full expansion matrix iteratively.
     """
     def __init__(self, expanded_shape, axis, indices, modulating_factors=1,\
         pad_value=0):
@@ -38,6 +40,19 @@ class IndexExpander(Expander):
         self.indices = indices
         self.modulating_factors = modulating_factors
         self.pad_value = pad_value
+    
+    def make_expansion_matrix(self, original_space_size):
+        """
+        Computes the matrix of this expander.
+        
+        original_space_size: size of unexpanded space
+        
+        returns: expansion matrix of this expander
+        """
+        if pad_value != 0:
+            raise ValueError("If pad_value is not zero, then Expander " +\
+                "cannot be represented by an expansion matrix.")
+        return Expander.make_expansion_matrix(self, original_space_size)
     
     @property
     def expanded_shape(self):

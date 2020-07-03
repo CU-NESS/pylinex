@@ -12,10 +12,13 @@ from .PadExpander import PadExpander
 from .AxisExpander import AxisExpander
 from .IndexExpander import IndexExpander
 from .RepeatExpander import RepeatExpander
+from .MultipleExpander import MultipleExpander
 from .ModulationExpander import ModulationExpander
 from .MatrixExpander import MatrixExpander
 from .CompositeExpander import CompositeExpander
 from .ShapedExpander import ShapedExpander
+from .DerivativeExpander import DerivativeExpander
+from .ExpanderSum import ExpanderSum
 
 def load_expander_from_hdf5_group(group):
     """
@@ -57,20 +60,30 @@ def load_expander_from_hdf5_group(group):
     elif class_name == 'RepeatExpander':
         nrepeats = group.attrs['nrepeats']
         return RepeatExpander(nrepeats)
+    elif class_name == 'MultipleExpander':
+        multiplying_factors = get_hdf5_value(group['multiplying_factors'])
+        return MultipleExpander(multiplying_factors)
     elif class_name == 'ModulationExpander':
         modulating_factors = get_hdf5_value(group['modulating_factors'])
         return ModulationExpander(modulating_factors)
     elif class_name == 'MatrixExpander':
         matrix = get_hdf5_value(group['matrix'])
         return MatrixExpander(matrix)
-    elif class_name == 'CompositeExpander':
+    elif class_name == 'DerivativeExpander':
+        differences = group.attrs['differences']
+        interpolate = group.attrs['interpolate']
+        return DerivativeExpander(differences, interpolate=interpolate)
+    elif class_name in ['CompositeExpander', 'ExpanderSum']:
         expanders = []
         iexpander = 0
         while ('expander_{}'.format(iexpander)) in group:
             subgroup = group['expander_{}'.format(iexpander)]
             expanders.append(load_expander_from_hdf5_group(subgroup))
             iexpander += 1
-        return CompositeExpander(*expanders)
+        if class_name == 'CompositeExpander':
+            return CompositeExpander(*expanders)
+        else:
+            return ExpanderSum(*expanders)
     elif class_name == 'ShapedExpander':
         input_shape = tuple(group.attrs['input_shape'])
         output_shape = tuple(group.attrs['output_shape'])

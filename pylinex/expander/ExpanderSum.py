@@ -183,6 +183,7 @@ class ExpanderSum(Expander):
                 elif oexpander == sexpander:
                     accounted_for = True
                     others_accounted_for.append(ioexpander)
+                    break
             if not accounted_for:
                 return False
         return True

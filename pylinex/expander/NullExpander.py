@@ -14,6 +14,16 @@ class NullExpander(Expander):
     Class representing an Expander which doesn't actually do anything to its
     inputs. It simply returns them back.
     """
+    def make_expansion_matrix(self, original_space_size):
+        """
+        Computes the matrix of this expander.
+        
+        original_space_size: size of unexpanded space
+        
+        returns: expansion matrix of this expander
+        """
+        return np.identity(original_space_size)
+    
     def copy(self):
         """
         Finds and returns a deep copy of this expander.

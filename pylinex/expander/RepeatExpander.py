@@ -46,6 +46,17 @@ class RepeatExpander(Expander):
         else:
             raise TypeError("nrepeats was set to a non-integer.")
     
+    def make_expansion_matrix(self, original_space_size):
+        """
+        Computes the matrix of this expander.
+        
+        original_space_size: size of unexpanded space
+        
+        returns: expansion matrix of this expander
+        """
+        return np.concatenate(\
+            [np.identity(original_space_size)] * self.nrepeats, axis=0)
+    
     def copy(self):
         """
         Finds and returns a deep copy of this expander.

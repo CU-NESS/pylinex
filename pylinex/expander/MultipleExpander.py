@@ -18,7 +18,7 @@ class MultipleExpander(Expander):
     """
     def __init__(self, multiplying_factors):
         """
-        Initialized a new ModulationExpander with the new modulating factors.
+        Initialized a new MultipleExpander with the new multiplying factors.
         
         multiplying_factors: numpy.ndarray whose length is the ratio of the
                              expanded space size to the original space size.
@@ -28,7 +28,7 @@ class MultipleExpander(Expander):
     @property
     def multiplying_factors(self):
         """
-        Property storing the factors by which inputs should be modulated.
+        Property storing the factors by which inputs should be multiplied.
         """
         if not hasattr(self, '_multiplying_factors'):
             raise AttributeError("multiplying_factors was referenced " +\
@@ -217,7 +217,7 @@ class MultipleExpander(Expander):
         returns: True if this object and other are identical,
                  False otherwise
         """
-        if isinstance(other, ModulationExpander):
+        if isinstance(other, MultipleExpander):
             if self.multiplying_factors.shape ==\
                 other.multiplying_factors.shape:
                 return np.allclose(self.multiplying_factors,\

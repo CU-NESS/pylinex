@@ -180,8 +180,11 @@ class DerivativeExpander(Expander):
         self.check_original_space_size(len(vector))
         midpoint_derivatives = (vector[1:] - vector[:-1]) / self.differences
         if self.interpolate:
-            low_fraction = self.differences[1:] /\
-                (self.differences[1:] + self.differences[:-1])
+            if self.single_number_differences:
+                low_fraction = 0.5
+            else:
+                low_fraction = self.differences[1:] /\
+                    (self.differences[1:] + self.differences[:-1])
             interpolated_derivatives =\
                 (low_fraction * midpoint_derivatives[:-1]) +\
                 ((1 - low_fraction) * midpoint_derivatives[1:])

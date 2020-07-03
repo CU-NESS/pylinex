@@ -6,6 +6,7 @@ Date: 3 Sep 2017
 Description: File containing a class representing an Expander which expands by
              successively applying a sequence of individual Expander objects.
 """
+import numpy as np
 from ..util import sequence_types
 from .Expander import Expander
 
@@ -23,6 +24,27 @@ class CompositeExpander(Expander):
                    compatible.
         """
         self.expanders = expanders
+    
+    def make_expansion_matrix(self, original_space_size):
+        """
+        Computes the matrix of this expander by multiplying the matrices of the
+        component expanders.
+        
+        original_space_size: size of unexpanded space
+        
+        returns: expansion matrix of this expander
+        """
+        current_matrix = None
+        current_space_size = original_space_size
+        for expander in self.expanders:
+            this_matrix = expander.make_expansion_matrix(current_space_size)
+            if type(current_matrix) is type(None):
+                current_matrix = this_matrix
+            else:
+                current_matrix = np.dot(this_matrix, current_matrix)
+            current_space_size =\
+                expander.expanded_space_size(current_space_size)
+        return current_matrix
     
     @property
     def expanders(self):

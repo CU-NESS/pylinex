@@ -182,7 +182,12 @@ class ExpandedModel(Model):
         """
         if type(error) is type(None):
             error = np.ones_like(data)
-        smaller_data = self.expander.invert(data, error)
+        try:
+            smaller_data = self.expander.invert(data, error)
+        except:
+            raise NotImplementedError("This ExpandedModel does not have a " +\
+                "quick_fit function because the Expander it was made with " +\
+                "does not implement the invert method.")
         smaller_error = self.expander.contract_error(error)
         return self.model.quick_fit(smaller_data, smaller_error,\
             quick_fit_parameters=quick_fit_parameters, prior=prior)

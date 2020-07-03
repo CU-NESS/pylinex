@@ -36,6 +36,28 @@ class AxisExpander(Expander):
         self.index = index
         self.pad_value = pad_value
     
+    def make_expansion_matrix(self, original_space_size):
+        """
+        Computes the matrix of this expander.
+        
+        original_space_size: size of unexpanded space
+        
+        returns: expansion matrix of this expander
+        """
+        if pad_value != 0:
+            raise ValueError("If pad_value is not zero, then Expander " +\
+                "cannot be represented by an expansion matrix.")
+        if original_space_size != np.prod(self.old_shape):
+            raise ValueError("original_space_size is not compatible with " +\
+                "the old_shape given at initialization.")
+        old_indices = np.arange(original_space_size)
+        expanded_old_indices = self.apply(old_indices + 1) - 1
+        new_indices = np.unique(expanded_old_indices, return_index=True)[1][1:]
+        expansion_matrix =\
+            np.zeros((np.prod(self.new_shape), np.prod(self.old_shape)))
+        expansion_matrix[new_indices,old_indices] = 1
+        return expansion_matrix
+    
     @property
     def old_shape(self):
         """

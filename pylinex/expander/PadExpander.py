@@ -38,6 +38,24 @@ class PadExpander(Expander):
         self.pads_after = pads_after
         self.pad_value = pad_value
     
+    def make_expansion_matrix(self, original_space_size):
+        """
+        Computes the matrix of this expander.
+        
+        original_space_size: size of unexpanded space
+        
+        returns: expansion matrix of this expander
+        """
+        if self.pad_value != 0:
+            raise ValueError("If pad_value is not zero, then Expander " +\
+                "cannot be represented by an expansion matrix.")
+        (pads_before, pads_after) =\
+            self.get_pad_sizes_from_original_space_length(original_space_size)
+        first_pad = np.zeros((pads_before, original_space_size))
+        second_pad = np.zeros((pads_after, original_space_size))
+        in_between = np.identity(original_space_size)
+        return np.concatenate([first_pad, in_between, second_pad], axis=0)
+    
     def check_and_reprocess_pad_number(self, pad_number):
         """
         Checks the given pad_number string to see if it has the right format

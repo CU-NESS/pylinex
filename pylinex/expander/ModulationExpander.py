@@ -7,7 +7,6 @@ Description: File containing class representing an Expander which expands its
              inputs by multiplying it by a set of modulating factors.
 """
 import numpy as np
-import numpy.linalg as la
 from ..util import create_hdf5_dataset, sequence_types
 from .Expander import Expander
 
@@ -52,6 +51,22 @@ class ModulationExpander(Expander):
             raise TypeError("modulating_factors should be an array of at " +\
                 "least one dimension whose last axis represents the space " +\
                 "of the input.")
+    
+    def make_expansion_matrix(self, original_space_size):
+        """
+        Computes the matrix of this expander.
+        
+        original_space_size: size of unexpanded space
+        
+        returns: expansion matrix of this expander
+        """
+        if original_space_size != self.input_size:
+            raise ValueError("original_space_size was not the same size as " +\
+                "input size.")
+        modulating_factors =\
+            np.reshape(self.modulating_factors, (-1, self.input_size))
+        return np.concatenate([np.diag(modulating_factor)\
+            for modulating_factor in modulating_factors], axis=0)
     
     def copy(self):
         """
