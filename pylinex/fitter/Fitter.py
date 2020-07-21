@@ -8,13 +8,12 @@ Description: File containing a class which computes fits of data using linear
              the signal estimate (with error), parameter covariance, and more.
 """
 import numpy as np
-import numpy.linalg as npla
-import scipy.linalg as scila
+import numpy.linalg as la
 import matplotlib.pyplot as pl
 from distpy import GaussianDistribution
 from ..util import Savable, create_hdf5_dataset, psi_squared
-from ..basis import Basis, BasisSum
 from .TrainingSetIterator import TrainingSetIterator
+from .BaseFitter import BaseFitter
 try:
     # this runs with no issues in python 2 but raises error in python 3
     basestring
@@ -22,7 +21,7 @@ except:
     # this try/except allows for python 2/3 compatible string type checking
     basestring = str
 
-class Fitter(Savable):
+class Fitter(BaseFitter, Savable):
     """
     An object which takes as inputs a BasisSum object and data and error
     vectors and outputs statistics about the fit of the data assuming the error
@@ -50,171 +49,6 @@ class Fitter(Savable):
         self.error = error
     
     @property
-    def basis_sum(self):
-        """
-        Property storing the BasisSum object whose basis vectors will be
-        used by this object in the fit.
-        """
-        if not hasattr(self, '_basis_sum'):
-            raise AttributeError("basis_sum was referenced before it was " +\
-                                 "set. This shouldn't happen. Something is " +\
-                                 "wrong.")
-        return self._basis_sum
-    
-    @basis_sum.setter
-    def basis_sum(self, value):
-        """
-        Allows user to set basis_sum property.
-        
-        value: BasisSum object or, more generally, a Basis object containing
-               the basis vectors with which to perform the fit
-        """
-        if isinstance(value, BasisSum):
-            self._basis_sum = value
-        elif isinstance(value, Basis):
-            self._basis_sum = BasisSum('sole', value)
-        else:
-            raise TypeError("basis_sum was neither a BasisSum or a " +\
-                            "different Basis object.")
-    
-    @property
-    def sizes(self):
-        """
-        Property storing a dictionary with basis names as keys and the number
-        of basis vectors in that basis as values.
-        """
-        if not hasattr(self, '_sizes'):
-            self._sizes = self.basis_sum.sizes
-        return self._sizes
-    
-    @property
-    def names(self):
-        """
-        Property storing the names of the component Bases of the BasisSum.
-        """
-        if not hasattr(self, '_names'):
-            self._names = self.basis_sum.names
-        return self._names
-    
-    @property
-    def has_priors(self):
-        """
-        Property storing whether or not priors will be used in the fit.
-        """
-        if not hasattr(self, '_has_priors'):
-            self._has_priors = bool(self.priors)
-        return self._has_priors
-    
-    @property
-    def priors(self):
-        """
-        Property storing the priors provided to this Fitter at initialization.
-        It should be a dictionary with keys of the form (name+'_prior') and
-        values which are GaussianPrior objects.
-        """
-        if not hasattr(self, '_priors'):
-            self._priors = {}
-        return self._priors
-    
-    @priors.setter
-    def priors(self, value):
-        """
-        Sets the priors property.
-        
-        value: should be a dictionary which is either a) empty, or b) filled
-               with keys of the form (name+'_prior') and values which are
-               GaussianPrior objects.
-        """
-        self._priors = value
-        self._has_all_priors = False
-        if self.has_priors:
-            self._has_all_priors = True
-            self._prior_mean = []
-            self._prior_covariance = []
-            self._prior_inverse_covariance = []
-            for name in self.names:
-                key = '{!s}_prior'.format(name)
-                if key in self._priors:
-                    self._prior_mean.append(\
-                        self._priors[key].internal_mean.A[0])
-                    self._prior_covariance.append(\
-                        self._priors[key].covariance.A)
-                    self._prior_inverse_covariance.append(\
-                        self._priors[key].inverse_covariance.A)
-                else:
-                    nparams = self.basis_sum[name].num_basis_vectors
-                    self._prior_mean.append(np.zeros(nparams))
-                    self._prior_covariance.append(np.zeros((nparams, nparams)))
-                    self._prior_inverse_covariance.append(\
-                        np.zeros((nparams, nparams)))
-                    self._has_all_priors = False
-            self._prior_mean = np.concatenate(self._prior_mean)
-            self._prior_covariance = scila.block_diag(*self._prior_covariance)
-            self._prior_inverse_covariance =\
-                scila.block_diag(*self._prior_inverse_covariance)
-    
-    @property
-    def has_all_priors(self):
-        """
-        Property storing boolean describing whether all basis sets have priors.
-        """
-        if not hasattr(self, '_has_all_priors'):
-            raise AttributeError("has_all_priors was referenced before it " +\
-                "was set. It can't be referenced until the priors dict " +\
-                "exists.")
-        return self._has_all_priors
-    
-    @property
-    def prior_mean(self):
-        """
-        Property storing the mean parameter vector of the prior distribution.
-        It is a 1D numpy.ndarray with an element for each basis vector.
-        """
-        if not hasattr(self, '_prior_mean'):
-            raise AttributeError("prior_mean was referenced before it was " +\
-                                 "set. Something is wrong. This shouldn't " +\
-                                 "happen.")
-        return self._prior_mean
-    
-    @property
-    def prior_inverse_covariance(self):
-        """
-        Property storing the inverse covariance matrix of the prior
-        distribution. It is a square 2D numpy.ndarray with diagonal elements
-        for each basis vector.
-        """
-        if not hasattr(self, '_prior_inverse_covariance'):
-            raise AttributeError("prior_inverse_covariance was referenced " +\
-                                 "before it was set. Something is wrong. " +\
-                                 "This shouldn't happen.")
-        return self._prior_inverse_covariance
-    
-    @property
-    def prior_inverse_covariance_times_mean(self):
-        """
-        Property storing the vector result of the matrix multiplication of the
-        prior inverse covariance matrix and the prior mean vector. This
-        quantity appears in the formula for the posterior mean parameter
-        vector.
-        """
-        if not hasattr(self, '_prior_inverse_covariance_times_mean'):
-            self._prior_inverse_covariance_times_mean =\
-                np.dot(self.prior_inverse_covariance, self.prior_mean)
-        return self._prior_inverse_covariance_times_mean
-    
-    @property
-    def prior_covariance(self):
-        """
-        Property storing the prior covariance matrix. It is a square 2D
-        numpy.ndarray with a diagonal element for each basis vector.
-        """
-        if not hasattr(self, '_prior_covariance'):
-            raise AttributeError("prior_covariance was referenced before " +\
-                                 "it was set. Something is wrong. This " +\
-                                 "shouldn't happen.")
-        return self._prior_covariance
-    
-    @property
     def prior_significance(self):
         """
         Property storing the quantity, mu^T Lambda^{-1} mu, where mu is the
@@ -237,84 +71,8 @@ class Fitter(Savable):
             for key in self.priors:
                 this_prior_covariance = self.priors[key].covariance.A
                 self._log_prior_covariance_determinant +=\
-                    npla.slogdet(this_prior_covariance)[1]
+                    la.slogdet(this_prior_covariance)[1]
         return self._log_prior_covariance_determinant
-    
-    @property
-    def data(self):
-        """
-        Property storing the 1D (2D) data vector (matrix) to fit.
-        """
-        if not hasattr(self, '_data'):
-            raise AttributeError("data wasn't set before it was " +\
-                                 "referenced. Something is wrong. This " +\
-                                 "shouldn't happen.")
-        return self._data
-    
-    @data.setter
-    def data(self, value):
-        """
-        Allows user to set the data property.
-        
-        value: must be a 1D numpy.ndarray with the same length as the basis
-               vectors.
-        """
-        value = np.array(value)
-        if value.ndim in [1, 2]:
-            if value.shape[-1] == self.num_channels:
-                self._data = value
-            else:
-                raise ValueError("data curve(s) did not have the same " +\
-                                 "length as the basis functions.")
-        else:
-            raise ValueError("data was neither 1- or 2-dimensional.")
-    
-    @property
-    def multiple_data_curves(self):
-        """
-        Property storing a bool describing whether this Fitter contains
-        multiple data curves (True) or not (False).
-        """
-        if not hasattr(self, '_multiple_data_curves'):
-            self._multiple_data_curves = (self.data.ndim == 2)
-        return self._multiple_data_curves
-    
-    @property
-    def error(self):
-        """
-        Property storing 1D error vector with which to weight the least square
-        fit.
-        """
-        if not hasattr(self, '_error'):
-            raise AttributeError("error wasn't set before it was " +\
-                                 "referenced. Something is wrong. This " +\
-                                 "shouldn't happen.")
-        return self._error
-    
-    @error.setter
-    def error(self, value):
-        """
-        Setter for the error property.
-        
-        value: 1D vector of positive numbers with which to weight the fit
-        """
-        if type(value) is type(None):
-            self._error = np.ones(self.num_channels)
-        else:
-            value = np.array(value)
-            if value.shape == (self.num_channels,):
-                self._error = value
-            else:
-                raise ValueError("error didn't have the same length as the " +\
-                                 "basis functions.")
-    
-    @property
-    def num_channels(self):
-        """
-        Property storing the number of data channels in this fit. This should
-        be the length of the data and error vectors.
-        """
-        return self.basis_sum.num_larger_channel_set_indices
     
     @property
     def data_significance(self):
@@ -387,43 +145,6 @@ class Fitter(Savable):
         return self._model_complexity_logL_variance
     
     @property
-    def weighted_basis(self):
-        """
-        Property storing the basis functions of the basis set weighted down by
-        the error. This is the one actually used in the calculations.
-        """
-        if not hasattr(self, '_weighted_basis'):
-            self._weighted_basis =\
-                self.basis_sum.basis / self.error[np.newaxis,:]
-        return self._weighted_basis
-    
-    @property
-    def weighted_data(self):
-        """
-        Property storing the data vector weighted down by the error. This is
-        the one that actually goes into the calculation of the mean and
-        covariance of the posterior distribution.
-        """
-        if not hasattr(self, '_weighted_data'):
-            if self.multiple_data_curves:
-                self._weighted_data = self.data / self.error[np.newaxis,:]
-            else:
-                self._weighted_data = self.data / self.error
-        return self._weighted_data
-    
-    @property
-    def overlap_matrix(self):
-        """
-        Property storing the matrix of overlaps between the weighted basis
-        vectors. It is an NxN numpy.ndarray where N is the total number of
-        basis vectors.
-        """
-        if not hasattr(self, '_overlap_matrix'):
-            self._overlap_matrix =\
-                np.dot(self.weighted_basis, self.weighted_basis.T)
-        return self._overlap_matrix
-    
-    @property
     def basis_dot_products(self):
         """
         Property storing the dot products between the Basis objects underlying
@@ -453,7 +174,7 @@ class Fitter(Savable):
         matrix.
         """
         if not hasattr(self, '_parameter_inverse_covariance'):
-            self._parameter_inverse_covariance = self.overlap_matrix
+            self._parameter_inverse_covariance = self.basis_overlap_matrix
             if self.has_priors:
                 self._parameter_inverse_covariance =\
                     self._parameter_inverse_covariance +\
@@ -469,7 +190,7 @@ class Fitter(Savable):
         if not hasattr(self, '_likelihood_parameter_covariance'):
             if self.has_priors:
                 self._likelihood_parameter_covariance =\
-                    npla.inv(self.overlap_matrix)
+                    la.inv(self.basis_overlap_matrix)
             else:
                 self._likelihood_parameter_covariance =\
                     self.parameter_covariance
@@ -620,7 +341,7 @@ class Fitter(Savable):
         """
         if not hasattr(self, '_parameter_covariance'):
             self._parameter_covariance =\
-                npla.inv(self.parameter_inverse_covariance)
+                la.inv(self.parameter_inverse_covariance)
         return self._parameter_covariance
     
     @property
@@ -631,7 +352,7 @@ class Fitter(Savable):
         """
         if not hasattr(self, '_log_parameter_covariance_determinant'):
             self._log_parameter_covariance_determinant =\
-                npla.slogdet(self.parameter_covariance)[1]
+                la.slogdet(self.parameter_covariance)[1]
         return self._log_parameter_covariance_determinant
     
     @property
@@ -1205,7 +926,7 @@ class Fitter(Savable):
             self._subbasis_parameter_inverse_covariances = {}
         if name not in self._subbasis_parameter_inverse_covariances:
             self._subbasis_parameter_inverse_covariances[name] =\
-                npla.inv(self.subbasis_parameter_covariance(name=name))
+                la.inv(self.subbasis_parameter_covariance(name=name))
         return self._subbasis_parameter_inverse_covariances[name]
 
     def subbases_overlap_matrix(self, row_name=None, column_name=None):
@@ -1223,7 +944,7 @@ class Fitter(Savable):
         """
         row_slice = self.basis_sum.slices_by_name[row_name]
         column_slice = self.basis_sum.slices_by_name[column_name]
-        return self.overlap_matrix[:,column_slice][row_slice]
+        return self.basis_overlap_matrix[:,column_slice][row_slice]
     
     def subbasis_parameter_covariance(self, name=None):
         """
@@ -1258,7 +979,7 @@ class Fitter(Savable):
             self._subbasis_log_parameter_covariance_determinants = {}
         if name not in self._subbasis_log_parameter_covariance_determinants:
             self._subbasis_log_parameter_covariance_determinants[name] =\
-                npla.slogdet(self.subbasis_parameter_covariance(name=name))[1]
+                la.slogdet(self.subbasis_parameter_covariance(name=name))[1]
         return self._subbasis_log_parameter_covariance_determinants[name]
     
     def subbasis_log_prior_covariance_determinant(self, name=None):
@@ -1276,7 +997,7 @@ class Fitter(Savable):
             self._subbasis_log_prior_covariance_determinants = {}
         if name not in self._subbasis_log_prior_covariance_determinants:
             self._subbasis_log_prior_covariance_determinants[name] =\
-                npla.slogdet(self.priors[name + '_prior'].covariance.A)[1]
+                la.slogdet(self.priors[name + '_prior'].covariance.A)[1]
         return self._subbasis_log_prior_covariance_determinants[name]
     
     def subbasis_log_parameter_covariance_determinant_ratio(self, name=None):
@@ -1568,9 +1289,8 @@ class Fitter(Savable):
                                 covariances (see create_hdf5_dataset docs for
                                 info about accepted formats)
         """
-        create_hdf5_dataset(root_group, 'data', data=self.data, link=data_link)
-        create_hdf5_dataset(root_group, 'error', data=self.error,\
-            link=error_link)
+        self.save_data(root_group, data_link=data_link)
+        self.save_data(root_group, error_link=error_link)
         group = root_group.create_group('sizes')
         for name in self.names:
             group.attrs[name] = self.sizes[name]
@@ -1595,8 +1315,8 @@ class Fitter(Savable):
                     data=self.subbasis_channel_mean(name=name))
             create_hdf5_dataset(subgroup, 'channel_error',\
                 data=self.subbasis_channel_error(name=name))
-        self.basis_sum.fill_hdf5_group(root_group.create_group('basis_sum'),\
-            basis_links=basis_links, expander_links=expander_links)
+        self.save_basis_sum(root_group, basis_links=basis_links,\
+            expander_links=expander_links)
         root_group.attrs['degrees_of_freedom'] = self.degrees_of_freedom
         root_group.attrs['BPIC'] = self.BPIC
         root_group.attrs['DIC'] = self.DIC
@@ -1606,21 +1326,11 @@ class Fitter(Savable):
             self.normalized_likelihood_bias_statistic
         root_group.attrs['normalized_bias_statistic'] =\
             self.normalized_bias_statistic
+        self.save_priors(root_group, prior_mean_links=prior_mean_links,\
+            prior_covariance_links=prior_covariance_links)
         if self.has_priors:
             root_group.attrs['log_evidence_per_data_channel'] =\
                 self.log_evidence_per_data_channel
-            group = root_group.create_group('prior')
-            if type(prior_mean_links) is type(None):
-                prior_mean_links = {name: None for name in self.names}
-            if type(prior_covariance_links) is type(None):
-                prior_covariance_links = {name: None for name in self.names}
-            for name in self.names:
-                key = '{!s}_prior'.format(name)
-                if key in self.priors:
-                    subgroup = group.create_group(name)
-                    self.priors[key].fill_hdf5_group(subgroup,\
-                        mean_link=prior_mean_links[name],\
-                        covariance_link=prior_covariance_links[name])
     
     def plot_overlap_matrix(self, title='Overlap matrix', fig=None, ax=None,\
         show=True, **kwargs):
@@ -1639,7 +1349,7 @@ class Fitter(Savable):
         if (type(fig) is type(None)) and (type(ax) is type(None)):
             fig = pl.figure()
             ax = fig.add_subplot(111)
-        ax.imshow(self.overlap_matrix, **def_kwargs)
+        ax.imshow(self.basis_overlap_matrix, **def_kwargs)
         pl.colorbar()
         pl.title(title)
         if show:

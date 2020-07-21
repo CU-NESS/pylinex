@@ -25,7 +25,9 @@ Description: Imports classes from the pylinex.fitter module:
              
 """
 from pylinex.fitter.TrainingSetIterator import TrainingSetIterator
+from pylinex.fitter.BaseFitter import BaseFitter
 from pylinex.fitter.Fitter import Fitter
+from pylinex.fitter.MAAFitter import MAAFitter
 from pylinex.fitter.MetaFitter import MetaFitter
 from pylinex.fitter.Extractor import Extractor
 
