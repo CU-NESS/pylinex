@@ -11,7 +11,6 @@ import os, re, gc, h5py
 import numpy as np
 from scipy.special import erfinv
 import matplotlib.pyplot as pl
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from distpy import TransformList, TransformSet, GaussianDistribution,\
     DistributionSet, JumpingDistributionSet
 from ..util import sequence_types, real_numerical_types, bool_types,\
@@ -2557,9 +2556,7 @@ class NLFitter(object):
         high = self.num_parameters + 0.5
         image =\
             ax.imshow(to_plot, extent=[low, high, high, low], **imshow_kwargs)
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        fig.colorbar(image, cax=cax, orientation='vertical')
+        pl.colorbar(image, orientation='vertical')
         if show:
             pl.show()
         else:
