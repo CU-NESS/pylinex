@@ -13,8 +13,10 @@ Description: File containing class which represents a Minimum Assumption
 from __future__ import division
 import numpy as np
 import numpy.linalg as la
+import matplotlib.pyplot as pl
+from matplotlib.ticker import MultipleLocator
 from distpy import ChiSquaredDistribution
-from ..util import Savable, Loadable, create_hdf5_dataset
+from ..util import Savable, Loadable, create_hdf5_dataset, real_numerical_types
 from ..expander import Expander, load_expander_from_hdf5_group
 from .BaseFitter import BaseFitter
 
@@ -382,13 +384,13 @@ class MAAFitter(BaseFitter, Savable, Loadable):
             self._undesired_mode_mean =\
                 self.overlap_of_shifted_data_with_basis.T
             self._undesired_mode_mean = self._undesired_mode_mean -\
-                np.dot(self.expander_basis_overlap.T,\
+                np.dot(self.expander_basis_overlap_matrix.T,\
                 np.dot(self.desired_covariance,\
                 self.overlap_of_shifted_data_with_expansion_matrix.T))
             self._undesired_mode_mean = self._undesired_mode_mean +\
-                np.dot(self.expander_basis_overlap.T,\
+                np.dot(self.expander_basis_overlap_matrix.T,\
                 np.dot(self.desired_covariance,\
-                np.dot(self.expander_basis_overlap,\
+                np.dot(self.expander_basis_overlap_matrix,\
                 np.dot(self.undesired_only_covariance,\
                 self.overlap_of_shifted_data_with_basis.T))))
             self._undesired_mode_mean = np.dot(self.undesired_only_covariance,\
@@ -522,6 +524,385 @@ class MAAFitter(BaseFitter, Savable, Loadable):
         doubly_weighted_bias = np.dot(bias, self.inverse_desired_covariance)
         return np.sum(bias * doubly_weighted_bias, axis=-1) /\
             self.num_desired_channels
+    
+    def plot_reduced_chi_squared_histogram(self, fig=None, ax=None,\
+        figsize=(12,9), xlabel='', ylabel='', title='', fontsize=24,\
+        show=False, **kwargs):
+        """
+        Plots a histogram of the reduced chi squared statistic.
+        
+        fig: figure to plot onto if it exists (only used if ax is None)
+        ax: axes to plot onto if they exist
+        figsize: size of figure to create if fig is None
+        xlabel: string label to place on x-axis
+        ylabel: string label to place on y-axis
+        title: string label to use to title the plot
+        fontsize: size of font for axis labels, tick labels, and title
+        show: if True, matplotlib.pyplot.show is called before this function
+                       returns
+              if False (default), axes on which plot was made was returned
+        kwargs: extra keyword arguments to pass to matplotlib.pyplot.hist
+        
+        returns: None if show is True, axes if show is False
+        """
+        if not self.multiple_data_curves:
+            raise NotImplementedError("Cannot plot histogram of reduced " +\
+                "chi squared because there is only one data curve and " +\
+                "therefore only one chi squared value.")
+        if type(ax) is type(None):
+            if type(fig) is type(None):
+                fig = pl.figure(figsize=figsize)
+            ax = fig.add_subplot(111)
+        kwargs['density'] = True
+        kwargs['label'] = '$\chi^2$ values'
+        ax.hist(self.reduced_chi_squared, **kwargs)
+        xlim = ax.get_xlim()
+        ax = self.reduced_chi_squared_expected_distribution.plot(\
+            np.linspace(xlim[0], xlim[1], 1001)[1:], ax=ax, color='k',\
+            fontsize=fontsize, xlabel=xlabel, ylabel=ylabel, title=title,\
+            label='$\chi^2$ distribution')
+        ax.set_xlim(xlim)
+        ax.legend(fontsize=fontsize, frameon=False)
+        if show:
+            pl.show()
+        else:
+            return ax
+    
+    def plot_desired_mean(self, nsigmas=1, alphas=0.5, which=None,\
+        desired_component=None, channels=None, fig=None, ax=None,\
+        figsize=(12,9), xlabel='', ylabel='', title='', fontsize=24,\
+        show=False):
+        """
+        Plots means of the desired component. Requires the true desired
+        component to be known.
+        
+        nsigmas: either a single number of sigma or a list of numbers of sigmas
+        which: either an integer index or a slice (only used if there are
+               multiple data curves fit by this object)
+        desired_component: the true desired components to plot (if given),
+                           should be 1D if there is only one curve being fit or
+                           if which is an integer and should be the same shape
+                           as self.desired_mean[which] otherwise
+        channels: channels to use as x-values for plot.
+                  If None (default), set to numpy.arange(num_desired_channels)
+        fig: figure to plot onto if it exists (only used if ax is None)
+        ax: axes to plot onto if they exist (one is used if 
+        figsize: size of figure to create if fig is None
+        xlabel: string label to place on x-axis
+        ylabel: string label to place on y-axis
+        title: string label to use to title the plot
+        fontsize: size of font for axis labels, tick labels, and title
+        show: if True, matplotlib.pyplot.show is called before this function
+                       returns
+              if False (default), axes on which plot was made was returned
+        
+        returns: if show is True, returns None
+                 if show is False, returns axes on which plot was drawn
+        """
+        if type(ax) is type(None):
+            if type(fig) is type(None):
+                fig = pl.figure(figsize=figsize)
+            ax = fig.add_subplot(111)
+        if type(channels) is type(None):
+            channels = np.arange(self.num_desired_channels)
+        if self.multiple_data_curves and (type(which) is not type(None)):
+            to_plot = self.desired_mean[which,:]
+        else:
+            to_plot = self.desired_mean
+        if type(nsigmas) in real_numerical_types:
+            nsigmas = [nsigmas]
+        if type(alphas) in real_numerical_types:
+            alphas = [alphas]
+        if to_plot.ndim == 2:
+            for index in range(len(to_plot)):
+                if type(desired_component) is not type(None):
+                    ax.plot(channels, desired_component[index], color='k',\
+                        **({'label': 'inputs'} if (index == 0) else {}))
+                ax.plot(channels, to_plot[index], color='C3',\
+                    **({'label': 'means'} if (index == 0) else {}))
+                for (nsigma, alpha) in zip(nsigmas, alphas):
+                    if isinstance(nsigma, int):
+                        label = '${:d}\sigma$ bands'.format(nsigma)
+                    else:
+                        label = '${:.1f}\sigma$ bands'.format(nsigma)
+                    ax.fill_between(channels,\
+                        to_plot[index] - (nsigma * self.desired_error),\
+                        to_plot[index] + (nsigma * self.desired_error),\
+                        color='C3', alpha=alpha, **({'label': label}\
+                        if (index == 0) else {}))
+        else:
+            if type(desired_component) is not type(None):
+                ax.plot(channels, desired_component, color='k', label='input')
+            ax.plot(channels, to_plot, color='C3', label='mean')
+            for (nsigma, alpha) in zip(nsigmas, alphas):
+                if isinstance(nsigma, int):
+                    label = '${:d}\sigma$ band'.format(nsigma)
+                else:
+                    label = '${:.1f}\sigma$ band'.format(nsigma)
+                ax.fill_between(channels,\
+                    to_plot - (nsigma * self.desired_error),\
+                    to_plot + (nsigma * self.desired_error), color='C3',\
+                    alpha=alpha, label=label)
+        ax.legend(fontsize=fontsize, frameon=False)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5, which='major')
+        ax.tick_params(labelsize=fontsize, width=1.5, length=4.5, which='minor')
+        ax.set_xlabel(xlabel, size=fontsize)
+        ax.set_ylabel(ylabel, size=fontsize)
+        ax.set_title(title, size=fontsize)
+        ax.set_xlim((channels[0], channels[-1]))
+        if show:
+            pl.show()
+        else:
+            return ax
+    
+    def plot_desired_bias(self, desired_component, which=None,\
+        plot_desired_error=True, plot_desired_noise_level=True, channels=None,\
+        fig=None, ax=None, figsize=(12,9), xlabel='', ylabel='', title='',\
+        fontsize=24, show=False, **kwargs):
+        """
+        Plots biases in the desired component. Requires the true desired
+        component to be known.
+        
+        desired_component: the true desired components to subtract to compute
+                           biases, should be 1D if there is only one curve
+                           being fit or if which is an integer and should be
+                           the same shape as self.desired_mean[which] otherwise
+        which: either an integer index or a slice (only used if there are
+               multiple data curves fit by this object)
+        plot_desired_error: if True, +1 and -1 sigma uncertainties are plotted
+        plot_desired_noise_level: if True, +1 and -1 sigma noise levels are
+                                  plotted
+        channels: channels to use as x-values for plot.
+                  If None (default), set to numpy.arange(num_desired_channels)
+        fig: figure to plot onto if it exists (only used if ax is None)
+        ax: axes to plot onto if they exist
+        figsize: size of figure to create if fig is None
+        xlabel: string label to place on x-axis
+        ylabel: string label to place on y-axis
+        title: string label to use to title the plot
+        fontsize: size of font for axis labels, tick labels, and title
+        show: if True, matplotlib.pyplot.show is called before this function
+                       returns
+              if False (default), axes on which plot was made was returned
+        kwargs: keyword arguments to pass onto matplotlib.pyplot.plot when
+                plotting biases (not used when plotting desired error and
+                desired noise level)
+        
+        returns: if show is True, returns None
+                 if show is False, returns axes on which plot was drawn
+        """
+        if type(ax) is type(None):
+            if type(fig) is type(None):
+                fig = pl.figure(figsize=figsize)
+            ax = fig.add_subplot(111)
+        if type(channels) is type(None):
+            channels = np.arange(self.num_desired_channels)
+        if self.multiple_data_curves and (type(which) is not type(None)):
+            bias = self.desired_mean[which,:] - desired_component
+        else:
+            bias = self.desired_mean - desired_component
+        if bias.ndim == 2:
+            ax.plot(channels, bias[0], label='biases', **kwargs)
+            if len(bias) > 1:
+                ax.plot(channels, bias[1:].T, **kwargs)
+        else:
+            ax.plot(channels, bias, label='bias', **kwargs)
+        if plot_desired_noise_level:
+            ax.plot(channels, self.desired_noise_level, color='C1',\
+                label='$1\sigma$ noise level')
+            ax.plot(channels, -self.desired_noise_level, color='C1')
+        if plot_desired_error:
+            ax.plot(channels, self.desired_error, color='C3',\
+                label='$1\sigma$ error')
+            ax.plot(channels, -self.desired_error, color='C3')
+        ax.legend(fontsize=fontsize, frameon=False)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5, which='major')
+        ax.tick_params(labelsize=fontsize, width=1.5, length=4.5, which='minor')
+        ax.set_xlabel(xlabel, size=fontsize)
+        ax.set_ylabel(ylabel, size=fontsize)
+        ax.set_title(title, size=fontsize)
+        ax.set_xlim((channels[0], channels[-1]))
+        if show:
+            pl.show()
+        else:
+            return ax
+    
+    def plot_desired_reduced_chi_squared_histogram(self, desired_component,\
+        fig=None, ax=None, figsize=(12,9), xlabel='', ylabel='', title='',\
+        fontsize=24, show=False, **kwargs):
+        """
+        Plots a histogram of the reduced chi squared statistic on the desired
+        component.
+        
+        desired_component: the true desired components of the data curves
+        fig: figure to plot onto if it exists (only used if ax is None)
+        ax: axes to plot onto if they exist 
+        figsize: size of figure to create if fig is None
+        xlabel: string label to place on x-axis
+        ylabel: string label to place on y-axis
+        title: string label to use to title the plot
+        fontsize: size of font for axis labels, tick labels, and title
+        show: if True, matplotlib.pyplot.show is called before this function
+                       returns
+              if False (default), axes on which plot was made was returned
+        kwargs: extra keyword arguments to pass to matplotlib.pyplot.hist
+        
+        returns: None if show is True, axes if show is False
+        """
+        if not self.multiple_data_curves:
+            raise NotImplementedError("Cannot plot histogram of desired " +\
+                "reduced chi squared because there is only one data curve " +\
+                "and therefore only one chi squared value.")
+        if type(ax) is type(None):
+            if type(fig) is type(None):
+                fig = pl.figure(figsize=figsize)
+            ax = fig.add_subplot(111)
+        kwargs['density'] = True
+        kwargs['label'] = '$\chi^2$ values'
+        ax.hist(self.desired_reduced_chi_squared(desired_component), **kwargs)
+        xlim = ax.get_xlim()
+        ax = self.desired_reduced_chi_squared_expected_distribution.plot(\
+            np.linspace(xlim[0], xlim[1], 1001)[1:], ax=ax, color='k',\
+            fontsize=fontsize, xlabel=xlabel, ylabel=ylabel, title=title,\
+            label='$\chi^2$ distribution')
+        ax.set_xlim(xlim)
+        ax.legend(fontsize=fontsize, frameon=False)
+        if show:
+            pl.show()
+        else:
+            return ax
+    
+    def plot_desired_error(self, plot_desired_noise_level=False, fig=None,\
+        ax=None, figsize=(12,9), channels=None, yscale='linear', xlabel='',\
+        ylabel='', title='', fontsize=24, show=False, **kwargs):
+        """
+        Plots the error on the desired component.
+        
+        plot_desired_noise_level: if True, desired noise level
+        fig: figure to plot onto if it exists (only used if ax is None)
+        ax: axes to plot onto if they exist
+        figsize: size of figure to create if fig is None
+        channels: channels to use as x-values for plot.
+                  If None (default), set to numpy.arange(num_desired_channels)
+        yscale: 'linear', 'log', etc.
+        xlabel: string label to place on x-axis
+        ylabel: string label to place on y-axis
+        title: string label to use to title the plot
+        fontsize: size of font for axis labels, tick labels, and title
+        show: if True, matplotlib.pyplot.show is called before this function
+                       returns
+              if False (default), axes on which plot was made was returned
+        kwargs: keyword arguments to pass to matplotlib.pyplot.plot
+        
+        returns: None if show is True, axes if show is False
+        """
+        if type(ax) is type(None):
+            if type(fig) is type(None):
+                fig = pl.figure(figsize=figsize)
+            ax = fig.add_subplot(111)
+        if type(channels) is type(None):
+            channels = np.arange(self.num_desired_channels)
+        if plot_desired_noise_level:
+            kwargs['linestyle'] = '-'
+            kwargs['label'] = '$1\sigma$ uncertainty'
+        ax.plot(channels, self.desired_error, **kwargs)
+        if plot_desired_noise_level:
+            kwargs['linestyle'] = '--'
+            kwargs['label'] = '$1\sigma$ noise level'
+            ax.plot(channels, self.desired_noise_level, **kwargs)
+        ax.set_xlim((channels[0], channels[-1]))
+        ax.set_xlabel(xlabel, size=fontsize)
+        ax.set_ylabel(ylabel, size=fontsize)
+        ax.set_title(title, size=fontsize)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+            which='major')
+        ax.tick_params(labelsize=fontsize, width=1.5, length=4.5,\
+            which='minor')
+        ax.set_yscale(yscale)
+        if plot_desired_noise_level:
+            ax.legend(fontsize=fontsize, frameon=False)
+        if show:
+            pl.show()
+        else:
+            return ax
+    
+    def plot_desired_correlation(self, fig=None, ax=None, figsize=(12,9),\
+        channel_lim=None, axis_label='', colorbar_label='', title='',\
+        fontsize=24, major_tick_locator=None, minor_tick_locator=None,\
+        show=False, **kwargs):
+        """
+        Plots the correlation matrix of the desired component.
+        
+        fig: figure to plot onto if it exists (only used if ax is None)
+        ax: axes to plot onto if they exist
+        figsize: size of figure to create if fig is None
+        channel_lim: tuple of form (start, end) where start is the x-value of
+                     the first channel and end is the x-value of the last
+                     channel
+        axis_label: string label to put on the x-axis and y-axis
+        colorbar_label: string label to use on colorbar
+        title: string label to use to title the plot
+        major_tick_locator: either a tick Locator object or a number with which
+                            to make a MultipleLocator object for major ticks
+        minor_tick_locator: either a tick Locator object or a number with which
+                            to make a MultipleLocator object for minor ticks
+        fontsize: size of the fonts to use for title, axis and tick labels
+        show: if True, matplotlib.pyplot.show is called before this function
+                       returns
+              if False (default), axes on which plot was made was returned
+        kwargs: keyword arguments to pass to matplotlib.pyplot.imshow. If
+                'extent' kwarg is set and channel_lim is given, then 'extent'
+                will be overwritten. 'origin' will be set to 'upper' regardless
+                of its value here.
+        
+        returns: None if show is True, axes if show is False
+        """
+        if type(ax) is type(None):
+            if type(fig) is type(None):
+                fig = pl.figure(figsize=figsize)
+            ax = fig.add_subplot(111)
+        if type(channel_lim) is not type(None):
+            (start, end) = channel_lim
+            half_channel_width =\
+                (end - start) / (2 * (self.num_desired_channels - 1))
+            (start, end) =\
+                (start - half_channel_width, end + half_channel_width)
+            kwargs['extent'] = (start, end, end, start)
+        kwargs['origin'] = 'upper'
+        if 'vmin' not in kwargs:
+            kwargs['vmin'] = -1
+        if 'vmax' not in kwargs:
+            kwargs['vmax'] = 1
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = 'coolwarm'
+        image = ax.imshow(self.desired_correlation, **kwargs)
+        colorbar = pl.colorbar(image)
+        if type(major_tick_locator) is not type(None):
+            if type(major_tick_locator) in real_numerical_types:
+                major_tick_locator = MultipleLocator(major_tick_locator)
+            ax.xaxis.set_major_locator(major_tick_locator)
+            ax.yaxis.set_major_locator(major_tick_locator)
+        if type(minor_tick_locator) is not type(None):
+            if type(minor_tick_locator) in real_numerical_types:
+                minor_tick_locator = MultipleLocator(minor_tick_locator)
+            ax.xaxis.set_minor_locator(minor_tick_locator)
+            ax.yaxis.set_minor_locator(minor_tick_locator)
+        ax.set_xlabel(axis_label, size=fontsize)
+        ax.set_ylabel(axis_label, size=fontsize)
+        ax.set_title(title, size=fontsize)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+            which='major')
+        ax.tick_params(labelsize=fontsize, width=1.5, length=4.5,\
+            which='minor')
+        colorbar.ax.tick_params(labelsize=24, width=2.5, length=7.5,\
+            which='major')
+        colorbar.ax.tick_params(labelsize=24, width=1.5, length=4.5,\
+            which='minor')
+        colorbar.ax.set_ylabel(colorbar_label, size=fontsize)
+        if show:
+            pl.show()
+        else:
+            return ax
     
     def save_expander(self, root_group, expander_link=None):
         """
