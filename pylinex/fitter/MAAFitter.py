@@ -369,10 +369,10 @@ class MAAFitter(BaseFitter, Savable, Loadable):
         """
         Property storing the desired mean in the expanded (data) space.
         """
-        if not hasattr(self, '_desired_mean_channel_space'):
-            self._desired_mean_channel_space =\
+        if not hasattr(self, '_expanded_desired_mean'):
+            self._expanded_desired_mean =\
                 np.dot(self.desired_mean, self.expansion_matrix.T)
-        return self._desired_mean_channel_space
+        return self._expanded_desired_mean
     
     @property
     def undesired_mode_mean(self):

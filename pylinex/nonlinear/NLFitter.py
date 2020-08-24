@@ -2527,7 +2527,7 @@ class NLFitter(object):
             return fig
     
     def plot_covariance_matrix(self, normalize_by_variances=False, fig=None,\
-        ax=None, show=False, **imshow_kwargs):
+        ax=None, show=False, transform_chain=True, **imshow_kwargs):
         """
         Plots a covariance (or correlation) matrix of the parameters.
         
@@ -2548,7 +2548,12 @@ class NLFitter(object):
         if type(ax) is type(None):
             fig = pl.figure()
             ax = fig.add_subplot(111)
-        if normalize_by_variances:
+        if transform_chain:
+            if normalize_by_variances:
+                to_plot = self.transformed_parameter_correlation
+            else:
+                to_plot = self.transformed_parameter_covariance
+        elif normalize_by_variances:
             to_plot = self.parameter_correlation
         else:
             to_plot = self.parameter_covariance

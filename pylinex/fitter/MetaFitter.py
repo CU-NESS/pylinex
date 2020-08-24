@@ -34,7 +34,7 @@ class MetaFitter(Fitter, VariableGrid, QuantityFinder, Savable):
         Initializes a new MetaFitter object using the given inputs.
         
         basis_sum: a BasisSum object (or a Basis object, which is converted
-                   internally to a BasisSum of one Basis with the name 'Sole')
+                   internally to a BasisSum of one Basis with the name 'sole')
         data: 1D vector of same length as vectors in basis_sum
         error: 1D vector of same length as vectors in basis_sum containing only
                positive numbers
