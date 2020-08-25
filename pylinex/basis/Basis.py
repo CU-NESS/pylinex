@@ -130,7 +130,7 @@ class Basis(Savable, Loadable):
             raise ValueError("error was not None, a single number, or a 1D " +\
                 "array.")
         for num_terms in range(1, 1 + self.num_basis_vectors):
-            spectrum.append(self[:num_terms].RMS_of_training_set_fit(\
+            spectrum.append(self[:num_terms].RMS_of_training_set_fits(\
                 training_set, error=error))
         return np.array(spectrum)
     
