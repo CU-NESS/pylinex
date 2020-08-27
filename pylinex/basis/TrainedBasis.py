@@ -476,6 +476,8 @@ class TrainedBasis(Basis):
             which='minor')
         if show:
             pl.show()
+        else:
+            return ax
 
     def plot_importance_spectrum(self, normed=False,\
         plot_importance_loss=False, ax=None, show=False, title='',\
@@ -533,4 +535,6 @@ class TrainedBasis(Basis):
             which='minor')
         if show:
             pl.show()
+        else:
+            return ax
 

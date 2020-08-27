@@ -1290,7 +1290,7 @@ class Fitter(BaseFitter, Savable):
                                 info about accepted formats)
         """
         self.save_data(root_group, data_link=data_link)
-        self.save_data(root_group, error_link=error_link)
+        self.save_error(root_group, error_link=error_link)
         group = root_group.create_group('sizes')
         for name in self.names:
             group.attrs[name] = self.sizes[name]
