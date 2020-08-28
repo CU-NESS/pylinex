@@ -324,9 +324,9 @@ class Forecaster(object):
             fig = pl.figure(figsize=figsize)
             ax = fig.add_subplot(111)
         def plot_single_histogram(qtm, this_color=None, bins=None, label=None):
-            statistics = self.statistics_by_minimized_quantity(\
+            statistics = self.plotter.statistics_by_minimized_quantity(\
                 minimized_quantity=qtm,\
-                grid_quantities=self.compiled_quantity.quantities)
+                grid_quantities=self.plotter.compiled_quantity.quantities)
             statistics = statistics['subbasis_bias_statistic']
             if take_sqrt:
                 statistics = np.sqrt(statistics)
@@ -382,19 +382,6 @@ class Forecaster(object):
         """
         self.plotter.close()
         del self._plotter
-    
-    def __getattr__(self, key):
-        """
-        Gets an attribute of this object whether it is in the Forecaster class
-        or the ExtractionPlotter class.
-        
-        key: string name of attribute to access
-        """
-        try:
-            return getattr(self.plotter, key)
-        except AttributeError:
-            raise AttributeError(("Attribute {!s} not available in this " +\
-                "Forecaster or its ExtractionPlotter.").format(key))
     
     def __enter__(self):
         """
