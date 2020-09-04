@@ -599,7 +599,7 @@ class LeastSquareFitCluster(object):
     
     def triangle_plot(self, parameters=None, in_transformed_space=True,\
         figsize=(8, 8), fig=None, show=False, kwargs_1D={}, kwargs_2D={},\
-        fontsize=28, nbins=100, plot_type='contour',\
+        fontsize=28, nbins=100, plot_type='contour', plot_limits=None,\
         plot_reference_gaussian=True, contour_confidence_levels=0.95,\
         parameter_renamer=(lambda x: x), tick_label_format_string='{x:.3g}'):
         """
@@ -618,6 +618,12 @@ class LeastSquareFitCluster(object):
         fontsize: the size of the label fonts
         nbins: the number of bins for each sample
         plot_type: 'contourf', 'contour', or 'histogram'
+        plot_limits: if not None, a dictionary whose keys are parameter names
+                                  and whose values are 2-tuples of the form
+                                  (low, high) representing the desired axis
+                                  limits for each variable in untransformed
+                                  space
+                     if None (default), bins are used to decide plot limits
         plot_reference_gaussian: if True (default), a reference Gaussian is
                                                     plotted which was
                                                     approximated from the
@@ -652,7 +658,7 @@ class LeastSquareFitCluster(object):
             reference_value_mean = None
             reference_value_covariance = None
         return_value = self.sampled_distribution_set.triangle_plot(\
-            self.num_fits, parameters=parameters,\
+            self.num_fits, parameters=parameters, plot_limits=plot_limits,\
             in_transformed_space=in_transformed_space, figsize=figsize,\
             fig=fig, show=show, kwargs_1D=kwargs_1D, kwargs_2D=kwargs_2D,\
             fontsize=fontsize, nbins=nbins, plot_type=plot_type,\

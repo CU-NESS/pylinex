@@ -2061,10 +2061,11 @@ class NLFitter(object):
     def triangle_plot(self, parameters=None, walkers=None, thin=1,\
         scale_factors=None, figsize=(12, 12), fig=None, show=False,\
         kwargs_1D={}, kwargs_2D={}, fontsize=28, nbins=100,\
-        plot_type='contour', parameter_renamer=None,\
+        plot_type='contour', plot_limits=None, parameter_renamer=None,\
         reference_value_mean=None, reference_value_covariance=None,\
         contour_confidence_levels=0.95, apply_transforms_to_chain=True,\
         apply_transforms_to_reference_value=True,\
+        apply_transforms_to_plot_limits=True,\
         tick_label_format_string='{x:.3g}', num_ticks=3,\
         minor_ticks_per_major_tick=1, xlabel_rotation=0, xlabelpad=None,\
         ylabel_rotation=90, ylabelpad=None):
@@ -2088,6 +2089,14 @@ class NLFitter(object):
         fontsize: the size of the label/tick fonts
         nbins: the number of bins in all dimensions in all subplots
         plot_type: 'contourf', 'contour', or 'histogram'
+        plot_limits: if not None, a of 2-tuples of the form (low, high)
+                                  representing the desired axis limits for each
+                                  variable in the space of the plot (i.e. in
+                                  untransformed space if
+                                  apply_transforms_to_chain is False and in
+                                  transformed space if
+                                  apply_transforms_to_chain is True)
+                     if None (default), bins are used to decide plot limits
         parameter_renamer: function to apply to each parameter name to
                            determine the label which will correspond to it
         reference_value_mean: either None or a 1D array containing reference
@@ -2121,6 +2130,11 @@ class NLFitter(object):
                                                                 is given in
                                                                 untransformed
                                                                 space
+        apply_transforms_to_plot_limits: if True (default), if plot limits are
+                                                            given, then
+                                                            transforms are
+                                                            applied to them
+                                                            before plotting
         tick_label_format_string: format string that can be called using
                                   tick_label_format_string.format(x=loc) where
                                   loc is the location of the tick in data
@@ -2185,9 +2199,13 @@ class NLFitter(object):
             self.process_reference_values(parameter_indices,\
             apply_transforms_to_reference_value, reference_value_mean,\
             reference_value_covariance)
+        if apply_transforms_to_plot_limits and\
+            (type(plot_limits) is not type(None)):
+            plot_limits = [(transform(limits[0]), transform(limits[1]))\
+                for (transform, limits) in zip(self.transform_list, plot_limits)]
         return triangle_plot(samples, labels, figsize=figsize, show=show,\
             kwargs_1D=kwargs_1D, kwargs_2D=kwargs_2D, fontsize=fontsize,\
-            nbins=nbins, plot_type=plot_type,\
+            nbins=nbins, plot_type=plot_type, plot_limits=plot_limits,\
             reference_value_mean=reference_value_mean,\
             reference_value_covariance=reference_value_covariance,\
             contour_confidence_levels=contour_confidence_levels, fig=fig,\
