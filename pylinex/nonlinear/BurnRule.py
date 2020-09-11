@@ -9,7 +9,7 @@ Description: File containing a class representing a rule to help determine
              they are likely to skew the distribution sampled.
 """
 import numpy as np
-from ..util import Savable, Loadable, int_types, numerical_types
+from ..util import Savable, Loadable, bool_types, int_types, numerical_types
 
 class BurnRule(Savable, Loadable):
     """
@@ -21,7 +21,8 @@ class BurnRule(Savable, Loadable):
     burn_rule(100) returns a 1D numpy array of the checkpoints which should be
     included in the final output.
     """
-    def __init__(self, min_checkpoints=1, desired_fraction=0.5, thin=None):
+    def __init__(self, min_checkpoints=1, desired_fraction=0.5, thin=None,\
+        burn_end=False):
         """
         Initializes a new BurnRule object with the given arguments.
         
@@ -34,10 +35,13 @@ class BurnRule(Savable, Loadable):
                           min_checkpoints are returned
         thin: either None (default, corresponding to 1) or a positive integer
               representing the stride with which to read the chain
+        burn_end: if True, the end of the chain is burned off instead of the
+                           beginning
         """
         self.min_checkpoints = min_checkpoints
         self.desired_fraction = desired_fraction
         self.thin = thin
+        self.burn_end = burn_end
     
     @property
     def min_checkpoints(self):
@@ -115,6 +119,29 @@ class BurnRule(Savable, Loadable):
         else:
             raise TypeError("thin was set to a non-integer.")
     
+    @property
+    def burn_end(self):
+        """
+        If True, the chain should be burned at the end instead of the
+        beginning. This is an unusual but sometimes useful feature.
+        """
+        if not hasattr(self, '_burn_end'):
+            raise AttributeError("burn_end was referenced before it was set.")
+        return self._burn_end
+    
+    @burn_end.setter
+    def burn_end(self, value):
+        """
+        Setter for the burn_end property, which determines whether the chain
+        should be burned at the end instead of the beginning.
+        
+        value: True or False
+        """
+        if type(value) in bool_types:
+            self._burn_end = value
+        else:
+            raise TypeError("burn_end was set to a non-bool.")
+    
     def fill_hdf5_group(self, group):
         """
         Stores information about this BurnRule in the given hdf5 file group.
@@ -124,6 +151,8 @@ class BurnRule(Savable, Loadable):
         group.attrs['class'] = 'BurnRule'
         group.attrs['min_checkpoints'] = self.min_checkpoints
         group.attrs['desired_fraction'] = self.desired_fraction
+        group.attrs['thin'] = self.thin
+        group.attrs['burn_end'] = self.burn_end
     
     @staticmethod
     def load_from_hdf5_group(group):
@@ -138,8 +167,11 @@ class BurnRule(Savable, Loadable):
         if ('class' in group.attrs) and (group.attrs['class'] == 'BurnRule'):
             min_checkpoints = group.attrs['min_checkpoints']
             desired_fraction = group.attrs['desired_fraction']
+            thin = group.attrs['thin']
+            burn_end = group.attrs['burn_end']
             return BurnRule(min_checkpoints=min_checkpoints,\
-                desired_fraction=desired_fraction)
+                desired_fraction=desired_fraction, thin=thin,\
+                burn_end=burn_end)
         else:
             raise ValueError("group doesn't appear to point to a BurnRule " +\
                 "object.")
@@ -159,6 +191,9 @@ class BurnRule(Savable, Loadable):
         to_include_by_fraction =\
             int(round(num_checkpoints * self.desired_fraction))
         to_include = max(to_include_by_min, to_include_by_fraction)
-        return np.arange(num_checkpoints - to_include, num_checkpoints)
+        if self.burn_end:
+            return np.arange(to_include)
+        else:
+            return np.arange(num_checkpoints - to_include, num_checkpoints)
     
 

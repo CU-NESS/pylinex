@@ -1349,11 +1349,13 @@ class Fitter(BaseFitter, Savable):
         if (type(fig) is type(None)) and (type(ax) is type(None)):
             fig = pl.figure()
             ax = fig.add_subplot(111)
-        ax.imshow(self.basis_overlap_matrix, **def_kwargs)
-        pl.colorbar()
-        pl.title(title)
+        image = ax.imshow(self.basis_overlap_matrix, **def_kwargs)
+        pl.colorbar(image)
+        ax.set_title(title)
         if show:
             pl.show()
+        else:
+            return ax
     
     def plot_parameter_covariance(self, title='Covariance matrix', fig=None,\
         ax=None, show=True, **kwargs):
@@ -1372,11 +1374,13 @@ class Fitter(BaseFitter, Savable):
         if (type(fig) is type(None)) and (type(ax) is type(None)):
             fig = pl.figure()
             ax = fig.add_subplot(111)
-        ax.imshow(self.parameter_covariance, **def_kwargs)
-        pl.colorbar()
-        pl.title(title)
+        image = ax.imshow(self.parameter_covariance, **def_kwargs)
+        pl.colorbar(image)
+        ax.set_title(title)
         if show:
             pl.show()
+        else:
+            return ax
     
     def plot_subbasis_fit(self, nsigma=1, name=None, which_data=None,\
         true_curve=None, subtract_truth=False, shorter_error=None,\
@@ -1470,6 +1474,8 @@ class Fitter(BaseFitter, Savable):
             ax.set_title(title)
         if show:
             pl.show()
+        else:
+            return ax
     
     def plot_overlap_matrix(self, row_name=None, column_name=None,\
         title='Overlap matrix', fig=None, ax=None, show=True, **kwargs):
@@ -1494,11 +1500,13 @@ class Fitter(BaseFitter, Savable):
             ax = fig.add_subplot(111)
         to_show = self.subbases_overlap_matrix(row_name=row_name,\
             column_name=column_name)
-        ax.imshow(to_show, **def_kwargs)
-        pl.colorbar()
-        pl.title(title)
+        image = ax.imshow(to_show, **def_kwargs)
+        pl.colorbar(image)
+        ax.set_title(title)
         if show:
             pl.show()
+        else:
+            return ax
     
     def plot_parameter_covariance(self, name=None, title='Covariance matrix',\
         fig=None, ax=None, show=True, **kwargs):
@@ -1522,9 +1530,11 @@ class Fitter(BaseFitter, Savable):
             fig = pl.figure()
             ax = fig.add_subplot(111)
         to_show = self.subbasis_parameter_covariances[name]
-        ax.imshow(to_show, **def_kwargs)
-        pl.colorbar()
-        pl.title(title)
+        image = ax.imshow(to_show, **def_kwargs)
+        pl.colorbar(image)
+        ax.set_title(title)
         if show:
             pl.show()
+        else:
+            return ax
 

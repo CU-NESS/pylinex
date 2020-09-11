@@ -13,8 +13,8 @@ from scipy.special import erfinv
 import matplotlib.pyplot as pl
 from distpy import TransformList, TransformSet, GaussianDistribution,\
     DistributionSet, JumpingDistributionSet
-from ..util import sequence_types, real_numerical_types, bool_types,\
-    int_types, univariate_histogram, bivariate_histogram, triangle_plot
+from ..util import sequence_types, real_numerical_types, int_types,\
+    univariate_histogram, bivariate_histogram, triangle_plot
 from ..model import CompoundModel
 from ..loglikelihood import load_loglikelihood_from_hdf5_group,\
     GaussianLoglikelihood
@@ -32,7 +32,7 @@ class NLFitter(object):
     Class which analyzes MCMC chains in order to infer things about the
     parameter distributions they describe.
     """
-    def __init__(self, file_name, burn_rule=None, load_all_chunks=True):
+    def __init__(self, file_name, burn_rule=None, chunk_slice=slice(None)):
         """
         Initializes an NLFitter to analyze the chain in the hdf5 file at
         file_name.
@@ -43,35 +43,36 @@ class NLFitter(object):
                               number of checkpoints to read, desired fraction
                               of the chain to read, and the thinning factor
                               describing the stride with which to read.
-        load_all_chunks: if True, all chunks are considered by this fitter
-                         if False, only the last saved chunk is considered
+        chunk_slice: integer or slice object that can specifies which chunks to
+                     load. By default, slice(None) is used, which causes all
+                     chunks to load.
         """
         self.file_name = file_name
         self.burn_rule = burn_rule
-        self.load_all_chunks = load_all_chunks
+        self.chunk_slice = chunk_slice
     
     @property
-    def load_all_chunks(self):
+    def chunk_slice(self):
         """
         Property storing a boolean describing whether all chunks (as opposed to
         just the last one) should be loaded.
         """
-        if not hasattr(self, '_load_all_chunks'):
-            raise AttributeError("load_all_chunks referenced before it was " +\
-                "set.")
-        return self._load_all_chunks
+        if not hasattr(self, '_chunk_slice'):
+            raise AttributeError("chunk_slice referenced before it was set.")
+        return self._chunk_slice
     
-    @load_all_chunks.setter
-    def load_all_chunks(self, value):
+    @chunk_slice.setter
+    def chunk_slice(self, value):
         """
-        Setter for the load_all_chunks property.
+        Setter for the chunk_slice property.
         
-        value: True or False
+        value: integer or slice object that specifies which chunks to load
         """
-        if type(value) in bool_types:
-            self._load_all_chunks = value
+        if (type(value) in int_types) or isinstance(value, slice):
+            self._chunk_slice = value
         else:
-            raise TypeError("load_all_chunks was set to a non-bool.")
+            raise TypeError("chunk_slice was set to neither an integer nor " +\
+                "a slice.")
     
     def __enter__(self):
         """
@@ -125,6 +126,17 @@ class NLFitter(object):
         if not hasattr(self, '_thin'):
             self._thin = self.burn_rule.thin
         return self._thin
+    
+    @property
+    def burn_end(self):
+        """
+        Property storing whether the chain is burned from the end (if True) or
+        from the start (if False, the usual case). This property is taken from
+        the burn_rule.
+        """
+        if not hasattr(self, '_burn_end'):
+            self._burn_end = self.burn_rule.burn_end
+        return self._burn_end
     
     @property
     def file_name(self):
@@ -227,10 +239,9 @@ class NLFitter(object):
         Property storing the chunk numbers to load for this NLFitter.
         """
         if not hasattr(self, '_chunks_to_load'):
-            if self.load_all_chunks:
-                self._chunks_to_load = np.arange(self.num_chunks)
-            else:
-                self._chunks_to_load = np.array([self.num_chunks - 1])
+            self._chunks_to_load = np.arange(self.num_chunks)[self.chunk_slice]
+            if type(self._chunks_to_load) in int_types:
+                self._chunks_to_load = np.array([self._chunks_to_load])
         return self._chunks_to_load
     
     @property
@@ -320,20 +331,37 @@ class NLFitter(object):
         """
         if not hasattr(self, '_checkpoints_to_load'):
             left_to_load = self.total_num_checkpoints_to_load
-            backwards_answer = []
-            for iichunk in range(self.num_chunks_to_load-1, -1, -1):
-                ichunk = self.chunks_to_load[iichunk]
-                this_num_checkpoints = self.num_checkpoints[iichunk]
-                if left_to_load == 0:
-                    backwards_answer.append(np.array([]))
-                elif left_to_load > this_num_checkpoints:
-                    left_to_load -= this_num_checkpoints
-                    backwards_answer.append(np.arange(this_num_checkpoints))
-                else:
-                    backwards_answer.append(\
-                        np.arange(this_num_checkpoints)[-left_to_load:])
-                    left_to_load = 0
-            self._checkpoints_to_load = backwards_answer[-1::-1]
+            if self.burn_end:
+                answer = []
+                for iichunk in range(self.num_chunks_to_load):
+                    ichunk = self.chunks_to_load[iichunk]
+                    this_num_checkpoints = self.num_checkpoints[iichunk]
+                    if left_to_load == 0:
+                        answer.append(np.array([]))
+                    elif left_to_load > this_num_checkpoints:
+                        left_to_load -= this_num_checkpoints
+                        answer.append(np.arange(this_num_checkpoints))
+                    else:
+                        answer.append(\
+                            np.arange(this_num_checkpoints)[:left_to_load])
+                        left_to_load = 0
+                self._checkpoints_to_load = [array for array in answer]
+            else:
+                backwards_answer = []
+                for iichunk in range(self.num_chunks_to_load-1, -1, -1):
+                    ichunk = self.chunks_to_load[iichunk]
+                    this_num_checkpoints = self.num_checkpoints[iichunk]
+                    if left_to_load == 0:
+                        backwards_answer.append(np.array([]))
+                    elif left_to_load > this_num_checkpoints:
+                        left_to_load -= this_num_checkpoints
+                        backwards_answer.append(\
+                            np.arange(this_num_checkpoints))
+                    else:
+                        backwards_answer.append(\
+                            np.arange(this_num_checkpoints)[-left_to_load:])
+                        left_to_load = 0
+                self._checkpoints_to_load = backwards_answer[-1::-1]
         return self._checkpoints_to_load
     
     def _load_checkpoints(self):
