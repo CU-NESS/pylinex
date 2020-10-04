@@ -88,6 +88,16 @@ class MultipleExpander(Expander):
         return (self.multiplying_factors[:,np.newaxis] *\
             vector[np.newaxis,:]).flatten()
     
+    def contracted_covariance(self, error):
+        """
+        Finds the covariance matrix associated with contracted noise.
+        
+        error: 1D vector from expanded space
+        
+        returns: 2D array of shape (original_space_size, original_space_size)
+        """
+        return np.diag(self.contract_error(error) ** 2)
+    
     def contract_error(self, error):
         """
         Contracts error from full expanded space to smaller original space.
