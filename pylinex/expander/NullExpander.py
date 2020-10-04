@@ -32,6 +32,28 @@ class NullExpander(Expander):
         """
         return NullExpander()
     
+    def overlap(self, vectors, error=None):
+        """
+        Computes Psi^T C^{-1} y for one or more vectors y and for a diagonal C
+        defined by the given error.
+        
+        vectors: either a 1D array of length expanded_space_size or a 2D array
+                 of shape (nvectors, expanded_space_size)
+        error: the standard deviations of the independent noise defining the
+               dot product
+        
+        returns: if vectors is 1D, result is a 1D array of length
+                                   original_space_size
+                 else, result is a 2D array of shape
+                       (nvectors, original_space_size)
+        """
+        if type(error) is type(None):
+            return vectors
+        elif vectors.ndim == 1:
+            return vectors / error
+        else:
+            return vectors / error[np.newaxis,:]
+    
     def apply(self, vector):
         """
         Expands vector from smaller original space to larger expanded space.
@@ -41,6 +63,16 @@ class NullExpander(Expander):
         returns: 1D vector from expanded space
         """
         return vector
+    
+    def contracted_covariance(self, error):
+        """
+        Finds the covariance matrix associated with contracted noise.
+        
+        error: 1D vector from expanded space
+        
+        returns: 2D array of shape (original_space_size, original_space_size)
+        """
+        return np.diag(error ** 2)
     
     def contract_error(self, error):
         """

@@ -92,6 +92,31 @@ class CompositeExpander(Expander):
             self._num_expanders = len(self.expanders)
         return self._num_expanders
     
+    def overlap(self, vectors, error=None):
+        """
+        Computes Psi^T C^{-1} y for one or more vectors y and for a diagonal C
+        defined by the given error.
+        
+        vectors: either a 1D array of length expanded_space_size or a 2D array
+                 of shape (nvectors, expanded_space_size)
+        error: the standard deviations of the independent noise defining the
+               dot product
+        
+        returns: if vectors is 1D, result is a 1D array of length
+                                   original_space_size
+                 else, result is a 2D array of shape
+                       (nvectors, original_space_size)
+        """
+        if type(error) is type(None):
+            result = vectors
+        elif vectors.ndim == 1:
+            result = vectors / (error ** 2)
+        else:
+            result = vectors / (error ** 2)[np.newaxis,:]
+        for expander in self.expanders[-1::-1]:
+            result = expander.overlap(result)
+        return result
+    
     def apply(self, vector):
         """
         Expands vector from smaller original space to larger expanded space.

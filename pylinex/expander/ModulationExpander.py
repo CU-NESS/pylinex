@@ -96,6 +96,16 @@ class ModulationExpander(Expander):
                 ((np.newaxis,) * (self.ndim - 1)) + (slice(None),)
         return self._expansion_slice
     
+    def contracted_covariance(self, error):
+        """
+        Finds the covariance matrix associated with contracted noise.
+        
+        error: 1D vector from expanded space
+        
+        returns: 2D array of shape (original_space_size, original_space_size)
+        """
+        return np.diag(self.contract_error(error) ** 2)
+    
     def apply(self, vector):
         """
         Expands vector from smaller original space to larger expanded space.

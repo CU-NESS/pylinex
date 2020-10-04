@@ -70,6 +70,36 @@ class Expander(Savable):
             self._cached_expansion_matrix = expansion_matrix
         return self.cached_expansion_matrix
     
+    def overlap(self, vectors, error=None):
+        """
+        Computes Psi^T C^{-1} y for one or more vectors y and for a diagonal C
+        defined by the given error.
+        
+        vectors: either a 1D array of length expanded_space_size or a 2D array
+                 of shape (nvectors, expanded_space_size)
+        error: the standard deviations of the independent noise defining the
+               dot product
+        
+        returns: if vectors is 1D, result is a 1D array of length
+                                   original_space_size
+                 else, result is a 2D array of shape
+                       (nvectors, original_space_size)
+        """
+        onedim = (vectors.ndim == 1)
+        if onedim:
+            vectors = vectors[np.newaxis,:]
+        if type(error) is type(None):
+            weighted_vectors = vectors
+        else:
+            weighted_vectors = vectors / (error ** 2)[np.newaxis,:]
+        expanded_space_size = vectors.shape[-1]
+        original_space_size = self.original_space_size(expanded_space_size)
+        result = np.dot(weighted_vectors, self.expansion_matrix)
+        if onedim:
+            return result[0]
+        else:
+            return result
+    
     def copy(self):
         """
         Finds and returns a deep copy of this expander. Must be implemented
@@ -91,7 +121,22 @@ class Expander(Savable):
         """
         original_space_size = vector.shape[-1]
         expansion_matrix = self.expansion_matrix(original_space_size)
-        return np.dot(expansion_matrix, vector)
+        return np.dot(expansion_matrix, vector.T).T
+    
+    def contracted_covariance(self, error):
+        """
+        Finds the covariance matrix associated with contracted noise.
+        
+        error: 1D vector from expanded space
+        
+        returns: 2D array of shape (original_space_size, original_space_size)
+        """
+        expanded_space_size = len(error)
+        original_space_size = self.original_space_size(expanded_space_size)
+        expansion_matrix = self.expansion_matrix(original_space_size)
+        expansion_matrix_over_error = expansion_matrix / error[:,np.newaxis]
+        return la.inv(np.dot(expansion_matrix_over_error.T,\
+            expansion_matrix_over_error))
     
     def contract_error(self, error):
         """
@@ -103,13 +148,7 @@ class Expander(Savable):
         
         returns: 1D vector from original space
         """
-        expanded_space_size = len(error)
-        original_space_size = self.original_space_size(expanded_space_size)
-        expansion_matrix = self.expansion_matrix(original_space_size)
-        expansion_matrix_over_error = expansion_matrix / error[:,np.newaxis]
-        contracted_covariance = la.inv(np.dot(expansion_matrix_over_error.T,\
-            expansion_matrix_over_error))
-        return np.sqrt(np.diag(contracted_covariance))
+        return np.sqrt(np.diag(self.contracted_covariance(error)))
     
     def invert(self, data, error):
         """

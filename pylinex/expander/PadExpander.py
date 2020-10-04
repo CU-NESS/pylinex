@@ -189,6 +189,38 @@ class PadExpander(Expander):
         else:
             raise TypeError("pad_value was set to a non-number.")
     
+    def overlap(self, vectors, error=None):
+        """
+        Computes Psi^T C^{-1} y for one or more vectors y and for a diagonal C
+        defined by the given error.
+        
+        vectors: either a 1D array of length expanded_space_size or a 2D array
+                 of shape (nvectors, expanded_space_size)
+        error: the standard deviations of the independent noise defining the
+               dot product
+        
+        returns: if vectors is 1D, result is a 1D array of length
+                                   original_space_size
+                 else, result is a 2D array of shape
+                       (nvectors, original_space_size)
+        """
+        onedim = (vectors.ndim == 1)
+        if onedim:
+            vectors = vectors[np.newaxis,:]
+        if type(error) is type(None):
+            weighted_vectors = vectors
+        else:
+            weighted_vectors = vectors / (error ** 2)[np.newaxis,:]
+        expanded_space_size = vectors.shape[-1]
+        original_space_size = self.original_space_size(expanded_space_size)
+        (pad_size_before, pad_size_after) =\
+            self.get_pad_sizes_from_original_space_length(original_space_size)
+        result = weighted_vectors[:,pad_size_before:-pad_size_after]
+        if onedim:
+            return result[0]
+        else:
+            return result
+    
     def copy(self):
         """
         Finds and returns a deep copy of this expander.
@@ -278,6 +310,16 @@ class PadExpander(Expander):
         pad_array_after = np.ones(pad_after_shape) * self.pad_value
         return np.concatenate([pad_array_before, vector, pad_array_after],\
             axis=-1)
+    
+    def contracted_covariance(self, error):
+        """
+        Finds the covariance matrix associated with contracted noise.
+        
+        error: 1D vector from expanded space
+        
+        returns: 2D array of shape (original_space_size, original_space_size)
+        """
+        return np.diag(self.contract_error(error) ** 2)
     
     def contract_error(self, error):
         """
