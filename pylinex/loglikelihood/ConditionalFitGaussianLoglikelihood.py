@@ -96,26 +96,11 @@ class ConditionalFitGaussianLoglikelihood(LoglikelihoodWithData):
         return self.conditional_fit_model.error
     
     @property
-    def unknown_name_chain(self):
-        """
-        Property storing the chain of unknown names in the ConditionalFitModel.
-        """
-        return self.conditional_fit_model.unknown_name_chain
-    
-    @property
     def full_model(self):
         """
         Property storing the full model of the data given to this likelihood.
         """
         return self.conditional_fit_model.model
-    
-    @property
-    def prior(self):
-        """
-        Property storing the prior on the parameters which are not
-        conditionalized over (i.e. the ones which are marginalized over).
-        """
-        return self.conditional_fit_model.prior
     
     @property
     def full_loglikelihood(self):
@@ -171,17 +156,16 @@ class ConditionalFitGaussianLoglikelihood(LoglikelihoodWithData):
         """
         self.check_parameter_dimension(parameters)
         try:
-            (recreation, conditional_mean, conditional_covariance) =\
-                self.model(parameters, return_conditional_mean=True,\
-                return_conditional_covariance=True)
+            (recreation, conditional_mean, conditional_covariance,\
+                log_prior_at_conditional_mean) = self.model(parameters,\
+                return_conditional_mean=True,\
+                return_conditional_covariance=True,\
+                return_log_prior_at_conditional_mean=True)
             weighted_bias = np.abs((self.data - recreation) / self.error)
             bias_term = np.sum(weighted_bias ** 2) / (-2.)
             covariance_term = (la.slogdet(conditional_covariance)[1] / 2)
-            if type(self.prior) is type(None):
-                prior_term = 0
-            else:
-                prior_term = self.prior.log_value(conditional_mean)
-            logL_value = bias_term + covariance_term + prior_term
+            logL_value =\
+                bias_term + covariance_term + log_prior_at_conditional_mean
         except (ValueError, ZeroDivisionError):
             logL_value = -np.inf
         if np.isnan(logL_value):
@@ -247,26 +231,10 @@ class ConditionalFitGaussianLoglikelihood(LoglikelihoodWithData):
         return ConditionalFitGaussianLoglikelihood(\
             self.conditional_fit_model.change_data(new_data))
     
-    def change_prior(self, new_prior):
-        """
-        Creates a copy of this ConditionalFitGaussianLoglikelihood that has the
-        given prior on the model which is marginalized over (the one specified
-        by the model's unknown_name_chain property).
-        
-        new_prior: either None or a GaussianDistribution object describing new
-                   priors on the marginalized model
-        
-        returns: a copy of this ConditionalFitGaussianLoglikelihood with the
-                 given prior on the marginalized model
-        """
-        return ConditionalFitGaussianLoglikelihood(\
-            self.conditional_fit_model.change_prior(new_prior))
-    
     def priorless(self):
         """
         Creates a copy of this ConditionalFitGaussianLoglikelihood that has no
-        prior on the model which is marginalized over (the one specified by the
-        model's unknown_name_chain property).
+        prior on the model which is marginalized over.
         
         returns: a copy of this ConditionalFitGaussianLoglikelihood with no
                  prior on the marginalized model

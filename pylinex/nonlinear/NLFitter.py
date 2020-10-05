@@ -2074,9 +2074,12 @@ class NLFitter(object):
                         self.transform_list[parameter_indices]
                 likelihood = GaussianLoglikelihood(\
                     model(reference_value_mean), error, model)
-                reference_value_covariance =\
-                    likelihood.parameter_covariance_fisher_formalism(\
-                    reference_value_mean, **fisher_kwargs)
+                try:
+                    reference_value_covariance =\
+                        likelihood.parameter_covariance_fisher_formalism(\
+                        reference_value_mean, **fisher_kwargs)
+                except np.linalg.LinAlgError:
+                    reference_value_covariance = None
         if (type(reference_value_mean) is not type(None)) and\
             apply_transforms_to_reference_value:
             reference_value_mean = [(None\

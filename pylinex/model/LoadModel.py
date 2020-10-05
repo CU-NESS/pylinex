@@ -40,7 +40,8 @@ from .InputInterpolatedModel import InputInterpolatedModel
 from .OutputInterpolatedModel import OutputInterpolatedModel
 from .EmulatedModel import EmulatedModel
 from .BasisFitModel import BasisFitModel
-from .ConditionalFitModel import ConditionalFitModel
+from .SingleConditionalFitModel import SingleConditionalFitModel
+from .MultiConditionalFitModel import MultiConditionalFitModel
 
 # These are the model classes where it's valid to load the model using
 # XXXXX.load_from_hdf5_group(group) or XXXXX.load(hdf5_file_name). Other
@@ -58,7 +59,8 @@ meta_model_classes =\
 [\
     'ExpandedModel', 'RenamedModel', 'RestrictedModel', 'TransformedModel',\
     'DistortedModel', 'ProjectedModel', 'SlicedModel', 'ScaledModel',\
-    'BinnedModel', 'OutputInterpolatedModel', 'ConditionalFitModel'\
+    'BinnedModel', 'OutputInterpolatedModel', 'SingleConditionalFitModel',\
+    'MultiConditionalFitModel'\
 ]
 
 # Model classes which are wrappers around an arbitrary number of Model classes
@@ -104,18 +106,39 @@ def load_model_from_hdf5_group(group):
     except:
         if class_name in meta_model_classes:
             model = load_model_from_hdf5_group(group['model'])
-            if class_name == 'ConditionalFitModel':
+            if class_name in\
+                ['SingleConditionalFitModel', 'MultiConditionalFitModel']:
                 data = get_hdf5_value(group['data'])
                 error = get_hdf5_value(group['error'])
-                unknown_name_chain =\
-                    get_hdf5_value(group['unknown_name_chain'])
-                if 'prior' in group:
-                    prior = GaussianDistribution.load_from_hdf5_group(\
-                        group['prior'])
+                if class_name == 'SingleConditionalFitModel':
+                    unknown_name_chain =\
+                        get_hdf5_value(group['unknown_name_chain'])
+                    if 'prior' in group:
+                        prior = GaussianDistribution.load_from_hdf5_group(\
+                            group['prior'])
+                    else:
+                        prior = None
+                    return SingleConditionalFitModel(model, data, error,\
+                        unknown_name_chain, prior=prior)
                 else:
-                    prior = None
-                return ConditionalFitModel(model, data, error,\
-                    unknown_name_chain, prior=prior)
+                    num_unknown = group.attrs['num_unknown']
+                    unknown_name_chains_group = group['unknown_name_chains']
+                    priors_group = group['priors']
+                    (unknown_name_chains, priors) = ([], [])
+                    for iunknown in range(num_unknown):
+                        key = '{:d}'.format(iunknown)
+                        unknown_name_chain =\
+                            get_hdf5_value(unknown_name_chains_group[key])
+                        unknown_name_chains.append(\
+                            [element for element in unknown_name_chain])
+                        if key in priors_group:
+                            prior = GaussianDistribution.load_from_hdf5_group(\
+                                priors_group[key])
+                            priors.append(prior)
+                        else:
+                            priors.append(None)
+                    return MultiConditionalFitModel(model, data, error,\
+                        unknown_name_chains, priors=priors)
             elif class_name == 'TransformedModel':
                 transform = load_transform_from_hdf5_group(group['transform'])
                 return TransformedModel(model, transform)

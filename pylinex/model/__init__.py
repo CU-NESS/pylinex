@@ -39,6 +39,8 @@ from pylinex.model.RestrictedModel import RestrictedModel
 from pylinex.model.SlicedModel import SlicedModel
 from pylinex.model.BasisFitModel import BasisFitModel
 from pylinex.model.ConditionalFitModel import ConditionalFitModel
+from pylinex.model.SingleConditionalFitModel import SingleConditionalFitModel
+from pylinex.model.MultiConditionalFitModel import MultiConditionalFitModel
 from pylinex.model.LoadModel import load_model_from_hdf5_group
 from pylinex.model.TrainingSetCreator import TrainingSetCreator
-
+from pylinex.model.ModelTree import ModelTree
