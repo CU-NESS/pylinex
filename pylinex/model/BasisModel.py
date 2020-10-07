@@ -131,7 +131,7 @@ class BasisModel(LoadableModel):
         """
         return np.zeros((self.num_channels,) + ((self.num_parameters,) * 2))
     
-    def quick_fit(self, data, error, prior=None, **kwargs):
+    def quick_fit(self, data, error, prior=None, prior_indices=None, **kwargs):
         """
         Performs a quick fit of this model to the given data with (or without)
         a given noise level.
@@ -155,20 +155,43 @@ class BasisModel(LoadableModel):
             error = 1
         if type(error) in numerical_types:
             error = error * np.ones_like(data)
+        if type(prior_indices) is type(None):
+            prior_indices = list(range(self.num_parameters))
         if not hasattr(self, '_last_error') or\
             (not hasattr(self, '_last_prior')) or\
             (not hasattr(self, '_last_covariance')) or\
             (not hasattr(self, '_last_offset')) or\
-            np.any(error != self._last_error) or (prior != self._last_prior):
+            (not hasattr(self, '_last_prior_indices')) or\
+            np.any(error != self._last_error) or\
+            (prior != self._last_prior) or\
+            (list(prior_indices) != self._last_prior_indices):
             self._last_error = error
             self._last_prior = prior
+            self._last_prior_indices = [index for index in prior_indices]
             inverse_covariance = self.basis.gram_matrix(error)
             self._last_offset = np.zeros(self.num_parameters)
             if isinstance(prior, GaussianDistribution):
+                prior_inverse_covariance_small = prior.inverse_covariance.A
+                prior_mean_small = prior.internal_mean.A[0]
+                prior_rearranged = (not (self._last_prior_indices ==\
+                    list(range(self.num_parameters))))
+                if prior_rearranged:
+                    temp = np.zeros(\
+                        (len(self._last_prior_indices), self.num_parameters))
+                    temp[:,self._last_prior_indices] =\
+                        prior_inverse_covariance_small
+                    prior_inverse_covariance =\
+                        np.zeros((self.num_parameters, self.num_parameters))
+                    prior_inverse_covariance[self._last_prior_indices,:] = temp
+                    prior_mean = np.zeros(self.num_parameters)
+                    prior_mean[self._last_prior_indices] = prior_mean_small
+                else:
+                    prior_inverse_covariance = prior_inverse_covariance_small
+                    prior_mean = prior_mean_small
                 inverse_covariance =\
-                    inverse_covariance + prior.inverse_covariance.A
-                self._last_offset = np.dot(prior.inverse_covariance.A,\
-                    prior.internal_mean.A[0])
+                    inverse_covariance + prior_inverse_covariance
+                self._last_offset =\
+                    np.dot(prior_inverse_covariance, prior_mean)
             elif type(prior) is not type(None):
                 raise TypeError("prior must either be None or a " +\
                     "GaussianDistribution object.")

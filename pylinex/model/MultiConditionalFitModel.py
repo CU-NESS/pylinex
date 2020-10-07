@@ -11,11 +11,10 @@ Description: File containing class representing a model where part(s) of the
 import numpy as np
 from distpy import GaussianDistribution
 from ..util import create_hdf5_dataset, sequence_types
-from .SumModel import SumModel
-from .DirectSumModel import DirectSumModel
-from .ProductModel import ProductModel
+from ..basis import Basis
 from .BasisModel import BasisModel
 from .ConditionalFitModel import ConditionalFitModel
+from .ModelTree import ModelTree
 try:
     # this runs with no issues in python 2 but raises error in python 3
     basestring
@@ -93,6 +92,8 @@ class MultiConditionalFitModel(ConditionalFitModel):
         value: tuple of length nunknown of either None or a
                GaussianDistribution object
         """
+        if type(value) is type(None):
+            value = [value] * len(self.unknown_name_chains)
         if type(value) in sequence_types:
             if len(value) == len(self.unknown_name_chains):
                 if all([((type(element) is type(None)) or\
@@ -142,6 +143,7 @@ class MultiConditionalFitModel(ConditionalFitModel):
                 else:
                     raise TypeError("At least one unknown_name_chain was " +\
                         "neither a string or a sequence of strings.")
+            self._unknown_name_chains = chains
         else:
             raise TypeError("unknown_name_chain was set to a non-sequence.")
     
@@ -174,7 +176,7 @@ class MultiConditionalFitModel(ConditionalFitModel):
                 [leaf.parameters for (leaf, name_chain) in\
                 zip(self.model_tree.leaves, self.model_tree.name_chains)\
                 if name_chain not in self.unknown_name_chains]
-        return self.parameters_by_known_leaf
+        return self._parameters_by_known_leaf
     
     @property
     def num_parameters_by_known_leaf(self):
@@ -202,9 +204,13 @@ class MultiConditionalFitModel(ConditionalFitModel):
         Property storing a list of the leaf indices of the unknown models.
         """
         if not hasattr(self, '_unknown_leaf_indices'):
-            self._unknown_leaf_indices =\
-                [self.model_tree.name_chains.index(name_chain)\
-                for name_chain in self.unknown_name_chains]
+            try:
+                self._unknown_leaf_indices =\
+                    [self.model_tree.name_chains.index(name_chain)\
+                    for name_chain in self.unknown_name_chains]
+            except ValueError:
+                raise ValueError("At least one unknown_name_chain does not " +\
+                    "refer to a leaf of the full model.")
         return self._unknown_leaf_indices
     
     @property
@@ -296,9 +302,50 @@ class MultiConditionalFitModel(ConditionalFitModel):
                 leaf_evaluations.append(np.zeros(leaf.num_channels))
             else:
                 leaf_evaluations.append(\
-                    parameter_vectors[known_leaves_accounted_for])
+                    leaf(parameter_vectors[known_leaves_accounted_for]))
                 known_leaves_accounted_for += 1
         return leaf_evaluations
+    
+    def load_combined_prior(self):
+        """
+        Loads the combined_prior and prior_indices properties from the priors
+        given at initialization.
+        """
+        (to_combine, prior_indices, current) = ([], [], 0)
+        for (submodel, prior) in zip(self.unknown_submodels, self.priors):
+            if isinstance(prior, GaussianDistribution):
+                to_combine.append(prior)
+                prior_indices.extend(\
+                    range(current, current + submodel.num_parameters))
+            current += submodel.num_parameters
+        if to_combine:
+            self._combined_prior = GaussianDistribution.combine(*to_combine)
+            self._prior_indices = prior_indices
+        else:
+            self._combined_prior = None
+            self._prior_indices = None
+    
+    @property
+    def combined_prior(self):
+        """
+        Property storing the combined prior distribution on the unknown
+        parameters. It is either None or a GaussianDistribution depending on if
+        any priors are given at initialization.
+        """
+        if not hasattr(self, '_combined_prior'):
+            self.load_combined_prior()
+        return self._combined_prior
+    
+    @property
+    def prior_indices(self):
+        """
+        Property storing the indices out of the unknown model parameters that
+        the combined prior accounts for. This should be None if combined_prior
+        is None.
+        """
+        if not hasattr(self, '_prior_indices'):
+            self.load_combined_prior()
+        return self._prior_indices
     
     def __call__(self, parameters, return_conditional_mean=False,\
         return_conditional_covariance=False,\
@@ -338,16 +385,18 @@ class MultiConditionalFitModel(ConditionalFitModel):
                 modulating_factors.append(\
                     ModelTree.evaluate_model_from_leaves(modulator,\
                     [leaf_evaluations[leaf_index]\
-                    for leaf_index in self.unknown_leaf_indices]))
+                    for leaf_index in modulator_leaf_list]))
             else:
                 modulating_factors.append(modulator([]))
         temporary_combined_basis =\
             np.concatenate([(basis_model.basis.expanded_basis *\
-            modulating_factor[np.newaxis,:]) for (basis_model, factor) in\
+            factor[np.newaxis,:]) for (basis_model, factor) in\
             zip(self.unknown_submodels, modulating_factors)], axis=0)
         temporary_basis_model = BasisModel(Basis(temporary_combined_basis))
         (conditional_mean, conditional_covariance) =\
-            temporary_basis_model.quick_fit(data_less_known_leaves, self.error)
+            temporary_basis_model.quick_fit(data_less_known_leaves,\
+            self.error, prior=self.combined_prior,\
+            prior_indices=self.prior_indices)
         recreation =\
             known_leaf_contribution + temporary_basis_model(conditional_mean)
         return_value = (recreation,)

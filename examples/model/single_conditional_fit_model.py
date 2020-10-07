@@ -9,11 +9,14 @@ Description: Example script showing how objects of the
 """
 import numpy as np
 import matplotlib.pyplot as pl
-from distpy import ChiSquaredDistribution
+from distpy import ChiSquaredDistribution, GaussianDistribution,\
+    DistributionSet
 from pylinex import LegendreBasis, SumModel, ProductModel, LorentzianModel,\
-    TruncatedBasisHyperModel, GaussianModel, SingleConditionalFitModel
+    BasisModel, GaussianModel, SingleConditionalFitModel
 
 fontsize = 24
+triangle_plot_fontsize = 10
+include_noise = True
 first_seed = None
 second_seed = None
 
@@ -23,23 +26,23 @@ x_values = np.linspace(-1, 1, num_channels)
 
 gaussian_model = GaussianModel(x_values)
 lorentzian_model = LorentzianModel(x_values)
-max_num_basis_vectors = 10
-num_basis_vectors = 5
-basis = LegendreBasis(num_channels, max_num_basis_vectors - 1)
-basis_model = TruncatedBasisHyperModel(basis)
+num_basis_vectors = 10
+basis = LegendreBasis(num_channels, num_basis_vectors - 1)
+basis_model = BasisModel(basis)
 sum_model = SumModel(['basis', 'lorentzian'], [basis_model, lorentzian_model])
 
 gaussian_parameters = np.array([1, 0.2, 1])
 lorentzian_parameters = np.array([15, 0, 0.5])
 np.random.seed(first_seed)
-basis_parameters =\
-    np.concatenate([np.random.normal(0, 100, size=num_basis_vectors),\
-    np.zeros(max_num_basis_vectors - num_basis_vectors), [num_basis_vectors]])
+basis_parameters = np.random.normal(0, 100, size=num_basis_vectors)
 
 noise_level = 1
 error = np.ones((num_channels,)) * noise_level
 np.random.seed(second_seed)
-noise = np.random.normal(0, 1, size=error.shape) * error
+if include_noise:
+    noise = np.random.normal(0, 1, size=error.shape) * error
+else:
+    noise = np.zeros_like(error)
 
 full_model = ProductModel(['gaussian', 'sum'], [gaussian_model, sum_model])
 full_parameters = np.concatenate([gaussian_parameters, basis_parameters,\
@@ -70,14 +73,18 @@ except:
         "level {1:.2f}, {2:.4g}.").format(chi_squared, probability_level,\
         threshold))
 
+(recreation, conditional_mean, conditional_covariance) = model(parameters,\
+    return_conditional_mean=True, return_conditional_covariance=True)
+conditional_distribution =\
+    GaussianDistribution(conditional_mean, conditional_covariance)
+
 fig = pl.figure(figsize=(12,9))
 ax = fig.add_subplot(211)
 ax.scatter(x_values, data, color='k', label='full model + noise')
-ax.plot(x_values, model(parameters), color='r',\
-    label='SingleConditionalFitModel')
+ax.plot(x_values, recreation, color='r', label='SingleConditionalFitModel')
 ax.set_xlabel('x', size=fontsize)
 ax.set_ylabel('Total y', size=fontsize)
-ax.set_title('singleConditionalFitModel test')
+ax.set_title('SingleConditionalFitModel test')
 ax.legend(fontsize=fontsize)
 ax = fig.add_subplot(212)
 ax.scatter(x_values, data - model(parameters), color='k',\
@@ -85,6 +92,22 @@ ax.scatter(x_values, data - model(parameters), color='k',\
 ax.legend(fontsize=fontsize)
 ax.set_xlabel('x', size=fontsize)
 ax.set_ylabel('Residual y', size=fontsize)
+
+num_samples = int(1e6)
+marginalized_parameters = [parameter for parameter in full_model.parameters\
+    if parameter not in model.parameters]
+conditional_distribution_set =\
+    DistributionSet([(conditional_distribution, marginalized_parameters)])
+
+fig = conditional_distribution_set.triangle_plot(num_samples,\
+    reference_value_mean=basis_parameters, nbins=200,\
+    fontsize=triangle_plot_fontsize,\
+    contour_confidence_levels=[0.68, 0.95, 0.997], plot_type='contour',\
+    parameter_renamer=(lambda parameter: '_'.join(parameter.split('_')[-2:])))
+conditional_distribution_set.triangle_plot(num_samples, fig=fig,\
+    reference_value_mean=basis_parameters, nbins=200,\
+    fontsize=triangle_plot_fontsize, plot_type='histogram',\
+    parameter_renamer=(lambda parameter: '_'.join(parameter.split('_')[-2:])))
 
 pl.show()
 
