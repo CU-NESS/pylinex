@@ -18,6 +18,7 @@ from matplotlib.ticker import MultipleLocator
 from distpy import ChiSquaredDistribution
 from ..util import Savable, Loadable, create_hdf5_dataset, real_numerical_types
 from ..expander import Expander, load_expander_from_hdf5_group
+from ..basis import TrainedBasis
 from .BaseFitter import BaseFitter
 
 class MAAFitter(BaseFitter, Savable, Loadable):
@@ -976,4 +977,104 @@ class MAAFitter(BaseFitter, Savable, Loadable):
         basis_sum = BaseFitter.load_basis_sum(group)
         priors = BaseFitter.load_priors(group)
         return MAAFitter(expander, basis_sum, data, error=error, **priors)
+    
+
+def MAA_bias_statistic_offsets(basis, training_set, target_expander, error,\
+    return_means=True, return_maxima=True, return_trace_covariances=True):
+    """
+    Finds the offset of the bias statistic mean (over noise realizations) from
+    1 for different numbers of terms. This is determined by the overlap between
+    the basis vectors and the expansion matrix and by the amount of the
+    training set curves that cannot be fit by the basis vectors. The means
+    returned if return_means is True are the means of these quantities over all
+    training set curves, while the maxima returned if return_maxima is True is
+    the value of this mean for the worst training set curve. The
+    trace_covariances returned if return_trace_covariances are the RMS ratios
+    of desired covariance to desired only covariance.
+    
+    basis: the basis with which to fit the training set
+    training_set: the nuisance curves that need to be fit in the presence of
+                  the desired component which is described by the
+                  target_expander argument. Should be an numpy array of shape
+                  (num_curves, num_channels)
+    target_expander: the expander that describes how the desired component
+                     appears in the space of the training set
+    error: the noise level that will exist in the data
+    return_means: if True, means of bias statistic offsets over training set
+                           curves are returned
+    return_maxima: if True, bias statistic offsets for worst training set curve
+                            are returned
+    return_trace_covariances: if True, RMS ratio of desired covariance to
+                                       desired only covariance is returned
+    
+    returns: ((means,) if return_means else ()) +
+             ((maxima,) if return_maxima else ()) +
+             ((trace_covariances,) if return_trace_covariances else ())
+    """
+    if not (return_means or return_maxima or return_trace_covariances):
+        raise ValueError("At least one of return_means, return_maxima, and " +\
+            "return_trace_covariances must be True; otherwise, this " +\
+            "function wouldn't do anything!")
+    (means, maxima, trace_covariances) = ([], [], [])
+    possible_num_terms = 1 + np.arange(basis.num_basis_vectors)
+    overlap = target_expander.overlap(training_set, error=error)
+    contracted_covariance = target_expander.contracted_covariance(error)
+    inverse_contracted_covariance = la.inv(contracted_covariance)
+    statistics =\
+        np.mean(overlap * np.dot(overlap, contracted_covariance), axis=-1)
+    means.append(np.mean(statistics))
+    maxima.append(np.max(statistics))
+    trace_covariances.append(\
+        np.trace(np.dot(contracted_covariance, inverse_contracted_covariance)))
+    for num_terms in possible_num_terms:
+        fitter = MAAFitter(target_expander, basis[:num_terms], training_set,\
+            error=error)
+        statistics = np.mean(fitter.desired_mean * np.dot(fitter.desired_mean,\
+            fitter.inverse_desired_covariance), axis=-1)
+        means.append(np.mean(statistics))
+        maxima.append(np.max(statistics))
+        trace_covariances.append(np.trace(np.dot(fitter.desired_covariance,\
+            inverse_contracted_covariance)))
+    (means, maxima, trace_covariances) =\
+        (np.array(means), np.array(maxima), np.array(trace_covariances))
+    return_value = ()
+    if return_means:
+        return_value = return_value + (means,)
+    if return_maxima:
+        return_value = return_value + (maxima,)
+    if return_trace_covariances:
+        return_value = return_value + (trace_covariances,)
+    if len(return_value) == 1:
+        return_value = return_value[0]
+    return return_value
+
+def MAA_self_offsets(training_set, target_expander, error, num_terms,\
+    return_means=True, return_maxima=True, return_trace_covariances=True):
+    """
+    Same as MAA_bias_statistic_offsets function except the basis is generated
+    through SVD on the training set.
+    
+    training_set: the nuisance curves that need to be fit in the presence of
+                  the desired component which is described by the
+                  target_expander argument. Should be an numpy array of shape
+                  (num_curves, num_channels)
+    target_expander: the expander that describes how the desired component
+                     appears in the space of the training set
+    error: the noise level that will exist in the data
+    num_terms: the number of terms to get from SVD on the training set
+    return_means: if True, means of bias statistic offsets over training set
+                           curves are returned
+    return_maxima: if True, bias statistic offsets for worst training set curve
+                            are returned
+    return_trace_covariances: if True, RMS ratio of desired covariance to
+                              desired only covariance is returned
+    
+    returns: ((means,) if return_means else ()) +
+             ((maxima,) if return_maxima else ()) +
+             ((trace_covariances,) if return_trace_covariances else ())
+    """
+    return MAA_bias_statistic_offsets(TrainedBasis(training_set, num_terms,\
+        error=error), training_set, target_expander, error,\
+        return_means=return_means, return_maxima=return_maxima,\
+        return_trace_covariances=return_trace_covariances)
 
