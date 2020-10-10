@@ -29,7 +29,8 @@ from pylinex.basis import Basis, PolynomialBasis, GramSchmidtBasis,\
     FourierBasis, LegendreBasis, TrainedBasis, BasisSet, BasisSum,\
     effective_training_set_rank, plot_training_set_with_modes
 from pylinex.fitter import TrainingSetIterator, BaseFitter, Fitter, MAAFitter,\
-    MAA_bias_statistic_offsets, MAA_self_offsets, MetaFitter, Extractor
+    MAA_bias_statistic_offsets, MAA_self_offsets,\
+    plot_training_set_MAA_quantities, MetaFitter, Extractor
 from pylinex.model import Model, LoadableModel, FixedModel,\
     ShiftedRescaledModel, ConstantModel, BasisModel, GaussianModel, SechModel,\
     LorentzianModel, SinusoidalModel, TanhModel, CompoundModel, SumModel,\

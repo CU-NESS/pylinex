@@ -1078,3 +1078,68 @@ def MAA_self_offsets(training_set, target_expander, error, num_terms,\
         return_means=return_means, return_maxima=return_maxima,\
         return_trace_covariances=return_trace_covariances)
 
+def plot_training_set_MAA_quantities(training_set, target_expander, error,\
+    num_terms, fig=None, figsize=(12, 9), ax=None, fontsize=24, show=False):
+    """
+    Plots the quantities returned by the MAA_self_offsets function.
+    
+    training_set: the nuisance curves that need to be fit in the presence of
+                  the desired component which is described by the
+                  target_expander argument. Should be an numpy array of shape
+                  (num_curves, num_channels)
+    target_expander: the expander that describes how the desired component
+                     appears in the space of the training set
+    error: the noise level that will exist in the data
+    num_terms: the number of terms to get from SVD on the training set
+    fig: the Figure object on which to make axes
+    figsize: size of figure to create if fig is None
+    ax: Axes object on which to plot quantities
+    fontsize: size of font for labels and ticks
+    
+    returns: Axes on which plot was made if show is False, otherwise None
+    """
+    num_terms_array = np.arange(1 + num_terms)
+    (means, maxima, trace_covariances) = MAA_self_offsets(training_set,\
+        target_expander, error, num_terms, return_means=True,\
+        return_maxima=True, return_trace_covariances=True)
+    RMS_spectrum =\
+        TrainedBasis(training_set, num_terms, error=error).RMS_spectrum
+    quantities = [means, maxima, RMS_spectrum ** 2,\
+        trace_covariances / len(target_expander.contract_error(error))]
+    labels = ['mean bias statistic offset', 'maximum bias statistic offset',\
+        'mean-square training set bias', 'mean-square uncertainty expansion']
+    minimum = min([min(quantity) for quantity in quantities])
+    maximum = max([max(quantity) for quantity in quantities])
+    middle = np.sqrt(minimum * maximum)
+    half_width = np.sqrt(maximum / minimum)
+    buffer_percentage = 5
+    new_half_width = np.power(half_width, 1 + (buffer_percentage / 100))
+    new_minimum = middle / new_half_width
+    new_maximum = middle * new_half_width
+    ylim = (new_minimum, new_maximum)
+    colors = ['C0', 'C1', 'C2', 'C3']
+    markers = ['o', 'v', 'P', 'D']
+    point_size = 30
+    if type(fig) is type(None):
+        fig = pl.figure(figsize=figsize)
+    if type(ax) is type(None):
+        ax = fig.add_subplot(111)
+    for (quantity, label, color, marker) in\
+        zip(quantities, labels, colors, markers):
+        ax.scatter(num_terms_array, quantity, color=color, marker=marker,\
+            s=point_size, label=label)
+    ax.legend(fontsize=fontsize, frameon=False)
+    ax.set_xlabel('# of terms', size=fontsize)
+    ax.set_ylabel('Bias statistic mean offset / Squared # of $\sigma$',\
+        size=fontsize)
+    ax.set_title('Training set MAA statistics', size=fontsize)
+    ax.tick_params(labelsize=fontsize, width=2.5, length=7.5, which='major')
+    ax.tick_params(labelsize=fontsize, width=1.5, length=4.5, which='minor')
+    ax.set_yscale('log')
+    ax.set_xlim((0, num_terms))
+    ax.set_ylim(ylim)
+    if show:
+        pl.show()
+    else:
+        return ax
+
