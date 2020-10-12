@@ -1015,28 +1015,34 @@ def MAA_bias_statistic_offsets(basis, training_set, target_expander, error,\
         raise ValueError("At least one of return_means, return_maxima, and " +\
             "return_trace_covariances must be True; otherwise, this " +\
             "function wouldn't do anything!")
-    (means, maxima, trace_covariances) = ([], [], [])
     possible_num_terms = 1 + np.arange(basis.num_basis_vectors)
-    overlap = target_expander.overlap(training_set, error=error)
     contracted_covariance = target_expander.contracted_covariance(error)
-    inverse_contracted_covariance = la.inv(contracted_covariance)
-    statistics =\
-        np.mean(overlap * np.dot(overlap, contracted_covariance), axis=-1)
-    means.append(np.mean(statistics))
-    maxima.append(np.max(statistics))
-    trace_covariances.append(\
-        np.trace(np.dot(contracted_covariance, inverse_contracted_covariance)))
+    if return_means or return_maxima:
+        overlap = target_expander.overlap(training_set, error=error)
+        statistics =\
+            np.mean(overlap * np.dot(overlap, contracted_covariance), axis=-1)
+        means = [np.mean(statistics)]
+        maxima = [np.max(statistics)]
+    if return_trace_covariances:
+        inverse_contracted_covariance = la.inv(contracted_covariance)
+        trace_covariances = [np.mean(np.diag(\
+            np.dot(contracted_covariance, inverse_contracted_covariance)))]
     for num_terms in possible_num_terms:
         fitter = MAAFitter(target_expander, basis[:num_terms], training_set,\
             error=error)
-        statistics = np.mean(fitter.desired_mean * np.dot(fitter.desired_mean,\
-            fitter.inverse_desired_covariance), axis=-1)
-        means.append(np.mean(statistics))
-        maxima.append(np.max(statistics))
-        trace_covariances.append(np.trace(np.dot(fitter.desired_covariance,\
-            inverse_contracted_covariance)))
-    (means, maxima, trace_covariances) =\
-        (np.array(means), np.array(maxima), np.array(trace_covariances))
+        if return_means or return_maxima:
+            statistics =\
+                np.mean(fitter.desired_mean * np.dot(fitter.desired_mean,\
+                fitter.inverse_desired_covariance), axis=-1)
+            means.append(np.mean(statistics))
+            maxima.append(np.max(statistics))
+        if return_trace_covariances:
+            trace_covariances.append(np.mean(np.diag(np.dot(\
+                fitter.desired_covariance, inverse_contracted_covariance))))
+    if return_means or return_maxima:
+        (means, maxima) = (np.array(means), np.array(maxima))
+    if return_trace_covariances:
+        trace_covariances = np.array(trace_covariances)
     return_value = ()
     if return_means:
         return_value = return_value + (means,)
@@ -1096,16 +1102,16 @@ def plot_training_set_MAA_quantities(training_set, target_expander, error,\
     ax: Axes object on which to plot quantities
     fontsize: size of font for labels and ticks
     
-    returns: Axes on which plot was made if show is False, otherwise None
+    returns: (() if show else (ax,)) +\
+             (means, maxima, MS_spectrum, trace_covariances)
     """
     num_terms_array = np.arange(1 + num_terms)
     (means, maxima, trace_covariances) = MAA_self_offsets(training_set,\
         target_expander, error, num_terms, return_means=True,\
         return_maxima=True, return_trace_covariances=True)
-    RMS_spectrum =\
-        TrainedBasis(training_set, num_terms, error=error).RMS_spectrum
-    quantities = [means, maxima, RMS_spectrum ** 2,\
-        trace_covariances / len(target_expander.contract_error(error))]
+    MS_spectrum =\
+        TrainedBasis(training_set, num_terms, error=error).RMS_spectrum ** 2
+    quantities = [means, maxima, MS_spectrum ** 2, trace_covariances]
     labels = ['mean bias statistic offset', 'maximum bias statistic offset',\
         'mean-square training set bias', 'mean-square uncertainty expansion']
     minimum = min([min(quantity[np.logical_and(np.isfinite(quantity),\
@@ -1142,6 +1148,7 @@ def plot_training_set_MAA_quantities(training_set, target_expander, error,\
     ax.set_ylim(ylim)
     if show:
         pl.show()
+        return (means, maxima, MS_spectrum, trace_covariances)
     else:
-        return ax
+        return (ax, means, maxima, MS_spectrum, trace_covariances)
 
