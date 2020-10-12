@@ -1108,8 +1108,10 @@ def plot_training_set_MAA_quantities(training_set, target_expander, error,\
         trace_covariances / len(target_expander.contract_error(error))]
     labels = ['mean bias statistic offset', 'maximum bias statistic offset',\
         'mean-square training set bias', 'mean-square uncertainty expansion']
-    minimum = min([min(quantity) for quantity in quantities])
-    maximum = max([max(quantity) for quantity in quantities])
+    minimum = min([min(quantity[np.logical_and(np.isfinite(quantity),\
+        quantity != 0)]) for quantity in quantities])
+    maximum = max([max(quantity[np.logical_and(np.isfinite(quantity),\
+        quantity != 0)]) for quantity in quantities])
     middle = np.sqrt(minimum * maximum)
     half_width = np.sqrt(maximum / minimum)
     buffer_percentage = 5
