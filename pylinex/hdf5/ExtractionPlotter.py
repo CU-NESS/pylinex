@@ -1005,7 +1005,7 @@ class ExtractionPlotter(object):
             return ax
     
     def plot_parameter_number_grid(self, quantity_to_minimize=None,
-        cmap='binary', vmin=None, vmax=None, rank=True, ax=None,\
+        cmap='binary', vmin=None, vmax=None, rank=True, fontsize=24, ax=None,\
         show=False):
         """
         Plots a histogram of the number of parameters used in each dimension.
