@@ -620,10 +620,16 @@ class LeastSquareFitter(object):
             return
         else:
             iterations_to_run = iterations - self.num_iterations
+        already_done = self.num_iterations
+        if verbose and (already_done != 0):
+            print(("LeastSquareFitter has already completed {0:d} steps. " +\
+                "{1:d} more steps will be run.").format(already_done,\
+                iterations_to_run))
         for index in range(iterations_to_run):
             if verbose:
                 print(("Starting iteration #{0:d} of LeastSquareFitter " +\
-                    "at {1!s}.").format(1 + index, time.ctime()))
+                    "at {1!s}.").format(1 + index + already_done,\
+                    time.ctime()))
             if (len(self.argmins) > 0) and\
                 (self.min < ((-1) * cutoff_loglikelihood)):
                 continue

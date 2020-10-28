@@ -927,9 +927,11 @@ class ExtractionPlotter(object):
         fig.subplots_adjust(hspace=0.3, wspace=0.3)
         if show:
             pl.show()
+        else:
+            return fig
     
     def plot_grid(self, name, icurve=None, log_from_min=False, show=False,\
-        **kwargs):
+        fontsize=24, **kwargs):
         """
         Plots the saved grid of the given quantity.
         
@@ -957,19 +959,21 @@ class ExtractionPlotter(object):
             raise ValueError("grid must be 1D or 2D to be plotted.")
         if log_from_min:
             grid_min = np.min(grid)
-            pl.imshow((grid - grid_min).T, norm=LogNorm(), **kwargs)
+            image = ax.imshow((grid - grid_min).T, norm=LogNorm(), **kwargs)
         else:
-            pl.imshow(grid.T, **kwargs)
-        pl.colorbar()
+            image = ax.imshow(grid.T, **kwargs)
+        pl.colorbar(image)
         xlim = (-0.5, self.dimension_lengths[0] - 0.5)
-        pl.xlim(xlim)
-        pl.xticks(np.arange(self.dimension_lengths[0]), self.xticks)
-        pl.xlabel(self.xlabel)
+        ax.set_xlim(xlim)
+        ax.set_xticks(np.arange(self.dimension_lengths[0]))
+        ax.set_xticklabels(self.xticks)
+        ax.set_xlabel(self.xlabel, size=fontsize)
         if not oneD:
             ylim = (-0.5, self.dimension_lengths[1] - 0.5)
-            pl.ylim(ylim)
-            pl.yticks(np.arange(self.dimension_lengths[1]), self.yticks)
-            pl.ylabel(self.ylabel)
+            ax.set_ylim(ylim)
+            ax.set_yticks(np.arange(self.dimension_lengths[1]))
+            ax.set_yticklabels(self.yticks)
+            ax.set_ylabel(self.ylabel, size=fontsize)
             try:
                 rank_indices = []
                 for dimension in self.dimensions:
@@ -979,20 +983,26 @@ class ExtractionPlotter(object):
                         break
                 (xrank_index, yrank_index) = rank_indices
                 if type(xrank_index) is not type(None):
-                    pl.plot([xrank_index - 0.5] * 2, ylim, color='r',\
+                    ax.plot([xrank_index - 0.5] * 2, ylim, color='r',\
                         linestyle='--')
                 if type(yrank_index) is not type(None):
-                    pl.plot(xlim, [yrank_index - 0.5] * 2, color='r',\
+                    ax.plot(xlim, [yrank_index - 0.5] * 2, color='r',\
                         linestyle='--')
             except:
                 pass # this says "don't worry about it if you can't plot ranks"
         if log_from_min:
-            pl.title('{0!s} grid (log from min={1:.3g})'.format(name,\
-                grid_min))
+            ax.set_title('{0!s} grid (log from min={1:.3g})'.format(name,\
+                grid_min), size=fontsize)
         else:
-            pl.title('{!s} grid'.format(name))
+            ax.set_title('{!s} grid'.format(name), size=fontsize)
+        ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+            which='major')
+        ax.tick_params(labelsize=fontsize, width=1.5, length=4.5,\
+            which='minor')
         if show:
             pl.show()
+        else:
+            return ax
     
     def plot_parameter_number_grid(self, quantity_to_minimize=None,
         cmap='binary', vmin=None, vmax=None, rank=True, ax=None,\
@@ -1047,22 +1057,26 @@ class ExtractionPlotter(object):
         (x_indices, y_indices) =\
             np.unravel_index(flattened_argmins, grid_shape)
         (x_values, y_values) = (xs[x_indices], ys[y_indices])
-        pl.hist2d(x_values, y_values, cmap=cmap, bins=(xbins, ybins),\
-                  vmin=vmin, vmax=vmax)
+        (histogram, xedges, yedges, image) = ax.hist2d(x_values, y_values,\
+            cmap=cmap, bins=(xbins, ybins), vmin=vmin, vmax=vmax)
         try:
-            pl.plot([xrank + 0.5] * 2, ylim, color='r', linestyle='--')
-            pl.plot(xlim, [yrank + 0.5] * 2, color='r', linestyle='--')
+            ax.plot([xrank + 0.5] * 2, ylim, color='r', linestyle='--')
+            ax.plot(xlim, [yrank + 0.5] * 2, color='r', linestyle='--')
         except:
             pass # don't worry if ranks are unavailable
-        pl.xlim(xlim)
-        pl.ylim(ylim)
-        pl.colorbar()
-        pl.xlabel(self.xlabel)
-        pl.ylabel(self.ylabel)
-        pl.xticks(np.arange(left, right + 1), self.xticks)
-        pl.yticks(np.arange(bottom, top + 1), self.yticks)
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+        pl.colorbar(image)
+        ax.set_xlabel(self.xlabel, size=fontsize)
+        ax.set_ylabel(self.ylabel, size=fontsize)
+        ax.set_xticks(np.arange(left, right + 1))
+        ax.set_xticklabels(self.xticks)
+        ax.set_yticks(np.arange(bottom, top + 1))
+        ax.set_yticklabels(self.yticks)
         if show:
             pl.show()
+        else:
+            return ax
     
     def plot_histogram(self, quantity_name, quantity_to_minimize=None,\
         color=None, ax=None, bins=None, cumulative=False, density=False,\
@@ -1092,7 +1106,8 @@ class ExtractionPlotter(object):
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
         
-        returns: bins, array or list of arrays
+        returns: (bins, ax) where bins is an array or list of arrays and ax is
+                 a matplotlib.Axes object
         """
         if not self.multiple_data_curves:
             raise NotImplementedError("Only one data curve is included in " +\
@@ -1119,7 +1134,7 @@ class ExtractionPlotter(object):
                     bins=bins, color=this_color, label=quantity,\
                     restricted=restricted, show=False))
                 ax.legend()
-            return bins_to_return
+            return (bins_to_return, ax)
         else:
             if restricted:
                 to_hist = self.restricted_statistics(quantity_name,\
@@ -1138,7 +1153,7 @@ class ExtractionPlotter(object):
             (nums, bins, patches) = ax.hist(to_hist, bins=bins,\
                 histtype='step', cumulative=cumulative, density=density,\
                 color=color, label=label)
-            return bins
+            return (bins, ax)
     
     def plot_normalized_deviance_histograms(self, quantity_to_minimize=None,\
         bins=None, fontsize=24, show=False):
@@ -1155,14 +1170,18 @@ class ExtractionPlotter(object):
         """
         fig = pl.figure()
         ax = fig.add_subplot(111)
-        self.plot_normalized_deviance_histogram(\
+        ax = self.plot_normalized_deviance_histogram(\
             quantity_to_minimize=quantity_to_minimize, color='b', ax=ax,\
             bins=bins, fontsize=fontsize, restricted=False, show=False,\
             label='unrestricted')
-        self.plot_normalized_deviance_histogram(\
+        ax = self.plot_normalized_deviance_histogram(\
             quantity_to_minimize=quantity_to_minimize, color='r', ax=ax,\
-            bins=bins, fontsize=fontsize, restricted=True, show=show,\
+            bins=bins, fontsize=fontsize, restricted=True, show=False,\
             label='rank-restricted')
+        if show:
+            pl.show()
+        else:
+            return ax
     
     def plot_normalized_deviance_histogram(self, quantity_to_minimize=None,\
         color=None, ax=None, bins=None, fontsize=24, restricted=False,\
