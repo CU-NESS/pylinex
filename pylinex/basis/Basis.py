@@ -606,8 +606,9 @@ class Basis(Savable, Loadable):
         return Basis(basis, expander=expander)
     
     def plot(self, basis_indices=slice(None), x_values=None,\
-        matplotlib_function='plot', title='Basis', xlabel=None, ylabel=None,\
-        fontsize=20, fig=None, ax=None, figsize=(12, 9), show=True, **kwargs):
+        correct_sign=False, matplotlib_function='plot', title='Basis',\
+        xlabel=None, ylabel=None, fontsize=20, fig=None, ax=None,\
+        figsize=(12, 9), show=False, **kwargs):
         """
         Plots the basis vectors stored in this Basis object.
         
@@ -615,6 +616,9 @@ class Basis(Savable, Loadable):
                        Default: slice(None) (all basis vectors are included)
         x_values: the x values to use in plotting the basis, defaults to
                   np.arange(num_channels) if x_values is None
+        correct_sign: if True, the first channel of each plotted basis vector
+                      is forced to be non-negative by multiplying by a negative
+                      sign if necessary
         matplotlib_function: type of plot to make, either 'plot' or 'scatter'
         title: title of the plot. Default: 'Basis'
         xlabel, ylabel: labels for the x and y axes
@@ -634,11 +638,17 @@ class Basis(Savable, Loadable):
         if type(ax) is type(None):
             ax = fig.add_subplot(111)
         if matplotlib_function == 'plot':
-            ax.plot(x_values, self.basis[basis_indices].T, **kwargs)
+            sign_correction =\
+                (np.where(self.basis[:,0] >= 0, 1, -1)[:,np.newaxis]\
+                if correct_sign else 1)
+            ax.plot(x_values,\
+                (self.basis * sign_correction)[basis_indices].T, **kwargs)
         elif matplotlib_function == 'scatter':
             (minimum, maximum) = (np.inf, -np.inf)
             for vector in self.basis[basis_indices]:
-                ax.scatter(x_values, vector, **kwargs)
+                sign_correction =\
+                    ((1 if (vector[0] >= 0) else (-1)) if correct_sign else 1)
+                ax.scatter(x_values, vector * sign_correction, **kwargs)
                 minimum = min(minimum, np.min(vector))
                 maximum = max(maximum, np.max(vector))
             ax.set_ylim((minimum, maximum))

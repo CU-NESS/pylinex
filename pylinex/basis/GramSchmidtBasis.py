@@ -97,7 +97,10 @@ class GramSchmidtBasis(Basis):
         expander: if None, no expansion is applied
                   otherwise, expander must be an Expander object.
         """
-        self.basis = orthonormal_basis(seed_vectors, error=error)
+        if isinstance(seed_vectors, Basis):
+            self.basis = orthonormal_basis(seed_vectors.basis, error=error)
+        else:
+            self.basis = orthonormal_basis(seed_vectors, error=error)
         self.expander = expander
     
     @property

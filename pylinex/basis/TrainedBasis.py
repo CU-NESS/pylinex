@@ -442,7 +442,7 @@ class TrainedBasis(Basis):
         return self._RMS_spectrum
     
     def plot_RMS_spectrum(self, threshold=1, ax=None, show=False, title='',\
-        fontsize=24, **kwargs):
+        fontsize=24, plot_reference_lines=True, **kwargs):
         """
         Plots the RMS values (in number of noise levels) achieved in the
         training set as a function of number of modes.
@@ -457,13 +457,14 @@ class TrainedBasis(Basis):
             fig = pl.figure(figsize=(12,9))
             ax = fig.add_subplot(111)
         ax.scatter(plot_xs, self.RMS_spectrum, **kwargs)
-        ax.plot(plot_xs, np.ones_like(plot_xs) * threshold, color='k',\
-            linestyle='--')
         ylim = (10 ** int(np.log10(\
             np.min(self.RMS_spectrum[self.RMS_spectrum > 0])) - 1),\
             10 ** int(np.log10(np.max(self.RMS_spectrum)) + 1))
-        ax.plot([plot_xs[np.argmax(self.RMS_spectrum < threshold)]] * 2, ylim,\
-            color='k', linestyle='--')
+        if plot_reference_lines:
+            ax.plot(plot_xs, np.ones_like(plot_xs) * threshold, color='k',\
+                linestyle='--')
+            ax.plot([plot_xs[np.argmax(self.RMS_spectrum < threshold)]] * 2,\
+                ylim, color='k', linestyle='--')
         ax.set_xlim((plot_xs[0], plot_xs[-1]))
         ax.set_ylim(ylim)
         ax.set_yscale('log')
