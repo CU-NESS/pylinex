@@ -141,6 +141,16 @@ class BaseFitter(object):
                                  "basis functions.")
     
     @property
+    def translated_data(self):
+        """
+        Property storing the data with the translation vector subtracted (i.e.
+        the part of the data that will be fit with a linear model).
+        """
+        if not hasattr(self, '_translated_data'):
+            self._translated_data = self.data - self.basis_sum.translation
+        return self._translated_data
+    
+    @property
     def weighted_data(self):
         """
         Property storing the data vector weighted down by the error. This is
@@ -153,6 +163,21 @@ class BaseFitter(object):
             else:
                 self._weighted_data = self.data / self.error
         return self._weighted_data
+    
+    @property
+    def weighted_translated_data(self):
+        """
+        Property storing the weighted version of the data translated by the
+        translation of the basis_sum.
+        """
+        if not hasattr(self, '_weighted_translated_data'):
+            if self.multiple_data_curves:
+                self._weighted_translated_data =\
+                    self.translated_data / self.error[np.newaxis,:]
+            else:
+                self._weighted_translated_data =\
+                    self.translated_data / self.error
+        return self._weighted_translated_data
     
     @property
     def weighted_basis(self):
@@ -264,7 +289,7 @@ class BaseFitter(object):
         mathematically as F mu.
         """
         if not hasattr(self, '_prior_channel_mean'):
-            self._prior_channel_mean =\
+            self._prior_channel_mean = self.basis_sum.translation +\
                 np.dot(self.prior_mean, self.basis_sum.basis)
         return self._prior_channel_mean
     
@@ -286,16 +311,15 @@ class BaseFitter(object):
         by the prior mean, represented mathematically as C^{-1/2} (y - F mu).
         """
         if not hasattr(self, '_weighted_shifted_data'):
-            self._weighted_shifted_data = self.weighted_data
             if self.has_priors:
                 if self.multiple_data_curves:
-                    self._weighted_shifted_data =\
-                        self._weighted_shifted_data -\
+                    self._weighted_shifted_data = self.weighted_data -\
                         self.weighted_prior_channel_mean[np.newaxis,:]
                 else:
                     self._weighted_shifted_data =\
-                        self._weighted_shifted_data -\
-                        self.weighted_prior_channel_mean
+                        self.weighted_data - self.weighted_prior_channel_mean
+            else:
+                self._weighted_shifted_data = self.weighted_translated_data
         return self._weighted_shifted_data
     
     @property

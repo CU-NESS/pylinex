@@ -47,7 +47,8 @@ class TruncationExtractor(Savable):
     """
     def __init__(self, data, error, names, training_sets, nterms_maxima,\
         file_name, information_criterion='deviance_information_criterion',\
-        expanders=None, trust_ranks=False, verbose=True):
+        expanders=None, mean_translation=False, trust_ranks=False,\
+        verbose=True):
         """
         Initializes an Extractor object with the given data and error vectors,
         names, training sets, dimensions, compiled quantity, quantity to
@@ -65,10 +66,15 @@ class TruncationExtractor(Savable):
                                minimize to balance parameter number and
                                goodness-of-fit
         expanders: list of Expander objects which expand each of the basis sets
+        mean_translation: if True (default False), training sets are
+                          mean-subtracted before SVD is computed. the means are
+                          then stored in the translation properties of the
+                          resulting TrainedBasis objects.
         trust_ranks: if True, all walkers are initialized on ranks
                      if False, they are initialized all over discrete space
         verbose: if True, messages should be printed to the screen
         """
+        self.mean_translation = mean_translation 
         self.file_name = file_name
         self.data = data
         self.error = error
@@ -79,6 +85,31 @@ class TruncationExtractor(Savable):
         self.information_criterion = information_criterion
         self.verbose = verbose
         self.trust_ranks = trust_ranks
+    
+    @property
+    def mean_translation(self):
+        """
+        Property storing whether training sets have mean subtracted before SVD
+        is taken.
+        """
+        if not hasattr(self, '_mean_translation'):
+            raise AttributeError("mean_translation was referenced before " +\
+                "it was set.")
+        return self._mean_translation
+    
+    @mean_translation.setter
+    def mean_translation(self, value):
+        """
+        Setter for the property determining whether training sets should have
+        mean subtracted before SVD is taken.
+        
+        value: True if mean should be subtracted pre-SVD or False if it should
+               not
+        """
+        if type(value) in bool_types:
+            self._mean_translation = value
+        else:
+            raise TypeError("mean_translation was set to a non-bool.")
     
     @property
     def trust_ranks(self):
@@ -333,7 +364,8 @@ class TruncationExtractor(Savable):
             for (name, expander, training_set) in\
                 zip(self.names, self.expanders, self.training_sets):
                 self._training_set_ranks[name] = effective_training_set_rank(\
-                    training_set, expander.contract_error(self.error))
+                    training_set, expander.contract_error(self.error),\
+                    mean_translation=self.mean_translation)
         return self._training_set_ranks
     
     @property
@@ -418,7 +450,8 @@ class TruncationExtractor(Savable):
                 num_basis_vectors = self.nterms_maxima[ibasis]
                 expander = self.expanders[ibasis]
                 basis = TrainedBasis(training_set, num_basis_vectors,\
-                    error=self.error, expander=expander)
+                    error=self.error, expander=expander,\
+                    mean_translation=self.mean_translation)
                 bases.append(basis)
             self._basis_sum = BasisSum(self.names, bases)
         return self._basis_sum
@@ -503,8 +536,7 @@ class TruncationExtractor(Savable):
                 sampler.run_checkpoints(num_checkpoints, silence_error=True)
                 sampler.close()
             burn_rule = BurnRule(min_checkpoints=1, desired_fraction=1)
-            analyzer = NLFitter(self.file_name, burn_rule=burn_rule,\
-                load_all_chunks=True)
+            analyzer = NLFitter(self.file_name, burn_rule=burn_rule)
             self._optimal_truncations =\
                 analyzer.maximum_probability_parameters.astype(int)
         return self._optimal_truncations

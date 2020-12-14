@@ -1,7 +1,7 @@
 """
 File: pylinex/basis/Basis.py
 Author: Keith Tauscher
-Update date: 10 Apr 2018
+Update date: 12 Dec 2020
 
 Description: File containing a class which represents a single set of basis
              vectors. It allows for memory-efficient expansion of the data
@@ -27,7 +27,7 @@ class Basis(Savable, Loadable):
     priors, concatenate bases (through the '+' operator), take subsets of the
     basis, and find the overlap of the basis with another.
     """
-    def __init__(self, basis_vectors, expander=None):
+    def __init__(self, basis_vectors, expander=None, translation=None):
         """
         Initializes this Basis with the given basis vectors and expander.
         
@@ -39,9 +39,16 @@ class Basis(Savable, Loadable):
                            basis vectors themselves
                   otherwise, expander must be an instance of pylinex's
                              Expander class.
+        translation: if None, no constant additive is included in the results
+                              of calling this Basis.
+                     otherwise: should be a 1D numpy.ndarray of length N (see
+                                above definition of shape of basis_vectors). It
+                                is the (unexpanded) result of calling the basis
+                                on a zero-vector of parameters
         """
         self.basis = basis_vectors
         self.expander = expander
+        self.translation = translation
     
     def RMS_of_training_set_fits(self, training_set, error=None):
         """
@@ -85,19 +92,23 @@ class Basis(Savable, Loadable):
                 "as (unexpanded) basis vectors.")
         if type(error) is type(None):
             weighted_basis = self.basis
-            weighted_training_set = training_set
+            weighted_centered_training_set =\
+                training_set - self.translation[np.newaxis,:]
             inverse_self_overlap = la.inv(np.dot(self.basis, self.basis.T))
-            training_set_overlap = np.dot(self.basis, training_set.T)
+            training_set_overlap =\
+                np.dot(self.basis, weighted_centered_training_set.T)
         else:
             weighted_basis = self.basis / error[np.newaxis,:]
-            weighted_training_set = training_set / error[np.newaxis,:]
+            weighted_centered_training_set =\
+                (training_set - self.translation[np.newaxis,:]) /\
+                error[np.newaxis,:]
             inverse_self_overlap =\
                 la.inv(np.dot(weighted_basis, weighted_basis.T))
             training_set_overlap =\
-                np.dot(weighted_basis, weighted_training_set.T)
+                np.dot(weighted_basis, weighted_centered_training_set.T)
         fit_parameters = np.dot(inverse_self_overlap, training_set_overlap).T
-        fit_residuals =\
-            weighted_training_set - np.dot(fit_parameters, weighted_basis)
+        fit_residuals = weighted_centered_training_set -\
+            np.dot(fit_parameters, weighted_basis)
         return np.sqrt(np.mean(np.power(fit_residuals, 2)))
     
     def RMS_spectrum_of_training_set_fits(self, training_set, error=None):
@@ -120,12 +131,15 @@ class Basis(Savable, Loadable):
                  being RMS'd
         """
         if type(error) is type(None):
-            spectrum = [np.sqrt(np.mean(np.power(training_set, 2)))]
+            spectrum = [np.sqrt(np.mean(np.power(\
+                training_set - self.translation[np.newaxis,:], 2)))]
         elif type(error) in real_numerical_types:
-            spectrum = [np.sqrt(np.mean(np.power(training_set / error, 2)))]
+            spectrum = [np.sqrt(np.mean(np.power(\
+                (training_set - self.translation[np.newaxis,:]) / error, 2)))]
         elif type(error) in sequence_types:
-            spectrum = [np.sqrt(np.mean(\
-                np.power(training_set / np.array(error)[np.newaxis,:], 2)))]
+            spectrum = [np.sqrt(np.mean(np.power(\
+                (training_set - self.translation[np.newaxis,:]) /\
+                np.array(error)[np.newaxis,:], 2)))]
         else:
             raise ValueError("error was not None, a single number, or a 1D " +\
                 "array.")
@@ -141,7 +155,8 @@ class Basis(Savable, Loadable):
         by the other basis. Due to its construction,
         basis1.dot(basis2)*basis1.num_basis_vectors is the same as
         basis2.dot(basis1)*basis2.num_basis_vectors. Therefore, this operation
-        is not commutative.
+        is not commutative. Note that this operation does not account for the
+        translations associated with the two bases.
         
         other: another Basis object with the same number of channels (in the
                expanded space) as this one
@@ -185,6 +200,8 @@ class Basis(Savable, Loadable):
         between basis vectors assume a weighting matrix equal to the identity
         matrix. To use a non-identity weighting matrix, use the Basis.dot
         function instead of the * operator and give an error keyword argument.
+        Note that this operation does not account for the translations
+        associated with the two bases.
         
         other: another Basis object with the same number of channels (in the
                expanded space) as this one
@@ -210,7 +227,9 @@ class Basis(Savable, Loadable):
                 other.num_smaller_channel_set_indices)
             if expanders_equal and nscsi_equal:
                 new_basis = np.concatenate([self.basis, other.basis], axis=0)
-                return Basis(new_basis, expander=self.expander)
+                new_translation = self.translation + other.translation
+                return Basis(new_basis, expander=self.expander,\
+                    translation=new_translation)
             else:
                 raise NotImplementedError("Two basis objects cannot be " +\
                                           "combined when their expanders " +\
@@ -311,6 +330,48 @@ class Basis(Savable, Loadable):
                             "or an Expander object.")
     
     @property
+    def translation(self):
+        """
+        Property storing the vector that is returned when this basis is called
+        with the zero vector as parameters, given in the space of the
+        unexpanded channels.
+        """
+        if not hasattr(self, '_translation'):
+            raise AttributeError("translation was referenced before it was " +\
+                "set.")
+        return self._translation
+    
+    @translation.setter
+    def translation(self, value):
+        """
+        Setter for the translation vector that is returned when this basis is
+        called on a zero-vector of parameters.
+        
+        value: if None, no constant additive is included in the results of
+                        calling this Basis.
+               otherwise: should be a 1D numpy.ndarray of length N given by the
+                          length of the axis with index 1 of the basis vectors
+                          at the heart of this Basis object (i.e. the size of
+                          the unexpanded channel space) It is the (unexpanded)
+                          result of calling the basis on a zero-vector of
+                          parameters
+        """
+        if type(value) is type(None):
+            self._translation = np.zeros(self.basis.shape[1])
+        elif type(value) in sequence_types:
+            value = np.array(value)
+            if value.shape == (self.basis.shape[1],):
+                self._translation = value
+            else:
+                raise ValueError(("translation was set to an array of the " +\
+                    "wrong shape. It should be a 1D array of length {0:d}, " +\
+                    "but instead it had shape {1}.").format(\
+                    self.basis.shape[1], value.shape))
+        else:
+            raise TypeError("translation was set to neither None nor an " +\
+                "array.")
+    
+    @property
     def expanded_basis(self):
         """
         Property storing the basis vectors after they have been expanded by the
@@ -320,6 +381,17 @@ class Basis(Savable, Loadable):
             self._expanded_basis = np.array([self.expander(self.basis[index])\
                 for index in range(len(self))])
         return self._expanded_basis
+    
+    @property
+    def expanded_translation(self):
+        """
+        Property storing an expanded version of the translation vector. This is
+        the vector returned if the Basis is called (with expanded=True) with
+        all zero parameters.
+        """
+        if not hasattr(self, '_expanded_translation'):
+            self._expanded_translation = self.expander(self.translation)
+        return self._expanded_translation
     
     def __len__(self):
         """
@@ -358,13 +430,14 @@ class Basis(Savable, Loadable):
                 "than data channels.")
         if type(error) is type(None):
             weighted_basis = self.basis
-            weighted_curves = curves
+            weighted_centered_curves = curves - self.translation[np.newaxis,:]
         else:
             weighted_basis = self.basis / error[np.newaxis,:]
-            weighted_curves = curves / error[np.newaxis,:]
+            weighted_centered_curves =\
+                (curves - self.translation[np.newaxis,:]) / error[np.newaxis,:]
         max_likelihood_parameters = np.dot(np.dot(\
             la.inv(np.dot(weighted_basis, weighted_basis.T)),\
-            weighted_basis), weighted_curves.T).T
+            weighted_basis), weighted_centered_curves.T).T
         mean = np.mean(max_likelihood_parameters, axis=0)
         max_likelihood_parameters =\
             max_likelihood_parameters - mean[np.newaxis,:]
@@ -538,9 +611,10 @@ class Basis(Savable, Loadable):
                  basis vectors
         """
         if expanded:
-            return np.dot(parameter_values, self.expanded_basis)
+            return np.dot(parameter_values, self.expanded_basis) +\
+                self.expanded_translation
         else:
-            return np.dot(parameter_values, self.basis)
+            return np.dot(parameter_values, self.basis) + self.translation
     
     def __call__(self, parameter_values, expanded=False):
         """
@@ -565,7 +639,8 @@ class Basis(Savable, Loadable):
         
         returns: a Basis object with only the given basis vectors
         """
-        return Basis(self.basis[basis_indices], expander=self.expander)
+        return Basis(self.basis[basis_indices], expander=self.expander,\
+            translation=self.translation)
     
     def __getitem__(self, basis_indices_to_keep):
         """
@@ -578,12 +653,16 @@ class Basis(Savable, Loadable):
         """
         return Basis.subbasis(self, basis_indices_to_keep)
     
-    def fill_hdf5_group(self, group, basis_link=None, expander_link=None):
+    def fill_hdf5_group(self, group, basis_link=None, expander_link=None,\
+        translation_link=None):
         """
         Fills the given hdf5 file group with data about this basis.
         Particularly, this function records the basis array and the expander.
         
-        group: hdf5 file group to fill       
+        group: hdf5 file group to fill
+        basis_link: link to basis already in file, if it exists
+        expander_link: link to expander already in file, if it exists
+        translation_link: link to translation already in file, if it exists
         """
         group.attrs['class'] = 'Basis'
         create_hdf5_dataset(group, 'basis', data=self.basis, link=basis_link)
@@ -591,6 +670,8 @@ class Basis(Savable, Loadable):
             create_hdf5_dataset(group, 'expander', link=expander_link)
         except ValueError:
             self.expander.fill_hdf5_group(group.create_group('expander'))
+        create_hdf5_dataset(group, 'translation', data=self.translation,\
+            link=translation_link)
     
     @staticmethod
     def load_from_hdf5_group(group):
@@ -603,12 +684,16 @@ class Basis(Savable, Loadable):
         """
         basis = get_hdf5_value(group['basis'])
         expander = load_expander_from_hdf5_group(group['expander'])
-        return Basis(basis, expander=expander)
+        if 'translation' in group:
+            translation = get_hdf5_value(group['translation'])
+        else:
+            translation = None
+        return Basis(basis, expander=expander, translation=translation)
     
     def plot(self, basis_indices=slice(None), x_values=None,\
-        correct_sign=False, matplotlib_function='plot', title='Basis',\
-        xlabel=None, ylabel=None, fontsize=20, fig=None, ax=None,\
-        figsize=(12, 9), show=False, **kwargs):
+        correct_sign=False, include_translation=False,\
+        matplotlib_function='plot', title='Basis', xlabel=None, ylabel=None,\
+        fontsize=20, fig=None, ax=None, figsize=(12, 9), show=False, **kwargs):
         """
         Plots the basis vectors stored in this Basis object.
         
@@ -619,6 +704,8 @@ class Basis(Savable, Loadable):
         correct_sign: if True, the first channel of each plotted basis vector
                       is forced to be non-negative by multiplying by a negative
                       sign if necessary
+        include_translation: if True, the translation vector is plotted before
+                                      the basis vectors (default False)
         matplotlib_function: type of plot to make, either 'plot' or 'scatter'
         title: title of the plot. Default: 'Basis'
         xlabel, ylabel: labels for the x and y axes
@@ -641,10 +728,14 @@ class Basis(Savable, Loadable):
             sign_correction =\
                 (np.where(self.basis[:,0] >= 0, 1, -1)[:,np.newaxis]\
                 if correct_sign else 1)
+            if include_translation:
+                ax.plot(x_values, self.translation, **kwargs)
             ax.plot(x_values,\
                 (self.basis * sign_correction)[basis_indices].T, **kwargs)
         elif matplotlib_function == 'scatter':
             (minimum, maximum) = (np.inf, -np.inf)
+            if include_translation:
+                ax.scatter(x_values, self.translation, **kwargs)
             for vector in self.basis[basis_indices]:
                 sign_correction =\
                     ((1 if (vector[0] >= 0) else (-1)) if correct_sign else 1)
@@ -673,6 +764,14 @@ class Basis(Savable, Loadable):
         else:
             return ax
     
+    def change_translation(self, new_translation):
+        """
+        Returns a Basis object with the same basis  vectors and expander but
+        with a different translation vector.
+        """
+        return Basis(self.basis, expander=self.expander,\
+            translation=new_translation)
+    
     def copy(self):
         """
         Creates and returns a deep copy of this basis (except it is guaranteed
@@ -682,7 +781,8 @@ class Basis(Savable, Loadable):
                  location) basis array and expander as this one. It will have
                  the base Basis class, however, not the same class as self.
         """
-        return Basis(self.basis.copy(), self.expander.copy())
+        return Basis(self.basis.copy(), expander=self.expander.copy(),\
+            translation=self.translation.copy())
     
     def __eq__(self, other):
         """
@@ -697,8 +797,11 @@ class Basis(Savable, Loadable):
         if isinstance(other, Basis):
             if self.expander == other.expander:
                 if self.basis.shape == other.basis.shape:
-                    return\
+                    basis_close =\
                         np.allclose(self.basis, other.basis, rtol=1e-6, atol=0)
+                    translation_close = np.allclose(self.translation,\
+                        other.translation, rtol=1e-6, atol=0)
+                    return (basis_close and translation_close)
                 else:
                     return False
             else:

@@ -34,6 +34,8 @@ class InputInterpolatedModel(Model):
         interpolation_method='linear'):
         """
         Initializes a new model based on interpolation using a Delaunay mesh.
+        If compression is used, the mean of the training outputs is not
+        subtracted before SVD is taken.
         
         parameter_names: sequence of names of parameters (of length
                          input_dimension)
@@ -325,7 +327,8 @@ class InputInterpolatedModel(Model):
         if self.compressed:
             if type(self.num_basis_vectors) is type(None):
                 self.num_basis_vectors = effective_training_set_rank(\
-                    self._training_outputs, self.error, method='abs',\
+                    self._training_outputs, self.error,\
+                    mean_translation=False, method='abs',\
                     number_of_modes_to_consider=None, level=0.1)
             elif self.num_basis_vectors > self._training_outputs.shape[1]:
                 raise ValueError("The given number of basis vectors " +\
@@ -333,7 +336,7 @@ class InputInterpolatedModel(Model):
                     "might as well just set should_compress to False.")
             self._trained_basis = TrainedBasis(self._training_outputs,\
                 self.num_basis_vectors, error=self.error,\
-                expander=self.expander)
+                expander=self.expander, mean_translation=False)
             self._training_outputs =\
                 self.trained_basis.training_set_fit_coefficients
     

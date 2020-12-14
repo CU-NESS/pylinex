@@ -12,15 +12,17 @@ Description: File containing function which, given a training set of curves and
 import numpy as np
 from .TrainedBasis import TrainedBasis
 
-def effective_training_set_rank(training_set, noise_level, method='abs',\
-    number_of_modes_to_consider=None, use_min_noise_level=False, level=1.,\
-    suppress_runtime_error=False):
+def effective_training_set_rank(training_set, noise_level,\
+    mean_translation=False, method='abs', number_of_modes_to_consider=None,\
+    use_min_noise_level=False, level=1., suppress_runtime_error=False):
     """
     Finds the number of modes which are needed to fit the given training set to
     the given noise level.
     
     training_set: 2D numpy.ndarray of shape (ncurves, nchannels)
     noise_level: 1D numpy.ndarray of shape (nchannels,)
+    mean_translation: if True (default False), the mean of the training set is
+                      subtracted before taking SVD.
     method: if 'rms', RMS of normalized bias (bias/error) must be less than
                       level for all curves for rank to be returned
             if 'abs', normalized bias (bias/error) must be less than level for
@@ -52,13 +54,15 @@ def effective_training_set_rank(training_set, noise_level, method='abs',\
     if type(number_of_modes_to_consider) is type(None):
         number_of_modes_to_consider = np.min(training_set.shape)
     svd_basis = TrainedBasis(training_set, number_of_modes_to_consider,\
-        error=noise_level)
+        error=noise_level, mean_translation=mean_translation)
     level2 = (level ** 2)
     for rank in range(1, number_of_modes_to_consider + 1):
         importance_weighted_basis =\
             svd_basis.basis[:rank].T * svd_basis.importances[np.newaxis,:rank]
         fit = np.dot(importance_weighted_basis,\
             svd_basis.training_set_space_singular_vectors[:rank]).T
+        if mean_translation:
+            fit = fit + np.mean(training_set, axis=0)[np.newaxis,:]
         if use_min_noise_level:
             normalized_bias = (fit - training_set) / np.min(noise_level)
         else:

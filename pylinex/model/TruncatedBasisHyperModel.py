@@ -170,7 +170,8 @@ class TruncatedBasisHyperModel(LoadableModel):
             raise ValueError("min_terms and max_terms were on the same " +\
                 "side of terms, implying that terms does not satisfy " +\
                 "min_terms<=terms<=max_terms.")
-        return np.dot(parameters[:terms], self.basis.expanded_basis[:terms])
+        return np.dot(parameters[:terms], self.basis.expanded_basis[:terms]) +\
+            self.basis.expanded_translation
     
     def __getitem__(self, key):
         """
@@ -329,8 +330,8 @@ class TruncatedBasisHyperModel(LoadableModel):
         else:
             nterms = int(nterms)
         covariance = self.covariance_cache(nterms, error)
-        mean = np.dot(covariance,\
-            np.dot(self.basis.expanded_basis[:nterms,:], data / (error ** 2)))
+        mean = np.dot(covariance, np.dot(self.basis.expanded_basis[:nterms,:],\
+            (data - self.basis.expanded_translation) / (error ** 2)))
         mean =\
             np.concatenate([mean, np.zeros(self.max_terms - nterms), [nterms]])
         return (mean, covariance)

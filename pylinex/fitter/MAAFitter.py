@@ -412,7 +412,7 @@ class MAAFitter(BaseFitter, Savable, Loadable):
         the data.
         """
         if not hasattr(self, '_undesired_channel_mean'):
-            self._undesired_channel_mean =\
+            self._undesired_channel_mean = self.basis_sum.translation +\
                 np.dot(self.undesired_mode_mean, self.basis_sum.basis)
         return self._undesired_channel_mean
     
@@ -1018,7 +1018,8 @@ def MAA_bias_statistic_offsets(basis, training_set, target_expander, error,\
     possible_num_terms = 1 + np.arange(basis.num_basis_vectors)
     contracted_covariance = target_expander.contracted_covariance(error)
     if return_means or return_maxima:
-        overlap = target_expander.overlap(training_set, error=error)
+        overlap = target_expander.overlap(training_set - basis.translation,\
+            error=error)
         statistics =\
             np.mean(overlap * np.dot(overlap, contracted_covariance), axis=-1)
         means = [np.mean(statistics)]
@@ -1055,7 +1056,8 @@ def MAA_bias_statistic_offsets(basis, training_set, target_expander, error,\
     return return_value
 
 def MAA_self_offsets(training_set, target_expander, error, num_terms,\
-    return_means=True, return_maxima=True, return_trace_covariances=True):
+    mean_translation=False, return_means=True, return_maxima=True,\
+    return_trace_covariances=True,):
     """
     Same as MAA_bias_statistic_offsets function except the basis is generated
     through SVD on the training set.
@@ -1068,6 +1070,9 @@ def MAA_self_offsets(training_set, target_expander, error, num_terms,\
                      appears in the space of the training set
     error: the noise level that will exist in the data
     num_terms: the number of terms to get from SVD on the training set
+    mean_translation: if True (default False), means are subtracted from
+                      training set before SVD is taken and the mean is stored
+                      as the basis' translation property
     return_means: if True, means of bias statistic offsets over training set
                            curves are returned
     return_maxima: if True, bias statistic offsets for worst training set curve
@@ -1080,12 +1085,14 @@ def MAA_self_offsets(training_set, target_expander, error, num_terms,\
              ((trace_covariances,) if return_trace_covariances else ())
     """
     return MAA_bias_statistic_offsets(TrainedBasis(training_set, num_terms,\
-        error=error), training_set, target_expander, error,\
-        return_means=return_means, return_maxima=return_maxima,\
+        error=error, mean_translation=mean_translation), training_set,\
+        target_expander, error, return_means=return_means,\
+        return_maxima=return_maxima,\
         return_trace_covariances=return_trace_covariances)
 
 def plot_training_set_MAA_quantities(training_set, target_expander, error,\
-    num_terms, fig=None, figsize=(12, 9), ax=None, fontsize=24, show=False):
+    num_terms, mean_translation=False, fig=None, figsize=(12, 9), ax=None,\
+    fontsize=24, show=False):
     """
     Plots the quantities returned by the MAA_self_offsets function.
     
@@ -1097,6 +1104,9 @@ def plot_training_set_MAA_quantities(training_set, target_expander, error,\
                      appears in the space of the training set
     error: the noise level that will exist in the data
     num_terms: the number of terms to get from SVD on the training set
+    mean_translation: if True (default False), means are subtracted from
+                      training set before SVD is taken and the mean is stored
+                      as the basis' translation property
     fig: the Figure object on which to make axes
     figsize: size of figure to create if fig is None
     ax: Axes object on which to plot quantities
@@ -1107,10 +1117,10 @@ def plot_training_set_MAA_quantities(training_set, target_expander, error,\
     """
     num_terms_array = np.arange(1 + num_terms)
     (means, maxima, trace_covariances) = MAA_self_offsets(training_set,\
-        target_expander, error, num_terms, return_means=True,\
-        return_maxima=True, return_trace_covariances=True)
-    MS_spectrum =\
-        TrainedBasis(training_set, num_terms, error=error).RMS_spectrum ** 2
+        target_expander, error, num_terms, mean_translation=mean_translation,\
+        return_means=True, return_maxima=True, return_trace_covariances=True)
+    MS_spectrum = TrainedBasis(training_set, num_terms, error=error,\
+        mean_translation=mean_translation).RMS_spectrum ** 2
     quantities = [means, maxima, MS_spectrum ** 2, trace_covariances]
     labels = ['mean bias statistic offset', 'maximum bias statistic offset',\
         'mean-square training set bias', 'mean-square uncertainty expansion']

@@ -42,9 +42,9 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
     def __init__(self, data, error, names, training_sets, dimensions,\
         compiled_quantity=CompiledQuantity('empty'),\
         quantity_to_minimize='bias_score', expanders=None,\
-        num_curves_to_score=None, use_priors_in_fit=False,\
-        prior_covariance_expansion_factor=1., prior_covariance_diagonal=False,\
-        verbose=True):
+        mean_translation=False, num_curves_to_score=None,\
+        use_priors_in_fit=False, prior_covariance_expansion_factor=1.,\
+        prior_covariance_diagonal=False, verbose=True):
         """
         Initializes an Extractor object with the given data and error vectors,
         names, training sets, dimensions, compiled quantity, quantity to
@@ -66,6 +66,9 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
                               CompiledQuantity to minimize to perform model
                               selection
         expanders: list of Expander objects which expand each of the basis sets
+        mean_translation: if True (default False), means are subtracted before
+                          taking SVD when making bases. The means are set to
+                          the bases' translation properties.
         num_curves_to_score: the approximate number of combined training set
                              curves to use when computing the bias_score
                              quantity
@@ -82,6 +85,7 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
                                    should enhance numerical stability
         verbose: if True, messages should be printed to the screen
         """
+        self.mean_translation = mean_translation
         self.data = data
         self.error = error
         self.names = names
@@ -102,6 +106,30 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
         self.prior_covariance_diagonal = prior_covariance_diagonal
         self.use_priors_in_fit = use_priors_in_fit
         self.verbose = verbose
+    
+    @property
+    def mean_translation(self):
+        """
+        Property storing a boolean determining whether mean is subtracted
+        before SVD is performed when computing basis vectors.
+        """
+        if not hasattr(self, '_mean_translation'):
+            raise AttributeError("mean_translation was referenced before " +\
+                "it was set.")
+        return self._mean_translation
+    
+    @mean_translation.setter
+    def mean_translation(self, value):
+        """
+        Setter for the mean translation property that determines whether mean
+        is subtracted before SVD is performed when computing basis vectors.
+        
+        value: True or False
+        """
+        if type(value) in bool_types:
+            self._mean_translation = value
+        else:
+            raise TypeError("mean_translation was set to a non-bool.")
     
     @property
     def use_priors_in_fit(self):
@@ -374,7 +402,8 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
             for (name, expander, training_set) in\
                 zip(self.names, self.expanders, self.training_sets):
                 self._training_set_ranks[name] = effective_training_set_rank(\
-                    training_set, expander.contract_error(self.error))
+                    training_set, expander.contract_error(self.error),\
+                    mean_translation=self.mean_translation)
         return self._training_set_ranks
     
     @property
@@ -486,7 +515,8 @@ class Extractor(Savable, VariableGrid, QuantityFinder):
                 num_basis_vectors = self.maxima[self.names[ibasis]]
                 expander = self.expanders[ibasis]
                 basis = TrainedBasis(training_set, num_basis_vectors,\
-                    error=self.error, expander=expander)
+                    error=self.error, expander=expander,\
+                    mean_translation=self.mean_translation)
                 bases.append(basis)
             self._basis_sum = BasisSum(self.names, bases)
         return self._basis_sum

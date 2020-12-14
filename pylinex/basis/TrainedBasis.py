@@ -56,7 +56,7 @@ class TrainedBasis(Basis):
     Value Decomposition (SVD).
     """
     def __init__(self, training_set, num_basis_vectors, error=None,\
-        expander=None):
+        expander=None, mean_translation=False):
         """
         Initializes this TranedBasis using the given training_set and number of
         basis vectors.
@@ -74,13 +74,22 @@ class TrainedBasis(Basis):
                                             set curve length)
         expander: Expander object which expands from training set space to
                   final basis vector space
+        mean_translation: if True (default False), the mean is subtracted from
+                          the training set before SVD is computed. The mean is
+                          then stored in the translation property of the basis
         """
         self._training_set_curve_length = training_set.shape[-1]
         self.expander = expander
         self.error = error
-        SVD_basis = weighted_SVD_basis(training_set,\
+        if mean_translation:
+            translation = np.mean(training_set, axis=0)
+        else:
+            translation = np.zeros(self.training_set_curve_length)
+        SVD_basis =\
+            weighted_SVD_basis(training_set - translation[np.newaxis,:],\
             error=self.error, Neigen=num_basis_vectors)
         self.basis = SVD_basis[0]
+        self.translation = translation
         self.training_set_space_singular_vectors = SVD_basis[2]
         self.full_importances = SVD_basis[1]
     

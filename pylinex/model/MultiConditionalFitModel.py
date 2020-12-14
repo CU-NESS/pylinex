@@ -392,7 +392,12 @@ class MultiConditionalFitModel(ConditionalFitModel):
             np.concatenate([(basis_model.basis.expanded_basis *\
             factor[np.newaxis,:]) for (basis_model, factor) in\
             zip(self.unknown_submodels, modulating_factors)], axis=0)
-        temporary_basis_model = BasisModel(Basis(temporary_combined_basis))
+        temporary_combined_translation =\
+            np.sum([(basis_model.basis.expanded_translation * factor)\
+            for (basis_model, factor) in\
+            zip(self.unknown_submodels, modulating_factors)], axis=0)
+        temporary_basis_model = BasisModel(Basis(temporary_combined_basis,\
+            translation=temporary_combined_translation))
         (conditional_mean, conditional_covariance) =\
             temporary_basis_model.quick_fit(data_less_known_leaves,\
             self.error, prior=self.combined_prior,\

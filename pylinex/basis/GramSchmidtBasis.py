@@ -87,7 +87,8 @@ class GramSchmidtBasis(Basis):
     Class representing a Basis object whose vectors are calculated through a
     Gram-Schmidt orthogonalization procedure.
     """
-    def __init__(self, seed_vectors, error=None, expander=None):
+    def __init__(self, seed_vectors, error=None, expander=None,\
+        translation=None):
         """
         Initializes the new GramSchmidtBasis object.
         
@@ -96,12 +97,18 @@ class GramSchmidtBasis(Basis):
         error: the error with which to define 'orthogonal'
         expander: if None, no expansion is applied
                   otherwise, expander must be an Expander object.
+        translation: if None, no constant additive is included in the results
+                              of calling this Basis.
+                     otherwise: should be a 1D numpy.ndarray of the same length
+                                as the seed vectors. It is the (unexpanded)
+                                result of calling the basis on a zero-vector of
+                                parameters
         """
         if isinstance(seed_vectors, Basis):
-            self.basis = orthonormal_basis(seed_vectors.basis, error=error)
+            basis = orthonormal_basis(seed_vectors.basis, error=error)
         else:
-            self.basis = orthonormal_basis(seed_vectors, error=error)
-        self.expander = expander
+            basis = orthonormal_basis(seed_vectors, error=error)
+        Basis.__init__(self, basis, expander=expander, translation=translation)
     
     @property
     def even_subbasis(self):

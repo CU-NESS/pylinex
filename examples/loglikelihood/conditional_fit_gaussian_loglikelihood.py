@@ -11,7 +11,7 @@ import os
 import numpy as np
 from distpy import GaussianDistribution
 from pylinex import LegendreBasis, BasisModel, GaussianModel, SumModel,\
-    Fitter, ConditionalFitModel, GaussianLoglikelihood,\
+    Fitter, SingleConditionalFitModel, GaussianLoglikelihood,\
     ConditionalFitGaussianLoglikelihood, load_loglikelihood_from_hdf5_file
 
 half_num_channels = 500
@@ -33,8 +33,8 @@ prior_mean = np.zeros(num_basis_vectors)
 prior_covariance = np.ones(num_basis_vectors)
 prior = GaussianDistribution(prior_mean, prior_covariance)
 priors = {'sole_prior': prior}
-conditional_fit_model = ConditionalFitModel(sum_model, data, error, ['basis'],\
-    prior=prior)
+conditional_fit_model = SingleConditionalFitModel(sum_model, data, error,\
+    ['basis'], prior=prior)
 conditional_fit_gaussian_loglikelihood =\
     ConditionalFitGaussianLoglikelihood(conditional_fit_model)
 full_loglikelihood = GaussianLoglikelihood(data, error, sum_model)

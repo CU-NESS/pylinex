@@ -124,11 +124,7 @@ class FixedModel(LoadableModel):
         Performs a quick fit of this model to the given data with (or without)
         a given noise level.
         
-        data: 1D array to fit with this constant model. If the length is
-              consistent with the expanded basis, then the expanded basis is
-              used. Otherwise, the unexpanded basis is attempted to be used. If
-              the length is inconsistent with both of these possibilities, then
-              an error is raised
+        data: 1D array to fit with this model
         error: if None, the unweighted least square fit is given for
                         parameter_mean and parameter_covariance will be
                         nonsense

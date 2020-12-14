@@ -36,6 +36,8 @@ class BasisSum(BasisSet, Basis):
             self.basis = np.concatenate(\
                 [basis.expanded_basis for basis in self.component_bases],\
                 axis=0)
+            self.translation = np.sum([basis.expanded_translation\
+                for basis in self.component_bases], axis=0)
         except KeyboardInterrupt:
             raise
         except:

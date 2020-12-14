@@ -311,8 +311,8 @@ class ExtractionPlotter(object):
                             fitter_group['basis_sum'])
                         parameter_mean = get_hdf5_value(\
                             fitter_group['posterior/parameter_mean'])[icurve]
-                        this_mean =\
-                            np.dot(parameter_mean, basis_sum.basis)
+                        this_mean = np.dot(parameter_mean, basis_sum.basis) +\
+                            basis_sum.translation[np.newaxis,:]
                     self._channel_mean.append(this_mean)
                 self._channel_mean = np.array(self._channel_mean)
             elif 'channel_mean' in\
@@ -324,7 +324,8 @@ class ExtractionPlotter(object):
                     self.file['meta_fitter/optimal_fitter/basis_sum'])
                 parameter_mean = get_hdf5_value(self.file[\
                     'meta_fitter/optimal_fitter/posterior/parameter_mean'])
-                self._channel_mean = np.dot(parameter_mean, basis_sum.basis)
+                self._channel_mean = np.dot(parameter_mean, basis_sum.basis) +\
+                    basis_sum.translation
         return self._channel_mean
     
     @property
@@ -426,7 +427,8 @@ class ExtractionPlotter(object):
                             parameter_mean = get_hdf5_value(fitter_group[\
                                 'posterior/{!s}/parameter_mean'.format(name)])
                             this_mean = np.dot(parameter_mean[icurve],\
-                                basis_sum[name].basis)
+                                basis_sum[name].basis) +\
+                                basis_sum[name].translation
                         self._channel_means[name].append(this_mean)
                 for name in self.names:
                     self._channel_means[name] =\
@@ -446,7 +448,8 @@ class ExtractionPlotter(object):
                         parameter_mean = get_hdf5_value(fitter_group[\
                             'posterior/{!s}/parameter_mean'.format(name)])
                         self._channel_means[name] =\
-                            np.dot(parameter_mean, basis_sum[name].basis)
+                            np.dot(parameter_mean, basis_sum[name].basis) +\
+                            basis_sum[name].translation
         return self._channel_means
     
     @property
@@ -802,7 +805,7 @@ class ExtractionPlotter(object):
             'parameter_mean').format(posterior_group_name)])
         if self.multiple_data_curves:
             parameter_mean = parameter_mean[icurve]
-        channel_mean = np.dot(parameter_mean, basis)
+        channel_mean = np.dot(parameter_mean, basis) + basis.translation
         channel_mean = scale_factor * channel_mean
         channel_error = scale_factor * channel_error
         if plot_truth or subtract_truth:
@@ -1566,12 +1569,16 @@ class ExtractionPlotter(object):
         be saved (it already is saved!).
         """
         if not hasattr(self, '_extractor'):
+            typical_basis_sum =\
+                self.get_basis_sum(0 if self.multiple_data_curves else None)
+            mean_translation = np.any(typical_basis_sum.translation != 0)
             self._extractor = Extractor(self.data, self.error, self.names,\
                 self.training_sets, self.dimensions,\
                 compiled_quantity=self.compiled_quantity,\
                 quantity_to_minimize=self.quantity_to_minimize,\
-                expanders=self.expanders, save_training_sets=False,\
-                save_all_fitters=False, num_curves_to_score=0, verbose=True)
+                expanders=self.expanders, mean_translation=mean_translation,\
+                save_training_sets=False, save_all_fitters=False,\
+                num_curves_to_score=0, verbose=True)
         return self._extractor
     
     @property

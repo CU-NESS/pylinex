@@ -79,10 +79,11 @@ class Fitter(BaseFitter, Savable):
         if not hasattr(self, '_data_significance'):
             if self.multiple_data_curves:
                 self._data_significance =\
-                    np.sum(self.weighted_data ** 2, axis=1)
+                    np.sum(self.weighted_translated_data ** 2, axis=1)
             else:
                 self._data_significance =\
-                    np.dot(self.weighted_data, self.weighted_data)
+                    np.dot(self.weighted_translated_data,\
+                    self.weighted_translated_data)
         return self._data_significance
     
     @property
@@ -95,6 +96,14 @@ class Fitter(BaseFitter, Savable):
     
     @property
     def posterior_covariance_times_prior_inverse_covariance(self):
+        """
+        Property storing the posterior covariance multiplied on the right by
+        the prior inverse covariance. This is a matrix measure of the effect of
+        the data on the distribution of parameters (i.e. it approaches the zero
+        matrix if the data constrains parameters much more powerfully than the
+        prior and approaches the identity matrix if the prior constrains
+        parameters much more powerfully than the data)
+        """
         if not hasattr(self,\
             '_posterior_covariance_times_prior_inverse_covariance'):
             self._posterior_covariance_times_prior_inverse_covariance =\
@@ -206,7 +215,8 @@ class Fitter(BaseFitter, Savable):
             if self.has_priors:
                 self._likelihood_parameter_mean =\
                     np.dot(self.likelihood_parameter_covariance,\
-                    np.dot(self.weighted_basis, self.weighted_data.T)).T
+                    np.dot(self.weighted_basis,\
+                    self.weighted_translated_data.T)).T
             else:
                 self._likelihood_parameter_mean = self.parameter_mean
         return self._likelihood_parameter_mean
@@ -219,7 +229,8 @@ class Fitter(BaseFitter, Savable):
         """
         if not hasattr(self, '_likelihood_channel_mean'):
             if self.has_priors:
-                self._likelihood_channel_mean = np.dot(self.basis_sum.basis.T,\
+                self._likelihood_channel_mean = self.basis_sum.translation +\
+                    np.dot(self.basis_sum.basis.T,\
                     self.likelihood_parameter_mean.T).T
             else:
                 self._likelihood_channel_mean = self.channel_mean
@@ -304,7 +315,7 @@ class Fitter(BaseFitter, Savable):
         Property that returns the reduced chi-squared values of the fit(s) in
         this Fitter.
         """
-        return self.normalized_likelihood_bias_statistic
+        return self.normalized_likelihood_bias_statistic # TODO perhaps this should call the chi_squared function
     
     @property
     def psi_squared(self):
@@ -360,7 +371,9 @@ class Fitter(BaseFitter, Savable):
         """
         Property storing the logarithm (base e) of the ratio of the determinant
         of the posterior parameter covariance matrix to the determinant of the
-        prior parameter covariance matrix.
+        prior parameter covariance matrix. This can be thought of as the log of
+        the ratio of the hypervolume of the 1 sigma posterior ellipse to the
+        hypervolume of the 1 sigma prior ellipse.
         """
         if not hasattr(self, '_log_parameter_covariance_determinant_ratio'):
             self._log_parameter_covariance_determinant_ratio =\
@@ -399,7 +412,7 @@ class Fitter(BaseFitter, Savable):
         """
         if not hasattr(self, '_parameter_mean'):
             self._parameter_mean =\
-                np.dot(self.weighted_basis, self.weighted_data.T).T
+                np.dot(self.weighted_basis, self.weighted_translated_data.T).T
             if self.has_priors:
                 if self.multiple_data_curves:
                     self._parameter_mean = self._parameter_mean +\
@@ -454,7 +467,7 @@ class Fitter(BaseFitter, Savable):
         space.
         """
         if not hasattr(self, '_channel_mean'):
-            self._channel_mean =\
+            self._channel_mean = self.basis_sum.translation +\
                 np.dot(self.basis_sum.basis.T, self.parameter_mean.T).T
         return self._channel_mean
     
@@ -548,7 +561,8 @@ class Fitter(BaseFitter, Savable):
                 error_to_divide = self.error[np.newaxis,:]
             else:
                 error_to_divide = self.error
-            mean_sum = (self.channel_mean + self.data) / error_to_divide
+            mean_sum = (self.channel_mean + self.data -\
+                (2 * self.basis_sum.translation)) / error_to_divide
             mean_difference = (self.channel_mean - self.data) / error_to_divide
             if self.multiple_data_curves:
                 self._likelihood_significance_difference =\
@@ -685,7 +699,7 @@ class Fitter(BaseFitter, Savable):
         """
         if not hasattr(self, '_akaike_information_criterion'):
             self._akaike_information_criterion =\
-               self.likelihood_bias_statistic + 2 * self.num_parameters
+               self.likelihood_bias_statistic + (2 * self.num_parameters)
         return self._akaike_information_criterion
     
     @property
@@ -759,7 +773,7 @@ class Fitter(BaseFitter, Savable):
         if not hasattr(self, '_bayesian_predictive_information_criterion'):
             self._bayesian_predictive_information_criterion =\
                 self.num_parameters + self.bias_statistic
-            if self.has_priors:
+            if self.has_priors: # TODO
                 self._bayesian_predictive_information_criterion -= np.trace(\
                     self.posterior_covariance_times_prior_inverse_covariance)
                 term_v1 = np.dot(\
@@ -913,7 +927,6 @@ class Fitter(BaseFitter, Savable):
             self._subbasis_prior_significances[name] =\
                 np.dot(mean, np.dot(inverse_covariance, mean))
         return self._subbasis_prior_significances[name]
-        
     
     def subbasis_parameter_inverse_covariance(self, name=None):
         """
@@ -1101,7 +1114,7 @@ class Fitter(BaseFitter, Savable):
         if name not in self._subbasis_channel_means:
             self._subbasis_channel_means[name] =\
                 np.dot(self.subbasis_parameter_mean(name=name),\
-                self.basis_sum[name].basis)
+                self.basis_sum[name].basis) + self.basis_sum[name].translation
         return self._subbasis_channel_means[name]
     
     def subbasis_channel_RMS(self, name=None):
@@ -1477,10 +1490,10 @@ class Fitter(BaseFitter, Savable):
         else:
             return ax
     
-    def plot_overlap_matrix(self, row_name=None, column_name=None,\
+    def plot_overlap_matrix_block(self, row_name=None, column_name=None,\
         title='Overlap matrix', fig=None, ax=None, show=True, **kwargs):
         """
-        Plots the overlap matrix between the given subbases.
+        Plots a block of the overlap matrix between the given subbases.
         
         row_name: the (string) name of the subbasis whose parameter number will
                   be represented by the row of the returned matrix.

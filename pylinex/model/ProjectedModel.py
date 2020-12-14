@@ -155,7 +155,8 @@ class ProjectedModel(Model):
         
         returns: array of size (num_channels,)
         """
-        return np.dot(self.projection_matrix, self.model(parameters))
+        return np.dot(self.projection_matrix,\
+            self.model(parameters) - self.basis.expanded_translation)
     
     @property
     def gradient_computable(self):

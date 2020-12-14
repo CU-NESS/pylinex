@@ -197,7 +197,8 @@ class BasisModel(LoadableModel):
                     "GaussianDistribution object.")
             self._last_covariance = la.inv(inverse_covariance)
         mean = np.dot(self._last_covariance, self._last_offset +\
-            np.dot(self.basis.expanded_basis, data / (error ** 2)))
+            np.dot(self.basis.expanded_basis,\
+            (data - self.basis.expanded_translation) / (error ** 2)))
         return (mean, self._last_covariance)
     
     def fill_hdf5_group(self, group):

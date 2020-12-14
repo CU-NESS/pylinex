@@ -47,9 +47,10 @@ class Forecaster(object):
         names=None, training_sets=None, input_curve_sets=None,\
         dimensions=None, compiled_quantity=CompiledQuantity('empty'),\
         quantity_to_minimize='bias_score', expanders=None,\
-        num_curves_to_score=None, use_priors_in_fit=False,\
-        prior_covariance_expansion_factor=1., prior_covariance_diagonal=False,\
-        seed=None, target_subbasis_name=None, verbose=True):
+        mean_translation=False, num_curves_to_score=None,\
+        use_priors_in_fit=False, prior_covariance_expansion_factor=1.,\
+        prior_covariance_diagonal=False, seed=None, target_subbasis_name=None,\
+        verbose=True):
         """
         Initializes a Forecaster.
         
@@ -85,6 +86,9 @@ class Forecaster(object):
                               truncation to use
         expanders: list of Expander objects describing the expansion matrix of
                    each component of the data
+        mean_translation: if True (default False), means are subtracted before
+                          taking SVD when making bases. The means are set to
+                          the bases' translation properties.
         num_curves_to_score: if 0, bias_score is not run and not added to the
                                    given CompiledQuantity
                              if positive int, gives number of training set
@@ -136,7 +140,8 @@ class Forecaster(object):
             extractor = Extractor(data, error, names, training_sets,\
                 dimensions, compiled_quantity=compiled_quantity,\
                 quantity_to_minimize=quantity_to_minimize,\
-                expanders=expanders, num_curves_to_score=num_curves_to_score,\
+                expanders=expanders, mean_translation=mean_translation,\
+                num_curves_to_score=num_curves_to_score,\
                 use_priors_in_fit=use_priors_in_fit,\
                 prior_covariance_expansion_factor=\
                 prior_covariance_expansion_factor,\

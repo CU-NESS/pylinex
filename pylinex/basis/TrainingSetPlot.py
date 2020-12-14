@@ -11,9 +11,9 @@ import matplotlib.pyplot as pl
 from .TrainedBasis import TrainedBasis
 
 def plot_training_set_with_modes(training_set, num_modes, error=None,\
-    x_values=None, curve_slice=slice(None), subtract_mean=False, alpha=1.,\
-    fontsize=24, xlabel='', extra_ylabel_string='', title='', figsize=(12,20),\
-    show=False):
+    mean_translation=False, x_values=None, curve_slice=slice(None),\
+    subtract_mean=False, alpha=1., fontsize=24, xlabel='',\
+    extra_ylabel_string='', title='', figsize=(12,20), show=False):
     """
     Plots a three panel figure summarizing the given training set. The top
     panel shows the training set itself. The middle panel shows the basis
@@ -26,6 +26,8 @@ def plot_training_set_with_modes(training_set, num_modes, error=None,\
     num_modes: the number of eigenmodes to use in the basis to plot
     error: the error distribution expected in data for which the training set
            will be used to fit
+    mean_translation: if True (default False), the mean of the training set is
+                      subtracted before taking SVD.
     x_values: np.ndarray of x values with which to plot training set, basis,
               and residuals. If None, set to np.arange(training_set.shape[1])
     curve_slice: slice to apply to the first axis of training_set and residuals
@@ -47,8 +49,11 @@ def plot_training_set_with_modes(training_set, num_modes, error=None,\
     if type(x_values) is type(None):
         x_values = np.arange(training_set.shape[1])
     xlim = (x_values[0], x_values[-1])
-    basis = TrainedBasis(training_set, num_modes, error=error)
+    basis = TrainedBasis(training_set, num_modes, error=error,\
+        mean_translation=mean_translation)
     residuals = training_set - basis(basis.training_set_fit_coefficients)
+    if mean_translation:
+        residuals = residuals - np.mean(training_set, axis=0)[np.newaxis,:]
     fig = pl.figure(figsize=figsize)
     ax = fig.add_subplot(311)
     ax.plot(x_values, (training_set[curve_slice,:] -\
