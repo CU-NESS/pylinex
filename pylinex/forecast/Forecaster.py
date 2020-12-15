@@ -300,6 +300,20 @@ class Forecaster(object):
         else:
             return fig
     
+    @property
+    def target_bias_statistics(self):
+        """
+        Property storing the bias statistics of the target subbasis when the
+        quantity_to_minimize is the one set in __init__.
+        """
+        if not hasattr(self, '_target_bias_statistics'):
+            self._target_bias_statistics =\
+                self.plotter.statistics_by_minimized_quantity(\
+                minimized_quantity=self.plotter.quantity_to_minimize,\
+                grid_quantities=self.plotter.compiled_quantity.quantities)[\
+                'subbasis_bias_statistic']
+        return self._target_bias_statistics
+    
     def plot_subbasis_bias_statistic_histogram(self, take_sqrt=True,\
         bins=1000, quantity_to_minimize=None, label=None, ax=None, color=None,\
         plot_reference_curve=True, fontsize=24, figsize=(12,9), show=False,\
