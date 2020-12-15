@@ -90,22 +90,14 @@ class Basis(Savable, Loadable):
         if training_set.shape[1] != self.basis.shape[1]:
             raise ValueError("training_set curves do not have same length " +\
                 "as (unexpanded) basis vectors.")
-        if type(error) is type(None):
-            weighted_basis = self.basis
-            weighted_centered_training_set =\
-                training_set - self.translation[np.newaxis,:]
-            inverse_self_overlap = la.inv(np.dot(self.basis, self.basis.T))
-            training_set_overlap =\
-                np.dot(self.basis, weighted_centered_training_set.T)
-        else:
-            weighted_basis = self.basis / error[np.newaxis,:]
-            weighted_centered_training_set =\
-                (training_set - self.translation[np.newaxis,:]) /\
-                error[np.newaxis,:]
-            inverse_self_overlap =\
-                la.inv(np.dot(weighted_basis, weighted_basis.T))
-            training_set_overlap =\
-                np.dot(weighted_basis, weighted_centered_training_set.T)
+        weighted_basis = self.basis / error[np.newaxis,:]
+        weighted_centered_training_set =\
+            (training_set - self.translation[np.newaxis,:]) /\
+            error[np.newaxis,:]
+        inverse_self_overlap =\
+            la.inv(np.dot(weighted_basis, weighted_basis.T))
+        training_set_overlap =\
+            np.dot(weighted_basis, weighted_centered_training_set.T)
         fit_parameters = np.dot(inverse_self_overlap, training_set_overlap).T
         fit_residuals = weighted_centered_training_set -\
             np.dot(fit_parameters, weighted_basis)
@@ -764,13 +756,42 @@ class Basis(Savable, Loadable):
         else:
             return ax
     
+    def change_expander(self, new_expander):
+        """
+        Returns a Basis object with the same basis vectors and translation but
+        with a different expander.
+        """
+        return Basis(self.basis, expander=new_expander,\
+            translation=self.translation)
+    
+    def expanderless(self):
+        """
+        Returns a Basis object with the same basis vectors and translation but
+        with no expander.
+        """
+        return self.change_expander(None)
+    
     def change_translation(self, new_translation):
         """
-        Returns a Basis object with the same basis  vectors and expander but
+        Returns a Basis object with the same basis vectors and expander but
         with a different translation vector.
         """
         return Basis(self.basis, expander=self.expander,\
             translation=new_translation)
+    
+    def scale(self, scale_factor):
+        """
+        Scales the basis vectors and translation of this basis, so that the
+        same parameters lead to vectors that are scaled by the given scale
+        factor.
+        
+        scale_factor: factor by which basis and translation vectors are
+                      multiplied
+        
+        returns: a new Basis object that is scaled by the given factor
+        """
+        return Basis(self.basis * scale_factor, expander=self.expander,\
+            translation=self.translation * scale_factor)
     
     def copy(self):
         """
