@@ -791,8 +791,10 @@ class ExtractionPlotter(object):
         posterior_group_name = '{!s}/posterior'.format(fitter_group_name)
         if type(name) is type(None):
             basis = basis_sum.basis
+            translation = basis_sum.translation
         else:
             basis = basis_sum[name].basis
+            translation = basis_sum[name].translation
             posterior_group_name = ('{0!s}/{1!s}').format(\
                 posterior_group_name, name)
         if error_to_plot == 'likelihood':
@@ -805,7 +807,7 @@ class ExtractionPlotter(object):
             'parameter_mean').format(posterior_group_name)])
         if self.multiple_data_curves:
             parameter_mean = parameter_mean[icurve]
-        channel_mean = np.dot(parameter_mean, basis) + basis.translation
+        channel_mean = np.dot(parameter_mean, basis) + translation
         channel_mean = scale_factor * channel_mean
         channel_error = scale_factor * channel_error
         if plot_truth or subtract_truth:
