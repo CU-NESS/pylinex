@@ -329,6 +329,26 @@ class ExtractionPlotter(object):
         return self._channel_mean
     
     @property
+    def chi_squared(self):
+        """
+        Property storing the reduced chi squared of the full data fit.
+        """
+        if not hasattr(self, '_chi_squared'):
+            if self.multiple_data_curves:
+                weighted_residual =\
+                    (self.data - self.channel_mean) / self.error[np.newaxis,:]
+                dof = self.statistics['degrees_of_freedom']
+                self._chi_squared =\
+                    np.sum(np.power(weighted_residual, 2), axis=1) / dof
+            else:
+                weighted_residual =\
+                    (self.data - self.channel_mean) / self.error
+                dof = self.statistics['degrees_of_freedom']
+                self._chi_squared =\
+                    np.sum(np.power(weighted_residual, 2)) / dof
+        return self._chi_squared
+    
+    @property
     def parameter_mean(self):
         """
         Property storing the parameter mean of the fit to the data.

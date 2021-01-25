@@ -75,9 +75,12 @@ class Basis(Savable, Loadable):
             raise TypeError("training_set was not array-like.")
         if type(error) in sequence_types:
             error = np.array(error)
-            if error.shape != (self.basis.shape[1],):
-                raise ValueError("error was not a 1D array of length " +\
-                    "num_channels.")
+            if error.shape[-1] != self.basis.shape[1]:
+                raise ValueError("error was not of length num_channels.")
+            if (error.ndim == 2) and (len(error) != len(training_set)):
+                raise ValueError("error was two-dimensional but .")
+            if error.ndim > 2:
+                raise ValueError("error had more than two dimensions.")
         elif type(error) is type(None):
             error = np.ones(self.basis.shape[1])
         elif type(error) in real_numerical_types:
@@ -90,17 +93,33 @@ class Basis(Savable, Loadable):
         if training_set.shape[1] != self.basis.shape[1]:
             raise ValueError("training_set curves do not have same length " +\
                 "as (unexpanded) basis vectors.")
-        weighted_basis = self.basis / error[np.newaxis,:]
-        weighted_centered_training_set =\
-            (training_set - self.translation[np.newaxis,:]) /\
-            error[np.newaxis,:]
-        inverse_self_overlap =\
-            la.inv(np.dot(weighted_basis, weighted_basis.T))
-        training_set_overlap =\
-            np.dot(weighted_basis, weighted_centered_training_set.T)
-        fit_parameters = np.dot(inverse_self_overlap, training_set_overlap).T
-        fit_residuals = weighted_centered_training_set -\
-            np.dot(fit_parameters, weighted_basis)
+        if error.ndim == 1:
+            weighted_basis = self.basis / error[np.newaxis,:]
+            weighted_centered_training_set =\
+                (training_set - self.translation[np.newaxis,:]) /\
+                error[np.newaxis,:]
+            inverse_self_overlap =\
+                la.inv(np.dot(weighted_basis, weighted_basis.T))
+            training_set_overlap =\
+                np.dot(weighted_basis, weighted_centered_training_set.T)
+            fit_parameters = np.dot(inverse_self_overlap, training_set_overlap).T
+            fit_residuals = weighted_centered_training_set -\
+                np.dot(fit_parameters, weighted_basis)
+        else:
+            fit_residuals = []
+            for (curve, err) in zip(training_set, error):
+                weighted_basis = self.basis / err[np.newaxis,:]
+                weighted_centered_curve = (curve - self.translation) / err
+                inverse_self_overlap =\
+                    la.inv(np.dot(weighted_basis, weighted_basis.T))
+                training_set_overlap =\
+                    np.dot(weighted_basis, weighted_centered_curve)
+                fit_parameters =\
+                    np.dot(inverse_self_overlap, training_set_overlap)
+                fit_residual = weighted_centered_curve -\
+                    np.dot(weighted_basis.T, fit_parameters)
+                fit_residuals.append(fit_residual)
+            fit_residuals = np.array(fit_residuals)
         return np.sqrt(np.mean(np.power(fit_residuals, 2)))
     
     def RMS_spectrum_of_training_set_fits(self, training_set, error=None):
@@ -123,18 +142,20 @@ class Basis(Savable, Loadable):
                  being RMS'd
         """
         if type(error) is type(None):
-            spectrum = [np.sqrt(np.mean(np.power(\
-                training_set - self.translation[np.newaxis,:], 2)))]
+            temporary_error = 1
         elif type(error) in real_numerical_types:
-            spectrum = [np.sqrt(np.mean(np.power(\
-                (training_set - self.translation[np.newaxis,:]) / error, 2)))]
+            temporary_error = error
         elif type(error) in sequence_types:
-            spectrum = [np.sqrt(np.mean(np.power(\
-                (training_set - self.translation[np.newaxis,:]) /\
-                np.array(error)[np.newaxis,:], 2)))]
+            temporary_error = np.array(error)
+            if np.array(error).ndim == 1:
+                temporary_error = temporary_error[np.newaxis,:]
+            else:
+                temporary_error = temporary_error
         else:
             raise ValueError("error was not None, a single number, or a 1D " +\
-                "array.")
+                "or 2Darray.")
+        spectrum = [np.sqrt(np.mean(np.power((training_set -\
+            self.translation[np.newaxis,:]) / temporary_error, 2)))]
         for num_terms in range(1, 1 + self.num_basis_vectors):
             spectrum.append(self[:num_terms].RMS_of_training_set_fits(\
                 training_set, error=error))

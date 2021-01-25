@@ -10,7 +10,7 @@ import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as pl
 from distpy import GaussianDistribution
-from ..util import real_numerical_types, sequence_types
+from ..util import real_numerical_types, sequence_types, bool_types
 from ..expander import NullExpander
 from .Basis import Basis
 
@@ -76,15 +76,20 @@ class TrainedBasis(Basis):
                   final basis vector space
         mean_translation: if True (default False), the mean is subtracted from
                           the training set before SVD is computed. The mean is
-                          then stored in the translation property of the basis
+                          then stored in the translation property of the basis.
+                          This argument can also be given as an array so that
+                          the translation can be specifically given by user
         """
         self._training_set_curve_length = training_set.shape[-1]
         self.expander = expander
         self.error = error
-        if mean_translation:
-            translation = np.mean(training_set, axis=0)
+        if type(mean_translation) in bool_types:
+            if mean_translation:
+                translation = np.mean(training_set, axis=0)
+            else:
+                translation = np.zeros(self.training_set_curve_length)
         else:
-            translation = np.zeros(self.training_set_curve_length)
+            translation = mean_translation
         SVD_basis =\
             weighted_SVD_basis(training_set - translation[np.newaxis,:],\
             error=self.error, Neigen=num_basis_vectors)

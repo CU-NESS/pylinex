@@ -467,8 +467,8 @@ class MultiConditionalFitModel(ConditionalFitModel):
         subgroup = group.create_group('priors')
         for (iunknown, prior) in enumerate(self.priors):
             if type(prior) is not type(None):
-                self.prior.fill_hdf5_group(\
-                    subgroup.create_group('{:d}'.format(unknown)))
+                prior.fill_hdf5_group(\
+                    subgroup.create_group('{:d}'.format(iunknown)))
     
     def change_data(self, new_data):
         """
