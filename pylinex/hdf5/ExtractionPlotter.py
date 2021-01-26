@@ -312,7 +312,7 @@ class ExtractionPlotter(object):
                         parameter_mean = get_hdf5_value(\
                             fitter_group['posterior/parameter_mean'])[icurve]
                         this_mean = np.dot(parameter_mean, basis_sum.basis) +\
-                            basis_sum.translation[np.newaxis,:]
+                            basis_sum.translation
                     self._channel_mean.append(this_mean)
                 self._channel_mean = np.array(self._channel_mean)
             elif 'channel_mean' in\
