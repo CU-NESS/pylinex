@@ -111,7 +111,7 @@ class ModelTree(object):
         """
         if type(model) in allowed_compound_model_classes:
             return sum([ModelTree.find_name_chains(submodel,\
-                prefix='{0!s}_{1!s}'.format(prefix, name))\
+                prefix='{0!s}___{1!s}'.format(prefix, name))\
                 for (submodel, name) in zip(model.models, model.names)], [])
         else:
             return [prefix]
@@ -194,7 +194,7 @@ class ModelTree(object):
         """
         if not hasattr(self, '_name_chains'):
             chains = ModelTree.find_name_chains(self.model)
-            self._name_chains = [chain.split('_')[1:] for chain in chains]
+            self._name_chains = [chain.split('___')[1:] for chain in chains]
         return self._name_chains
     
     def load_leaf_list_by_name_chain(self, name_chain=[]):

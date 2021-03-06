@@ -317,7 +317,7 @@ class Forecaster(object):
     def plot_subbasis_bias_statistic_histogram(self, take_sqrt=True,\
         bins=1000, quantity_to_minimize=None, label=None, ax=None, color=None,\
         plot_reference_curve=True, fontsize=24, figsize=(12,9), show=False,\
-        **kwargs):
+        cumulative=True, **kwargs):
         """
         Plots the subbasis bias statistic histogram for the target subbasis
         name given when this Forecaster was written.
@@ -342,48 +342,60 @@ class Forecaster(object):
         if type(ax) is type(None):
             fig = pl.figure(figsize=figsize)
             ax = fig.add_subplot(111)
-        def plot_single_histogram(qtm, this_color=None, bins=None, label=None):
+        def plot_single_histogram(qtm, this_color=None, bns=None, label=None):
             statistics = self.plotter.statistics_by_minimized_quantity(\
                 minimized_quantity=qtm,\
                 grid_quantities=self.plotter.compiled_quantity.quantities)
             statistics = statistics['subbasis_bias_statistic']
             if take_sqrt:
                 statistics = np.sqrt(statistics)
-            (numbers, bins, patches) = ax.hist(statistics, bins=bins,\
-                histtype='step', cumulative=True, density=True,\
+            (numbers, bns, patches) = ax.hist(statistics, bins=bns,\
+                histtype='step', cumulative=cumulative, density=True,\
                 color=this_color, label=label, **kwargs)
-            return bins
+            return bns
         if type(quantity_to_minimize) is type(None):
             bins = plot_single_histogram(\
                 self.plotter.quantity_to_minimize, this_color=color,\
-                bins=bins, label=label)
+                bns=bins, label=label)
         elif isinstance(quantity_to_minimize, basestring):
             bins = plot_single_histogram(quantity_to_minimize,\
-                this_color=color, bins=bins, label=label)
+                this_color=color, bns=bins, label=label)
         elif type(quantity_to_minimize) in sequence_types:
             final_bins = []
             for (quantity, this_color) in zip(quantity_to_minimize, color):
                 final_bins.append(plot_single_histogram(quantity,\
-                    this_color=this_color, bins=bins,\
+                    this_color=this_color, bns=bins,\
                     label='{!s}'.format(quantity)))
             bins = np.sort(np.concatenate(final_bins))
         if plot_reference_curve:
             x_values = np.concatenate([[0],\
                 np.linspace(bins[0], bins[-1], 10 * len(bins))])
             if take_sqrt:
-                y_values = stats.chi.cdf(x_values, 1)
+                if cumulative:
+                    y_values = stats.chi.cdf(x_values, 1)
+                else:
+                    y_values = stats.chi.pdf(x_values, 1)
             else:
-                y_values = stats.chi2.cdf(x_values, 1)
+                if cumulative:
+                    y_values = stats.chi2.cdf(x_values, 1)
+                else:
+                    y_values = stats.chi2.pdf(x_values, 1)
             ax.plot(x_values, y_values, color='k', linestyle='--',\
                 label='$\chi(1)$')
         ax.set_xlim((bins[0], bins[-1]))
-        ax.set_xlabel('# of $\sigma$', size=fontsize)
-        ax.set_ylabel('Confidence level [%]', size=fontsize)
-        ax.set_yticks(np.linspace(0, 1, 6), minor=False)
-        ax.set_yticklabels(['{:d}'.format(20 * integer)\
-            for integer in range(6)], minor=False)
-        ax.set_yticks(np.linspace(0, 1, 21), minor=True)
-        ax.set_yticklabels([], minor=True)
+        if take_sqrt:
+            ax.set_xlabel('# of $\sigma$', size=fontsize)
+        else:
+            ax.set_xlabel('Squared # of $\sigma$', size=fontsize)
+        if cumulative:
+            ax.set_ylabel('Confidence level [%]', size=fontsize)
+            ax.set_yticks(np.linspace(0, 1, 6), minor=False)
+            ax.set_yticklabels(['{:d}'.format(20 * integer)\
+                for integer in range(6)], minor=False)
+            ax.set_yticks(np.linspace(0, 1, 21), minor=True)
+            ax.set_yticklabels([], minor=True)
+        else:
+            ax.set_ylabel('PDF', size=fontsize)
         ax.set_title('Signal bias statistic histogram', size=fontsize)
         ax.tick_params(length=7.5, width=2.5, labelsize=fontsize,\
             which='major')

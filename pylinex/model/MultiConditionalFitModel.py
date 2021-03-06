@@ -172,10 +172,14 @@ class MultiConditionalFitModel(ConditionalFitModel):
         Property storing the parameters associated with each known leaf.
         """
         if not hasattr(self, '_parameters_by_known_leaf'):
-            self._parameters_by_known_leaf =\
-                [leaf.parameters for (leaf, name_chain) in\
-                zip(self.model_tree.leaves, self.model_tree.name_chains)\
-                if name_chain not in self.unknown_name_chains]
+            self._parameters_by_known_leaf = []
+            for (leaf, name_chain) in\
+                zip(self.model_tree.leaves, self.model_tree.name_chains):
+                if name_chain in self.unknown_name_chains:
+                    continue
+                self._parameters_by_known_leaf.append(\
+                    ['_'.join(name_chain + [parameter])\
+                    for parameter in leaf.parameters])
         return self._parameters_by_known_leaf
     
     @property

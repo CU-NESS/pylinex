@@ -29,6 +29,13 @@ class BasisModel(LoadableModel):
         """
         self.basis = basis
     
+    def expanderless(self):
+        """
+        Finds and returns a version of this model that exists in the unexpanded
+        space.
+        """
+        return BasisModel(self.basis.expanderless())
+    
     @property
     def basis(self):
         """

@@ -26,6 +26,13 @@ class ExpandedModel(Model):
         self.model = model
         self.expander = expander
     
+    def expanderless(self):
+        """
+        Finds and returns a version of this model that exists in the unexpanded
+        space.
+        """
+        return self.model
+    
     @property
     def model(self):
         """
