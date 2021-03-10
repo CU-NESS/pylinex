@@ -305,9 +305,9 @@ class MAAFitter(BaseFitter, Savable, Loadable):
                 np.dot(self.expander_basis_overlap_matrix.T,\
                 self._undesired_covariance)
             self._undesired_covariance = np.dot(\
-                self.undesired_covariance, self.undesired_only_covariance)
+                self._undesired_covariance, self.undesired_only_covariance)
             self._undesired_covariance = np.dot(\
-                self.undesired_only_covariance, self.undesired_covariance)
+                self.undesired_only_covariance, self._undesired_covariance)
             self._undesired_covariance =\
                 self.undesired_only_covariance + self._undesired_covariance
         return self._undesired_covariance

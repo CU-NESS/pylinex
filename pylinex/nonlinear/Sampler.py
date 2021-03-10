@@ -23,6 +23,12 @@ except:
     have_emcee = False
 else:
     have_emcee = True
+    try:
+        from emcee import State as EmceeState
+    except:
+        have_new_emcee = False
+    else:
+        have_new_emcee = True
 
 try:
     # this runs with no issues in python 2 but raises error in python 3
@@ -1604,9 +1610,18 @@ class Sampler(object):
         Runs this sampler for a single checkpoint.
         """
         if self.use_ensemble_sampler:
-            (self.pos, self.lnprob, self.rstate) = self.sampler.run_mcmc(\
-                self.pos, self.steps_per_checkpoint, rstate0=self.rstate,\
-                lnprob0=self.lnprob)
+            if have_new_emcee:
+                starting_state = EmceeState(self.pos, log_prob=self.lnprob,\
+                    random_state=self.rstate)
+                ending_state = self.sampler.run_mcmc(starting_state,\
+                    self.steps_per_checkpoint)
+                self.pos = ending_state.coords
+                self.lnprob = ending_state.log_prob
+                self.rstate = ending_state.random_state
+            else:
+                (self.pos, self.lnprob, self.rstate) = self.sampler.run_mcmc(\
+                    self.pos, self.steps_per_checkpoint, rstate0=self.rstate,\
+                    lnprob0=self.lnprob)
         else:
             (self.pos, self.lnprob, self.rstate) = self.sampler.run_mcmc(\
                 self.pos, self.steps_per_checkpoint,\
