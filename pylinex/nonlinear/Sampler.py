@@ -21,6 +21,7 @@ try:
     from emcee import EnsembleSampler
 except:
     have_emcee = False
+    have_new_emcee = False
 else:
     have_emcee = True
     try:
