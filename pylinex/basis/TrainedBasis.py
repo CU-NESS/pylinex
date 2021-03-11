@@ -6,6 +6,7 @@ Date: 3 Sep 2017
 Description: File containing Basis subclass whose basis vectors are calculated
              through (weighted) SVD.
 """
+from __future__ import division
 import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as pl
@@ -83,13 +84,16 @@ class TrainedBasis(Basis):
         self._training_set_curve_length = training_set.shape[-1]
         self.expander = expander
         self.error = error
+        mean_translated = False
         if type(mean_translation) in bool_types:
             if mean_translation:
+                mean_translated = True
                 translation = np.mean(training_set, axis=0)
             else:
                 translation = np.zeros(self.training_set_curve_length)
         else:
             translation = mean_translation
+        self._mean_translated = mean_translated
         SVD_basis =\
             weighted_SVD_basis(training_set - translation[np.newaxis,:],\
             error=self.error, Neigen=num_basis_vectors)
@@ -97,6 +101,21 @@ class TrainedBasis(Basis):
         self.translation = translation
         self.training_set_space_singular_vectors = SVD_basis[2]
         self.full_importances = SVD_basis[1]
+    
+    @property
+    def mean_translated(self):
+        """
+        Property storing a boolean describing whether the mean was subtracted
+        before SVD was done. If True, priors are much simpler to compute, i.e.
+        they are zero-mean with diagonal covariance. This property is set
+        automatically in the initializer and shouldn't be changed by the user
+        directly.
+        """
+        if not hasattr(self, '_mean_translated'):
+            raise AttributeError("Something went wrong. The " +\
+                "mean_translated property apparently was not set " +\
+                "automatically in the initializer as it should have been.")
+        return self._mean_translated
     
     @property
     def training_set_curve_length(self):
@@ -272,9 +291,12 @@ class TrainedBasis(Basis):
         the training set.
         """
         if not hasattr(self, '_prior_mean'):
-            self._prior_mean = (self.importances *\
-                self.summed_training_set_space_singular_vectors) /\
-                self.num_curves
+            if self.mean_translated:
+                self._prior_mean = np.zeros(self.num_basis_vectors)
+            else:
+                self._prior_mean = (self.importances *\
+                    self.summed_training_set_space_singular_vectors) /\
+                    self.num_curves
         return self._prior_mean
     
     @property
@@ -285,19 +307,25 @@ class TrainedBasis(Basis):
         basis is used to fit the training set.
         """
         if not hasattr(self, '_prior_covariance'):
-            self._prior_covariance =\
-                self.summed_training_set_space_singular_vectors[:,np.newaxis]
-            self._prior_covariance =\
-                (self._prior_covariance * self._prior_covariance.T)
-            self._prior_covariance = self._prior_covariance / self.num_curves
-            self._prior_covariance =\
-                np.identity(self.num_basis_vectors) - self._prior_covariance
-            self._prior_covariance =\
-                (self.importances[:,np.newaxis] * self._prior_covariance)
-            self._prior_covariance =\
-                (self.importances[np.newaxis,:] * self._prior_covariance)
-            self._prior_covariance =\
-                self._prior_covariance / (self.num_curves - 1)
+            if self.mean_translated:
+                self._prior_covariance =\
+                    np.diag((self.importances ** 2) / (self.num_curves - 1))
+            else:
+                self._prior_covariance =\
+                    self.summed_training_set_space_singular_vectors[:,\
+                    np.newaxis]
+                self._prior_covariance =\
+                    (self._prior_covariance * self._prior_covariance.T)
+                self._prior_covariance =\
+                    self._prior_covariance / self.num_curves
+                self._prior_covariance = np.identity(self.num_basis_vectors) -\
+                    self._prior_covariance
+                self._prior_covariance =\
+                    (self.importances[:,np.newaxis] * self._prior_covariance)
+                self._prior_covariance =\
+                    (self.importances[np.newaxis,:] * self._prior_covariance)
+                self._prior_covariance =\
+                    self._prior_covariance / (self.num_curves - 1)
         return self._prior_covariance
     
     @property
