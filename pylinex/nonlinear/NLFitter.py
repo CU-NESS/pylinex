@@ -1881,9 +1881,9 @@ class NLFitter(object):
 
     def plot_chain(self, parameters=None, apply_transforms_to_chain=True,\
         apply_transforms_to_reference_value=True, walkers=None, thin=1,\
-        figsize=(12, 12), show=False, parameter_renamer=(lambda x: x),\
+        figsize=12, show=False, parameter_renamer=(lambda x: x),\
         reference_value_mean=None, reference_value_covariance=None,\
-        confidence_level=0.95):
+        confidence_level=0.95, maximum_aspect_ratio=2, fontsize=12):
         """
         Plots the chain of this MCMC.
         
@@ -1903,7 +1903,9 @@ class NLFitter(object):
                  if int, describes the number of walkers shown in the plot
                  if sequence, describes which walkers are shown in the plot
         thin: factor by which to thin the chain
-        figsize: size of figure on which to plot chains
+        figsize: either a 2-tuple (width, height) or the size of the vertical
+                 dimension of the figure (then the aspect ratio will be
+                 determined by the maximum_aspect_ratio argument)
         show: if True, matplotlib.pyplot.show() is called before this function
                        returns
         parameter_renamer: a callable which is used to rename parameters for
@@ -1922,6 +1924,9 @@ class NLFitter(object):
         confidence_level: confidence to use when plotting reference interval
                           (only used if reference_value_mean and
                           reference_value_covariance are known)
+        maximum_aspect_ratio: if figsize is an integer, this is the maximum
+                              aspect ratio allowed
+        fontsize: font size to use for axis and tick labels
         
         returns: if show is True, None
                  otherwise, the matplotlib Figure object containing plots
@@ -1943,7 +1948,16 @@ class NLFitter(object):
             apply_transforms_to_reference_value, reference_value_mean,\
             reference_value_covariance)
         steps = np.arange(0, self.nsteps, thin)
-        axes_per_side = int(np.ceil(np.sqrt(num_parameter_plots)))
+        number_of_rows = np.arange(\
+            int(np.ceil(np.sqrt(num_parameter_plots / maximum_aspect_ratio))),\
+            int(np.ceil(np.sqrt(num_parameter_plots))) + 1) 
+        number_of_columns =\
+            np.ceil(num_parameter_plots / number_of_rows).astype(int) 
+        index = np.argmin(number_of_rows * number_of_columns)
+        number_of_rows = number_of_rows[index]
+        number_of_columns = number_of_columns[index]
+        if type(figsize) in real_numerical_types:
+            figsize = ((figsize * number_of_columns) / number_of_rows, figsize)
         fig = pl.figure(figsize=figsize)
         if type(self.prior_distribution_set) is type(None):
             minima = {parameter: -np.inf for parameter in self.parameters}
@@ -1962,7 +1976,7 @@ class NLFitter(object):
             parameter_index = parameter_indices[index]
             parameter_name = self.parameters[parameter_index]
             renamed_parameter = parameter_renamer(parameter_name)
-            ax = fig.add_subplot(axes_per_side, axes_per_side, index + 1)
+            ax = fig.add_subplot(number_of_rows, number_of_columns, index + 1)
             ax.plot(steps, trimmed_chain[:,:,index].T, linewidth=1)
             if type(reference_value_mean) is not type(None):
                 this_mean = reference_value_mean[index]
@@ -1984,7 +1998,12 @@ class NLFitter(object):
                             color='k', linewidth=2, linestyle='--')
                         ax.plot([steps[0], steps[-1]], [upper_bound] * 2,\
                             color='k', linewidth=2, linestyle='--')
-            ax.set_title(renamed_parameter)
+            ax.set_xlabel('Step #', size=fontsize)
+            ax.set_ylabel(renamed_parameter, size=fontsize)
+            ax.tick_params(labelsize=fontsize, width=2.5, length=7.5,\
+                which='major')
+            ax.tick_params(labelsize=fontsize, width=1.5, length=4.5,\
+                which='minor')
             ax.set_xlim((steps[0], steps[-1]))
         fig.subplots_adjust(left=0.05, bottom=0.05, right=0.95, top=0.95,\
             wspace=0.25, hspace=0.25)
