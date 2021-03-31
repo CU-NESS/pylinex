@@ -486,11 +486,9 @@ class ExtractionPlotter(object):
                         'optimal_fitters/data_curve_{}').format(icurve)]
                     for name in self.names:
                         this_mean = get_hdf5_value(fitter_group[\
-                            'posterior/{!s}/parameter_mean'.format(name)])
+                            'posterior/{!s}/parameter_mean'.format(name)])[\
+                            icurve,:]
                         self._parameter_means[name].append(this_mean)
-                for name in self.names:
-                    self._parameter_means[name] =\
-                        np.array(self._parameter_means[name])
             else:
                 self._parameter_means = {}
                 fitter_group = self.file['meta_fitter/optimal_fitter']
@@ -517,9 +515,6 @@ class ExtractionPlotter(object):
                             name)])
                         self._parameter_covariances[name].append(\
                             this_covariance)
-                for name in self.names:
-                    self._parameter_covariances[name] =\
-                        np.array(self._parameter_covariances[name])
             else:
                 self._parameter_covariances = {}
                 fitter_group = self.file['meta_fitter/optimal_fitter']
