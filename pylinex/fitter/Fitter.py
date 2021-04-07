@@ -315,7 +315,7 @@ class Fitter(BaseFitter, Savable):
         Property that returns the reduced chi-squared values of the fit(s) in
         this Fitter.
         """
-        return self.normalized_likelihood_bias_statistic # TODO perhaps this should call the chi_squared function
+        return self.normalized_bias_statistic
     
     @property
     def psi_squared(self):
