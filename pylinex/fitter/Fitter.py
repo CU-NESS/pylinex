@@ -7,10 +7,11 @@ Description: File containing a class which computes fits of data using linear
              models through analytical calculations. It has functions to output
              the signal estimate (with error), parameter covariance, and more.
 """
+from __future__ import division
 import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as pl
-from distpy import GaussianDistribution
+from distpy import GaussianDistribution, ChiSquaredDistribution
 from ..util import Savable, create_hdf5_dataset, psi_squared
 from .TrainingSetIterator import TrainingSetIterator
 from .BaseFitter import BaseFitter
@@ -108,7 +109,7 @@ class Fitter(BaseFitter, Savable):
             '_posterior_covariance_times_prior_inverse_covariance'):
             self._posterior_covariance_times_prior_inverse_covariance =\
                 np.dot(self.parameter_covariance,\
-                       self.prior_inverse_covariance)
+                self.prior_inverse_covariance)
         return self._posterior_covariance_times_prior_inverse_covariance
     
     @property
@@ -312,10 +313,69 @@ class Fitter(BaseFitter, Savable):
     @property
     def chi_squared(self):
         """
+        Property that returns the (non-reduced) chi-squared values of the
+        fit(s) in this Fitter.
+        """
+        return self.bias_statistic
+    
+    @property
+    def reduced_chi_squared(self):
+        """
         Property that returns the reduced chi-squared values of the fit(s) in
         this Fitter.
         """
         return self.normalized_bias_statistic
+    
+    @property
+    def reduced_chi_squared_expected_mean(self):
+        """
+        Property storing the expected mean of the chi_squared property.
+        """
+        if not hasattr(self, '_reduced_chi_squared_expected_mean'):
+            if self.has_priors:
+                mean = np.sum(np.diag(\
+                    self.posterior_covariance_times_prior_inverse_covariance))
+            else:
+                mean = 0
+            self._reduced_chi_squared_expected_mean =\
+                (mean + self.degrees_of_freedom) / self.degrees_of_freedom
+        return self._reduced_chi_squared_expected_mean
+    
+    @property
+    def reduced_chi_squared_expected_variance(self):
+        """
+        Property storing the expected variance of the chi_squared property.
+        """
+        if not hasattr(self, '_reduced_chi_squared_expected_variance'):
+            if self.has_priors:
+                variance =\
+                    self.posterior_covariance_times_prior_inverse_covariance
+                variance = np.sum(variance * variance.T)
+            else:
+                variance = 0
+            self._reduced_chi_squared_expected_variance =\
+                (2 * (variance + self.degrees_of_freedom)) /\
+                (self.degrees_of_freedom ** 2)
+        return self._reduced_chi_squared_expected_variance
+    
+    @property
+    def reduced_chi_squared_expected_distribution(self):
+        """
+        Property storing a GaussianDistribution with mean given by
+        reduced_chi_squared_expected_mean and variance given by
+        reduced_chi_squared_expected_variance.
+        """
+        if not hasattr(self, '_reduced_chi_squared_expected_distribution'):
+            if self.has_priors:
+                self._reduced_chi_squared_expected_distribution =\
+                    GaussianDistribution(\
+                    self.reduced_chi_squared_expected_mean,\
+                    self.reduced_chi_squared_expected_variance)
+            else:
+                self._reduced_chi_squared_expected_distribution =\
+                    ChiSquaredDistribution(self.degrees_of_freedom,\
+                    reduced=True)
+        return self._reduced_chi_squared_expected_distribution
     
     @property
     def psi_squared(self):

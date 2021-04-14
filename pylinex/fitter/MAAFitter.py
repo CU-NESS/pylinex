@@ -15,7 +15,7 @@ import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as pl
 from matplotlib.ticker import MultipleLocator
-from distpy import ChiSquaredDistribution
+from distpy import GaussianDistribution, ChiSquaredDistribution
 from ..util import Savable, Loadable, create_hdf5_dataset, real_numerical_types
 from ..expander import Expander, load_expander_from_hdf5_group
 from ..basis import TrainedBasis
@@ -466,7 +466,8 @@ class MAAFitter(BaseFitter, Savable, Loadable):
         """
         Property storing the chi squared value(s) divided by the number of
         degrees of freedom. This should be around one, with "around" being
-        defined by the error given in the reduced_chi_squared_error property.
+        defined by the error given by the square root of the
+        reduced_chi_squared_variance property.
         """
         if not hasattr(self, '_reduced_chi_squared'):
             self._reduced_chi_squared =\
@@ -474,15 +475,37 @@ class MAAFitter(BaseFitter, Savable, Loadable):
         return self._reduced_chi_squared
     
     @property
-    def reduced_chi_squared_error(self):
+    def reduced_chi_squared_expected_mean(self):
         """
-        Property storing the expected error of the reduced chi squared
+        Property storing the expected mean of the reduced chi squared value(s).
+        """
+        if not hasattr(self, '_reduced_chi_squared_expected_mean'):
+            if self.has_priors:
+                mean = np.sum(self.undesired_covariance *\
+                    self.prior_inverse_covariance)
+            else:
+                mean = 0
+            self._reduced_chi_squared_expected_mean =\
+                (mean + self.degrees_of_freedom) / self.degrees_of_freedom
+        return self._reduced_chi_squared_expected_mean
+    
+    @property
+    def reduced_chi_squared_expected_variance(self):
+        """
+        Property storing the expected variance of the reduced chi squared
         value(s).
         """
-        if not hasattr(self, '_reduced_chi_squared_error'):
-            self._reduced_chi_squared_error =\
-                np.sqrt(2 / self.degrees_of_freedom)
-        return self._reduced_chi_squared_error
+        if not hasattr(self, '_reduced_chi_squared_variance'):
+            if self.has_priors:
+                variance = np.dot(self.prior_inverse_covariance,\
+                    self.undesired_covariance)
+                variance = np.sum(variance.T * variance)
+            else:
+                variance = 0
+            self._reduced_chi_squared_expected_variance =\
+                (2 * (variance + self.degrees_of_freedom)) /\
+                (self.degrees_of_freedom ** 2)
+        return self._reduced_chi_squared_expected_variance
     
     @property
     def reduced_chi_squared_expected_distribution(self):
@@ -492,9 +515,38 @@ class MAAFitter(BaseFitter, Savable, Loadable):
         fitter.
         """
         if not hasattr(self, '_reduced_chi_squared_expected_distribution'):
-            self._reduced_chi_squared_expected_distribution =\
-                ChiSquaredDistribution(self.degrees_of_freedom, reduced=True)
+            if self.has_priors:
+                self._reduced_chi_squared_expected_distribution =\
+                    GaussianDistribution(\
+                    self.reduced_chi_squared_expected_mean,\
+                    self.reduced_chi_squared_expected_variance)
+            else:
+                self._reduced_chi_squared_expected_distribution =\
+                    ChiSquaredDistribution(self.degrees_of_freedom,\
+                    reduced=True)
         return self._reduced_chi_squared_expected_distribution
+    
+    @property
+    def desired_reduced_chi_squared_expected_mean(self):
+        """
+        Property storing the expected mean of the desired reduced chi squared
+        value(s).
+        """
+        if not hasattr(self, '_desired_reduced_chi_squared_expected_mean'):
+            self._desired_reduced_chi_squared_expected_mean = 1
+        return self._desired_reduced_chi_squared_expected_mean
+    
+    @property
+    def desired_reduced_chi_squared_expected_variance(self):
+        """
+        Property storing the expected variance of the desired reduced chi
+        squared value(s).
+        """
+        if not hasattr(self, '_desired_reduced_chi_squared_variance'):
+            # TODO possibly this needs a correction?
+            self._desired_reduced_chi_squared_expected_variance =\
+                2 / self.num_desired_channels
+        return self._desired_reduced_chi_squared_expected_variance
     
     @property
     def desired_reduced_chi_squared_expected_distribution(self):
@@ -505,7 +557,8 @@ class MAAFitter(BaseFitter, Savable, Loadable):
         if not hasattr(self,\
             '_desired_reduced_chi_squared_expected_distribution'):
             self._desired_reduced_chi_squared_expected_distribution =\
-                ChiSquaredDistribution(self.num_desired_channels, reduced=True)
+                ChiSquaredDistribution(self.num_desired_channels,\
+                reduced=True)
         return self._desired_reduced_chi_squared_expected_distribution
     
     def desired_reduced_chi_squared(self, desired_component):
