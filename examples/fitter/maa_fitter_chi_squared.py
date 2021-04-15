@@ -15,7 +15,7 @@ from pylinex import RepeatExpander, Basis, BasisSum, MAAFitter
 seed = 0
 fontsize = 24
 num_x_values = 10000
-num_curves = 10000
+num_curves = 100000
 num_channels_per = 100
 num_repeats = 2
 num_channels = num_repeats * num_channels_per
@@ -116,6 +116,37 @@ ax.set_xlabel('$\chi^2$', size=fontsize)
 ax.set_ylabel('PDF', size=fontsize)
 ax.set_title('Desired component $\chi^2$', size=fontsize)
 ax.legend(fontsize=fontsize)
+
+fig.subplots_adjust(top=0.945, bottom=0.11, left=0.065, right=0.985,\
+    wspace=0.23)
+
+
+fig = pl.figure(figsize=(18,9))
+
+ax = fig.add_subplot(121)
+correlation = np.corrcoef(np.array([fitter_without_priors.reduced_chi_squared,\
+    fitter_without_priors.desired_reduced_chi_squared(0)]))[0,1]
+ax.hist2d(fitter_without_priors.reduced_chi_squared,\
+    fitter_without_priors.desired_reduced_chi_squared(0), bins=100,\
+    cmap='bone')
+ax.set_xlabel('Full data $\chi^2$', size=fontsize)
+ax.set_ylabel('Signal $\chi^2$', size=fontsize)
+ax.set_title('No priors, correlation={:.3f}'.format(correlation),\
+    size=fontsize)
+ax.tick_params(labelsize=fontsize, width=2.5, length=7.5, which='major')
+ax.tick_params(labelsize=fontsize, width=1.5, length=4.5, which='minor')
+
+ax = fig.add_subplot(122)
+correlation = np.corrcoef(np.array([fitter_with_priors.reduced_chi_squared,\
+    fitter_with_priors.desired_reduced_chi_squared(0)]))[0,1]
+ax.hist2d(fitter_with_priors.reduced_chi_squared,\
+    fitter_with_priors.desired_reduced_chi_squared(0), bins=100, cmap='bone')
+ax.set_xlabel('Full data $\chi^2$', size=fontsize)
+ax.set_ylabel('Signal $\chi^2$', size=fontsize)
+ax.set_title('With priors, correlation={:.3f}'.format(correlation),\
+    size=fontsize)
+ax.tick_params(labelsize=fontsize, width=2.5, length=7.5, which='major')
+ax.tick_params(labelsize=fontsize, width=1.5, length=4.5, which='minor')
 
 fig.subplots_adjust(top=0.945, bottom=0.11, left=0.065, right=0.985,\
     wspace=0.23)

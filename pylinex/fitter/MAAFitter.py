@@ -543,7 +543,6 @@ class MAAFitter(BaseFitter, Savable, Loadable):
         squared value(s).
         """
         if not hasattr(self, '_desired_reduced_chi_squared_variance'):
-            # TODO possibly this needs a correction?
             self._desired_reduced_chi_squared_expected_variance =\
                 2 / self.num_desired_channels
         return self._desired_reduced_chi_squared_expected_variance
