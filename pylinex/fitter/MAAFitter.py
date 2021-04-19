@@ -20,6 +20,7 @@ from ..util import Savable, Loadable, create_hdf5_dataset, real_numerical_types
 from ..expander import Expander, load_expander_from_hdf5_group
 from ..basis import TrainedBasis
 from .BaseFitter import BaseFitter
+from .Fitter import Fitter
 
 class MAAFitter(BaseFitter, Savable, Loadable):
     """
@@ -313,6 +314,16 @@ class MAAFitter(BaseFitter, Savable, Loadable):
         return self._undesired_covariance
     
     @property
+    def inverse_undesired_covariance(self):
+        """
+        Property storing the inverse of the posterior undesired covariance.
+        """
+        if not hasattr(self, '_inverse_undesired_covariance'):
+            self._inverse_undesired_covariance =\
+                la.inv(self.undesired_covariance)
+        return self._inverse_undesired_covariance
+    
+    @property
     def covariance_of_desired_and_undesired_components(self):
         """
         Property storing the covariance of desired component channels (first
@@ -577,6 +588,66 @@ class MAAFitter(BaseFitter, Savable, Loadable):
         doubly_weighted_bias = np.dot(bias, self.inverse_desired_covariance)
         return np.sum(bias * doubly_weighted_bias, axis=-1) /\
             self.num_desired_channels
+    
+    @property
+    def undesired_reduced_chi_squared_expected_mean(self):
+        """
+        Property storing the expected mean of the undesired reduced chi squared
+        value(s).
+        """
+        if not hasattr(self, '_undesired_reduced_chi_squared_expected_mean'):
+            self._undesired_reduced_chi_squared_expected_mean = 1
+        return self._undesired_reduced_chi_squared_expected_mean
+    
+    @property
+    def undesired_reduced_chi_squared_expected_variance(self):
+        """
+        Property storing the expected variance of the undesired reduced chi
+        squared value(s).
+        """
+        if not hasattr(self, '_undesired_reduced_chi_squared_variance'):
+            self._undesired_reduced_chi_squared_expected_variance =\
+                2 / self.basis_sum.num_basis_vectors
+        return self._undesired_reduced_chi_squared_expected_variance
+    
+    @property
+    def undesired_reduced_chi_squared_expected_distribution(self):
+        """
+        Property storing the expected distribution of the reduced chi squared
+        statistic of the undesired component.
+        """
+        if not hasattr(self,\
+            '_undesired_reduced_chi_squared_expected_distribution'):
+            self._undesired_reduced_chi_squared_expected_distribution =\
+                ChiSquaredDistribution(self.basis_sum.num_basis_vectors,\
+                reduced=True)
+        return self._undesired_reduced_chi_squared_expected_distribution
+    
+    def undesired_reduced_chi_squared(self, undesired_component):
+        """
+        Function which computes the reduced chi squared statistic of the
+        undesired component. This is given by (b^T S^{-1} b + d^T C^{-1} d)/N_F
+        where b is the bias of the mean from the input in undesired coefficient
+        space, S is undesired_covariance, d is the portion of the input that is
+        unfittable with the basis, C is the noise covariance (given by error),
+        and N_F is the number of basis vectors in the systematic basis.
+        
+        undesired_component: numpy array of shape (num_channels,) if there is a
+                             single data vector or (num_fits, num_channels) if
+                             there are num_fits data vectors
+        
+        returns: a single number if there is a single data vector or an array
+                 of length num_fits if there are num_fits data vectors
+        """
+        fitter = Fitter(self.basis_sum, undesired_component, error=self.error)
+        parameter_bias = self.undesired_mode_mean - fitter.parameter_mean
+        doubly_weighted_parameter_bias =\
+            np.dot(parameter_bias, self.inverse_undesired_covariance)
+        parameter_bias_term =\
+            np.sum(parameter_bias * doubly_weighted_parameter_bias, axis=-1)
+        unfittable_component_term = fitter.chi_squared
+        return (parameter_bias_term + unfittable_component_term) /\
+            self.basis_sum.num_basis_vectors
     
     def plot_reduced_chi_squared_histogram(self, fig=None, ax=None,\
         figsize=(12,9), xlabel='', ylabel='', title='', fontsize=24,\

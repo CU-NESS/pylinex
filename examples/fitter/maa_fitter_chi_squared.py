@@ -9,7 +9,7 @@ Description: Example showing how the reduced_chi_squared and
 """
 import numpy as np
 import matplotlib.pyplot as pl
-from distpy import GaussianDistribution
+from distpy import GaussianDistribution, triangle_plot
 from pylinex import RepeatExpander, Basis, BasisSum, MAAFitter
 
 seed = 0
@@ -47,11 +47,14 @@ fitter_with_priors = MAAFitter(expander, basis_sum, data, error=error,\
     sole_prior=prior)
 
 fig = pl.figure(figsize=(18,9))
-ax = fig.add_subplot(121)
+ax = fig.add_subplot(131)
 
-ax.hist(fitter_without_priors.reduced_chi_squared, histtype='bar', color='C0',\
+reduced_chi_squared_without_priors = fitter_without_priors.reduced_chi_squared
+reduced_chi_squared_with_priors = fitter_with_priors.reduced_chi_squared
+
+ax.hist(reduced_chi_squared_without_priors, histtype='bar', color='C0',\
     label='No priors', bins=100, density=True, alpha=0.5)
-ax.hist(fitter_with_priors.reduced_chi_squared, histtype='bar', color='C1',\
+ax.hist(reduced_chi_squared_with_priors, histtype='bar', color='C1',\
     label='With priors', bins=100, density=True, alpha=0.5)
 
 xlim = ax.get_xlim()
@@ -66,11 +69,11 @@ fitter_with_priors.reduced_chi_squared_expected_distribution.plot(x_values,\
 expected_mean_with_priors =\
     fitter_with_priors.reduced_chi_squared_expected_mean
 ax.plot([1] * 2, ylim, color='C0', linestyle='--')
-ax.plot([np.mean(fitter_without_priors.reduced_chi_squared)] * 2, ylim,\
-    color='C0', linestyle=':')
+ax.plot([np.mean(reduced_chi_squared_without_priors)] * 2, ylim, color='C0',\
+    linestyle=':')
 ax.plot([expected_mean_with_priors] * 2, ylim, color='C1', linestyle='--')
-ax.plot([np.mean(fitter_with_priors.reduced_chi_squared)] * 2, ylim,\
-    color='C1', linestyle=':')
+ax.plot([np.mean(reduced_chi_squared_with_priors)] * 2, ylim, color='C1',\
+    linestyle=':')
 
 ax.set_xlim(xlim)
 ax.set_ylim(ylim)
@@ -83,13 +86,17 @@ ax.legend(fontsize=fontsize)
 
 
 
-#fig = pl.figure(figsize=(12,9))
-ax = fig.add_subplot(122)
+ax = fig.add_subplot(132)
 
-ax.hist(fitter_without_priors.desired_reduced_chi_squared(0), histtype='bar',\
+desired_reduced_chi_squared_without_priors =\
+    fitter_without_priors.desired_reduced_chi_squared(0)
+desired_reduced_chi_squared_with_priors =\
+    fitter_with_priors.desired_reduced_chi_squared(0)
+
+ax.hist(desired_reduced_chi_squared_without_priors, histtype='bar',\
     color='C0', label='No priors', bins=100, density=True, alpha=0.5)
-ax.hist(fitter_with_priors.desired_reduced_chi_squared(0), histtype='bar',\
-    color='C1', label='With priors', bins=100, density=True, alpha=0.5)
+ax.hist(desired_reduced_chi_squared_with_priors, histtype='bar', color='C1',\
+    label='With priors', bins=100, density=True, alpha=0.5)
 
 xlim = ax.get_xlim()
 ylim = ax.get_ylim()
@@ -103,11 +110,11 @@ fitter_with_priors.desired_reduced_chi_squared_expected_distribution.plot(\
 expected_mean_with_priors =\
     fitter_with_priors.desired_reduced_chi_squared_expected_mean
 ax.plot([1] * 2, ylim, color='C0', linestyle='--')
-ax.plot([np.mean(fitter_without_priors.desired_reduced_chi_squared(0))] * 2,\
-    ylim, color='C0', linestyle=':')
+ax.plot([np.mean(desired_reduced_chi_squared_without_priors)] * 2, ylim,\
+    color='C0', linestyle=':')
 ax.plot([expected_mean_with_priors] * 2, ylim, color='C1', linestyle='--')
-ax.plot([np.mean(fitter_with_priors.desired_reduced_chi_squared(0))] * 2,\
-    ylim, color='C1', linestyle=':')
+ax.plot([np.mean(desired_reduced_chi_squared_with_priors)] * 2, ylim,\
+    color='C1', linestyle=':')
 
 ax.set_xlim(xlim)
 ax.set_ylim(ylim)
@@ -117,39 +124,78 @@ ax.set_ylabel('PDF', size=fontsize)
 ax.set_title('Desired component $\chi^2$', size=fontsize)
 ax.legend(fontsize=fontsize)
 
+
+
+ax = fig.add_subplot(133)
+
+undesired_reduced_chi_squared_without_priors =\
+    fitter_without_priors.undesired_reduced_chi_squared(noiseless_data)
+undesired_reduced_chi_squared_with_priors =\
+    fitter_with_priors.undesired_reduced_chi_squared(noiseless_data)
+
+ax.hist(undesired_reduced_chi_squared_without_priors,\
+    histtype='bar', color='C0', label='No priors', bins=100, density=True,\
+    alpha=0.5)
+ax.hist(undesired_reduced_chi_squared_with_priors,\
+    histtype='bar', color='C1', label='With priors', bins=100, density=True,\
+    alpha=0.5)
+
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+x_values = np.linspace(xlim[0], xlim[1], num_x_values)
+
+fitter_without_priors.undesired_reduced_chi_squared_expected_distribution.\
+    plot(x_values, color='C0', ax=ax, fontsize=fontsize)
+fitter_with_priors.undesired_reduced_chi_squared_expected_distribution.plot(\
+    x_values, color='C1', ax=ax, fontsize=fontsize)
+
+expected_mean_with_priors =\
+    fitter_with_priors.undesired_reduced_chi_squared_expected_mean
+ax.plot([1] * 2, ylim, color='C0', linestyle='--')
+ax.plot([np.mean(undesired_reduced_chi_squared_without_priors)] * 2, ylim,\
+    color='C0', linestyle=':')
+ax.plot([expected_mean_with_priors] * 2, ylim, color='C1', linestyle='--')
+ax.plot([np.mean(undesired_reduced_chi_squared_with_priors)] * 2, ylim,\
+    color='C1', linestyle=':')
+
+ax.set_xlim(xlim)
+ax.set_ylim(ylim)
+
+ax.set_xlabel('$\chi^2$', size=fontsize)
+ax.set_ylabel('PDF', size=fontsize)
+ax.set_title('Undesired component $\chi^2$', size=fontsize)
+ax.legend(fontsize=fontsize)
+
 fig.subplots_adjust(top=0.945, bottom=0.11, left=0.065, right=0.985,\
     wspace=0.23)
 
 
-fig = pl.figure(figsize=(18,9))
 
-ax = fig.add_subplot(121)
-correlation = np.corrcoef(np.array([fitter_without_priors.reduced_chi_squared,\
-    fitter_without_priors.desired_reduced_chi_squared(0)]))[0,1]
-ax.hist2d(fitter_without_priors.reduced_chi_squared,\
-    fitter_without_priors.desired_reduced_chi_squared(0), bins=100,\
-    cmap='bone')
-ax.set_xlabel('Full data $\chi^2$', size=fontsize)
-ax.set_ylabel('Signal $\chi^2$', size=fontsize)
-ax.set_title('No priors, correlation={:.3f}'.format(correlation),\
-    size=fontsize)
-ax.tick_params(labelsize=fontsize, width=2.5, length=7.5, which='major')
-ax.tick_params(labelsize=fontsize, width=1.5, length=4.5, which='minor')
+triangle_plot_labels =\
+    ['Data $\chi^2$', 'Signal $\chi^2$', 'Systematic $\chi^2$']
+triangle_plot_kwargs = (lambda color: {'show': False, 'plot_type': 'contourf',\
+    'kwargs_1D': {'color': color, 'alpha': 0.5},\
+    'kwargs_2D': {'colors': [color], 'alpha': 0.5}, 'fontsize': 12,\
+    'nbins': 50, 'reference_value_mean': None,\
+    'reference_value_covariance': None, 'contour_confidence_levels': 0.95,\
+    'minima': None, 'maxima': None, 'plot_limits': None,\
+    'tick_label_format_string': '{x:.3g}', 'num_ticks': 3,\
+    'minor_ticks_per_major_tick': 1, 'xlabel_rotation': 0, 'xlabelpad': None,\
+    'ylabel_rotation': 90, 'ylabelpad': None})
 
-ax = fig.add_subplot(122)
-correlation = np.corrcoef(np.array([fitter_with_priors.reduced_chi_squared,\
-    fitter_with_priors.desired_reduced_chi_squared(0)]))[0,1]
-ax.hist2d(fitter_with_priors.reduced_chi_squared,\
-    fitter_with_priors.desired_reduced_chi_squared(0), bins=100, cmap='bone')
-ax.set_xlabel('Full data $\chi^2$', size=fontsize)
-ax.set_ylabel('Signal $\chi^2$', size=fontsize)
-ax.set_title('With priors, correlation={:.3f}'.format(correlation),\
-    size=fontsize)
-ax.tick_params(labelsize=fontsize, width=2.5, length=7.5, which='major')
-ax.tick_params(labelsize=fontsize, width=1.5, length=4.5, which='minor')
+samples_without_priors = [reduced_chi_squared_without_priors,\
+    desired_reduced_chi_squared_without_priors,\
+    undesired_reduced_chi_squared_without_priors]
+samples_with_priors = [reduced_chi_squared_with_priors,\
+    desired_reduced_chi_squared_with_priors,\
+    undesired_reduced_chi_squared_with_priors]
 
-fig.subplots_adjust(top=0.945, bottom=0.11, left=0.065, right=0.985,\
-    wspace=0.23)
+fig = triangle_plot(samples_without_priors, triangle_plot_labels, fig=None,\
+    **triangle_plot_kwargs('C0'))
+fig = triangle_plot(samples_with_priors, triangle_plot_labels, fig=fig,\
+    **triangle_plot_kwargs('C1'))
+fig.subplots_adjust(top=0.99, bottom=0.11, left=0.12, right=0.98, hspace=0.0,\
+    wspace=0.0)
 
 pl.show()
 
