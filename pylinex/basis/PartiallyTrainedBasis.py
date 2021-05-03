@@ -1,10 +1,11 @@
 """
-File: pylinex/basis/TrainedBasis.py
-Author: Keith Tauscher
-Date: 3 Sep 2017
+File: pylinex/basis/PartiallyTrainedBasis.py
+Author: Neil Bassett
+Update date: 3 May 2020
 
-Description: File containing Basis subclass whose basis vectors are calculated
-             through (weighted) SVD.
+Description: File containing a Basis subclass whose basis vectors are a
+             combination of fixed vectors that are supplied by the user and
+             vectors calculated through (weighted) SVD.
 """
 from __future__ import division
 import numpy as np
@@ -13,22 +14,26 @@ import matplotlib.pyplot as pl
 from distpy import GaussianDistribution
 from ..util import real_numerical_types, sequence_types, bool_types
 from ..expander import NullExpander
-from .Basis import Basis
-from .SVDFunctions import weighted_SVD, weighted_SVD_basis
+from .Basis import Basis, weighted_SVD, weighted_SVD_basis
 
-class TrainedBasis(Basis):
+class PartiallyTrainedBasis(Basis):
     """
-    Class which derives a basis from a training set using weighted Singular
-    Value Decomposition (SVD).
+    Class that defines a basis created through the combination of fixed vectors
+    supplied by the user and vectors derived from performing (weighted)
+    Singular Value Decomposition (SVD) on a training set.
     """
-    def __init__(self, training_set, num_basis_vectors, error=None,\
-        expander=None, mean_translation=False):
+    def __init__(self, fixed_vectors, training_set, num_SVD_basis_vectors,\
+        error=None, expander=None, mean_translation=False):
         """
-        Initializes this TranedBasis using the given training_set and number of
-        basis vectors.
-        
-        training_set: numpy.ndarray of shape (ncurves, nchannels)
-        num_basis_vectors: number of basis vectors to keep from SVD
+        Initializes a PartiallyTrainedBasis using the given fixed_vectors and
+        training_set.
+
+        fixed_vectors: numpy.ndarray of shape (nvectors, nchannels) which
+                       contains the fixed vectors to use for the basis
+        training_set: numpy.ndarray of shape (ncurves, nchannels) which contains
+                      the training set curves on which to perform SVD
+        num_SVD_basis_vectors: number of basis vectors from SVD to use in the
+                               basis
         error: if None, no weighting is used
                if error is a single number, it is set to a constant array with
                                             that value. This will yield the
@@ -38,61 +43,118 @@ class TrainedBasis(Basis):
                if error is a numpy.ndarray, it should be 1D and of length
                                             nchannels (i.e. expanded training
                                             set curve length)
-        expander: Expander object which expands from training set space to
-                  final basis vector space
+        expander: Expander object which expands from fixed vector/training set
+                  space to final basis vector space
         mean_translation: if True (default False), the mean is subtracted from
                           the training set before SVD is computed. The mean is
                           then stored in the translation property of the basis.
                           This argument can also be given as an array so that
                           the translation can be specifically given by user
         """
-        self._training_set_curve_length = training_set.shape[-1]
+        if fixed_vectors.shape[-1] != training_set.shape[-1]:
+            raise ValueError("Each curve in fixed_vectors and training_set" +\
+                "must have the same length (i.e. number of channels)")
+        self._basis_vector_length = fixed_vectors.shape[-1]
+        self.num_fixed_basis_vectors = fixed_vectors.shape[0]
+        self.num_SVD_basis_vectors = num_SVD_basis_vectors
         self.expander = expander
         self.error = error
+        self.fixed_basis = np.array(fixed_vectors)
+        weighted_fixed_basis = self.fixed_basis / self.error[np.newaxis,:]
+        inverse_self_overlap =\
+                la.inv(np.dot(weighted_fixed_basis, weighted_fixed_basis.T))
+        training_set_overlap =\
+                np.dot(weighted_fixed_basis, training_set.T)
+        fit_parameters = np.dot(inverse_self_overlap, training_set_overlap).T
+        residual_training_set = training_set -\
+                np.dot(fit_parameters, weighted_fixed_basis)
         mean_translated = False
         if type(mean_translation) in bool_types:
             if mean_translation:
                 mean_translated = True
-                translation = np.mean(training_set, axis=0)
+                translation = np.mean(residual_training_set, axis=0)
             else:
                 translation = np.zeros(self.training_set_curve_length)
         else:
             translation = mean_translation
         self._mean_translated = mean_translated
         SVD_basis =\
-            weighted_SVD_basis(training_set - translation[np.newaxis,:],\
-            error=self.error, Neigen=num_basis_vectors)
-        self.basis = SVD_basis[0]
+            weighted_SVD_basis(residual_training_set -\
+            translation[np.newaxis,:], error=self.error,\
+            Neigen=num_SVD_basis_vectors)
+        self.SVD_basis = SVD_basis[0]
+        self.basis = self.fixed_basis + self.SVD_basis
         self.translation = translation
         self.training_set_space_singular_vectors = SVD_basis[2]
         self.full_importances = SVD_basis[1]
-    
+
     @property
-    def mean_translated(self):
+    def basis_vector_length(self):
         """
-        Property storing a boolean describing whether the mean was subtracted
-        before SVD was done. If True, priors are much simpler to compute, i.e.
-        they are zero-mean with diagonal covariance. This property is set
-        automatically in the initializer and shouldn't be changed by the user
-        directly.
+        Property storing the length of the basis vectors that make up this
+        basis. This property is set in the initializer and should not be changed
+        by the user directly.
         """
-        if not hasattr(self, '_mean_translated'):
-            raise AttributeError("Something went wrong. The " +\
-                "mean_translated property apparently was not set " +\
-                "automatically in the initializer as it should have been.")
-        return self._mean_translated
-    
-    @property
-    def training_set_curve_length(self):
-        """
-        Property storing the length of the training set curves that made this
-        basis.
-        """
-        if not hasattr(self, '_training_set_curve_length'):
-            raise AttributeError("training_set_curve_length was referenced " +\
+        if not hasattr(self, '_basis_vector_length'):
+            raise AttributeError("basis_vector_length was referenced " +\
                 "before it was set.")
-        return self._training_set_curve_length
-    
+        return self._basis_vector_length
+
+    @property
+    def num_fixed_basis_vectors(self):
+        """
+        Property storing the number of basis vectors that are fixed (i.e.
+        provided by the user instead of obtained through SVD). This property is
+        set in the initializer and should not be changed by the user directly.
+        """
+        if not hasattr(self, '_num_fixed_basis_vectors'):
+            raise AttributeError("num_fixed_basis_vectors was referenced " +\
+                "before it was set.")
+        return self._num_fixed_basis_vectors
+
+    @num_fixed_basis_vectors.setter
+    def num_fixed_basis_vectors(self, value):
+        """
+        Setter for the num_fixed_basis_vectors property.
+
+        value: number of fixed vectors that will be used in the basis
+        """
+        if isinstance(value, int):
+            if value >= 0:
+                self._num_fixed_basis_vectors = value
+            else:
+                raise ValueError("num_fixed_basis_vectors must be greater " +\
+                    "than or equal to 0.")
+        else:
+            raise ValueError("num_fixed_basis_vectors must be an integer.")
+
+    @property
+    def num_SVD_basis_vectors(self):
+        """
+        Property storing the number of basis vectors from SVD. This property is
+        set in the initializer and should not be changed by the user directly.
+        """
+        if not hasattr(self, '_num_SVD_basis_vectors'):
+            raise AttributeError("num_SVD_basis_vectors was referenced " +\
+                "before it was set.")self.fixed_basis / self.error[np.newaxis,:]
+        return self._num_SVD_basis_vectors
+
+    @num_SVD_basis_vectors.setter
+    def num_SVD_basis_vectors(self, value):
+        """
+        Setter for the num_SVD_basis_vectors property.
+
+        value: number of SVD vectors that will be used in the basis
+        """
+        if isinstance(value, int):
+            if value >= 0:
+                self._num_SVD_basis_vectors = value
+            else:
+                raise ValueError("num_SVD_basis_vectors must be greater " +\
+                    "than or equal to 0.")
+        else:
+            raise ValueError("num_SVD_basis_vectors must be an integer.")
+
     @property
     def error(self):
         """
@@ -122,19 +184,94 @@ class TrainedBasis(Basis):
                 raise ValueError("error did not have the same shape as an " +\
                     "expanded training set curve.")
         else:
-            raise TypeError("error was set to neither None, a number, or " +\
+            raise TypeError("error was set to neither None, a number, nor " +\
                 "an array.")
         if np.all(value > 0):
             self._error = self.expander.contract_error(value)
         else:
             raise ValueError("At least one value in the error array was " +\
                 "negative.")
-    
+
+    @property
+    def fixed_basis(self):
+        """
+        Property storing the basis containing only the fixed vectors supplied
+        by the user.
+        """
+        if not hasattr(self, '_fixed_basis'):
+            raise AttributeError("fixed_basis was referenced before it was set")
+        return self._fixed_basis
+
+    @fixed_basis.setter
+    def fixed_basis(self, value):
+        """
+        Setter for the fixed_basis property.
+
+        value: 2D numpy.ndarray of shape (n_basis_vectors, n_channels)
+        """
+        value = np.array(value)
+        if value.ndim == 2:
+            if value.shape[0] == self.num_fixed_basis_vectors:
+                if value.shape[-1] == self.basis_vector_length:
+                    self._fixed_basis = value
+                else:
+                    raise ValueError("The vectors in fixed_basis did not " +\
+                        "have the correct length (i.e. number of channels)")
+            else:
+                raise ValueError("fixed_basis did not have the same number " +\
+                    "of curves as num_fixed_basis_vectors.")
+        else:
+            raise ValueError("fixed_basis was not a 2d numpy.ndarray")
+
+    @property
+    def mean_translated(self):
+        """
+        Property storing a boolean describing whether the mean was subtracted
+        before SVD was done. This property is set automatically in the
+        initializer and shouldn't be changed by the user directly.
+        """
+        if not hasattr(self, '_mean_translated'):
+            raise AttributeError("Something went wrong. The " +\
+                "mean_translated property apparently was not set " +\
+                "automatically in the initializer as it should have been.")
+        return self._mean_translated
+
+    @property
+    def SVD_basis(self):
+        """
+        Property storing the basis containing only the SVD vectors from the
+        training set.
+        """
+        if not hasattr(self, '_SVD_basis'):
+            raise AttributeError("SVD_basis was referenced before it was set")
+        return self._SVD_basis
+
+    @SVD_basis.setter
+    def SVD_basis(self, value):
+        """
+        Setter for the SVD_basis property.
+
+        value: 2D numpy.ndarray of shape (n_basis_vectors, n_channels)
+        """
+        value = np.array(value)
+        if value.ndim == 2:
+            if value.shape[0] == self.num_SVD_basis_vectors:
+                if value.shape[-1] == self.basis_vector_length:
+                    self._SVD_basis = value
+                else:
+                    raise ValueError("The vectors in SVD_basis did not " +\
+                        "have the correct length (i.e. number of channels)")
+            else:
+                raise ValueError("SVD_basis did not have the same number " +\
+                    "of curves as num_SVD_basis_vectors.")
+        else:
+            raise ValueError("SVD_basis was not a 2d numpy.ndarray")
+
     @property
     def training_set_space_singular_vectors(self):
         """
-        Finds the right singular vectors (i.e. the ones that don't exist in
-        data channel space) of the training set.
+        Property storing the right singular vectors (i.e. the ones that don't
+        exist in data channel space) of the training set.
         """
         if not hasattr(self, '_training_set_space_singular_vectors'):
             raise AttributeError("training_set_space_singular_vectors were " +\
@@ -146,22 +283,22 @@ class TrainedBasis(Basis):
         """
         Setter for the training_set_space_singular_vectors property.
         
-        value: should be a 2D numpy.ndarray of shape (n_basis_vectors, n_curve)
+        value: 2D numpy.ndarray of shape (n_basis_vectors, n_curve)
                where each row is a unit vector in n_curve dimensional space
         """
         value = np.array(value)
         if value.ndim == 2:
-            if value.shape[0] == self.num_basis_vectors:
+            if value.shape[0] == self.num_SVD_basis_vectors:
                 self._training_set_space_singular_vectors = value
             else:
                 raise ValueError("The number of " +\
                                  "training_set_space_singular_vectors was " +\
-                                 "not the same as the number of basis " +\
-                                 "functions.")
+                                 "not the same as the number of SVD basis " +\
+                                 "vectors.")
         else:
             raise ValueError("training_set_space_singular_vectors was not " +\
                              "a 2D numpy.ndarray.")
-    
+
     @property
     def num_curves(self):
         """
@@ -172,7 +309,7 @@ class TrainedBasis(Basis):
             self._num_curves =\
                 self.training_set_space_singular_vectors.shape[1]
         return self._num_curves
-    
+
     @property
     def training_set_size(self):
         """
@@ -183,23 +320,54 @@ class TrainedBasis(Basis):
             self._training_set_size =\
                 self.num_curves * self.num_smaller_channel_set_indices
         return self._training_set_size
-    
+
     @property
-    def summed_training_set_space_singular_vectors(self):
+    def prior_mean(self):
         """
-        Property storing the training set space singular vectors summed over
-        the ncurve-dimensional axis. This quantity appears in the priors.
+        TODO
         """
-        if not hasattr(self, '_summed_training_set_space_singular_vectors'):
-            self._summed_training_set_space_singular_vectors =\
-                np.sum(self.training_set_space_singular_vectors, axis=1)
-        return self._summed_training_set_space_singular_vectors
+        # TODO
+
+   @property
+    def prior_covariance(self):
+        """
+        TODO
+        """
+        # TODO
+
+    @property
+    def prior_inverse_covariance(self):
+        """
+        TODO
+        """
+        # TODO
+
+    @property
+    def prior_inverse_covariance_times_mean(self):
+        """
+        TODO
+        """
+        # TODO
+
+    @property
+    def gaussian_prior(self):
+        """
+        TODO
+        """
+        # TODO
     
+    def generate_gaussian_prior(self, covariance_expansion_factor=1.,\
+        diagonal=False):
+        """
+        TODO
+        """
+        # TODO
+
     @property
     def full_importances(self):
         """
-        Property storing the full importances array (including modes that are
-        not in this basis).
+        Property storing the full importances array for the SVD modes (including
+        modes that are not in this basis).
         """
         if not hasattr(self, '_full_importances'):
             raise AttributeError("full_importances was referenced before " +\
@@ -225,17 +393,48 @@ class TrainedBasis(Basis):
         else:
             raise ValueError("importances don't have the correct number of " +\
                 "elements.")
-    
+
     @property
     def importances(self):
         """
-        Property storing a 1D numpy.ndarray giving the importances of the modes
-        in this TrainedBasis.
+        Property storing a 1D numpy.ndarray giving the importances of the SVD
+        modes in this PartiallyTrainedBasis.
         """
         if not hasattr(self, '_importances'):
-            self._importances = self.full_importances[:self.num_basis_vectors]
+            self._importances =\
+                self.full_importances[:self.num_SVD_basis_vectors]
         return self._importances
-    
+
+    @property
+    def total_importance(self):
+        """
+        Property storing the sum of the importances of all modes.
+        """
+        if not hasattr(self, '_total_importance'):
+            self._total_importance = np.sum(self.full_importances)
+        return self._total_importance
+
+    @property
+    def normed_importances(self):
+        """
+        Property storing the importances of the modes in this TrainedBasis
+        normalized by dividing by the sum of all importances.
+        """
+        if not hasattr(self, '_normed_importances'):
+            self._normed_importances = self.importances / self.total_importance
+        return self._normed_importances
+
+    @property
+    def truncated_normed_importance_loss(self):
+        """
+        Property storing 1D numpy.ndarray containing values corresponding to
+        the sum of importances of modes of higher order than the given index.
+        """
+        if not hasattr(self, '_truncated_normed_importance_loss'):
+            self._truncated_normed_importance_loss =\
+                1 - np.cumsum(self.normed_importances)
+        return self._truncated_normed_importance_loss
+
     @property
     def training_set_fit_coefficients(self):
         """
@@ -247,164 +446,45 @@ class TrainedBasis(Basis):
                 self.training_set_space_singular_vectors.T *\
                 self.importances[np.newaxis,:]
         return self._training_set_fit_coefficients
-    
-    @property
-    def prior_mean(self):
+
+    def SVD_terms_necessary_to_reach_noise_level_multiple(self, multiple):
         """
-        Property storing the mean vector of the prior parameter distribution.
-        It is the mean of the coefficient vectors when the basis is used to fit
-        the training set.
-        """
-        if not hasattr(self, '_prior_mean'):
-            if self.mean_translated:
-                self._prior_mean = np.zeros(self.num_basis_vectors)
-            else:
-                self._prior_mean = (self.importances *\
-                    self.summed_training_set_space_singular_vectors) /\
-                    self.num_curves
-        return self._prior_mean
-    
-    @property
-    def prior_covariance(self):
-        """
-        Property storing the covariance matrix of the prior parameter
-        distribution. It is the covariance of the coefficient vectors when the
-        basis is used to fit the training set.
-        """
-        if not hasattr(self, '_prior_covariance'):
-            if self.mean_translated:
-                self._prior_covariance =\
-                    np.diag((self.importances ** 2) / (self.num_curves - 1))
-            else:
-                self._prior_covariance =\
-                    self.summed_training_set_space_singular_vectors[:,\
-                    np.newaxis]
-                self._prior_covariance =\
-                    (self._prior_covariance * self._prior_covariance.T)
-                self._prior_covariance =\
-                    self._prior_covariance / self.num_curves
-                self._prior_covariance = np.identity(self.num_basis_vectors) -\
-                    self._prior_covariance
-                self._prior_covariance =\
-                    (self.importances[:,np.newaxis] * self._prior_covariance)
-                self._prior_covariance =\
-                    (self.importances[np.newaxis,:] * self._prior_covariance)
-                self._prior_covariance =\
-                    self._prior_covariance / (self.num_curves - 1)
-        return self._prior_covariance
-    
-    @property
-    def prior_inverse_covariance(self):
-        """
-        Property storing the inverse of the prior covariance matrix. See the
-        prior_covariance property for more details.
-        """
-        if not hasattr(self, '_prior_inverse_covariance'):
-            self._prior_inverse_covariance = la.inv(self.prior_covariance)
-        return self._prior_inverse_covariance
-    
-    @property
-    def prior_inverse_covariance_times_mean(self):
-        """
-        Property storing the vector given by the matrix multiplication of the
-        prior inverse covariance by the prior mean.
-        """
-        if not hasattr(self, '_prior_inverse_covariance_times_mean'):
-            self._prior_inverse_covariance_times_mean =\
-                np.dot(self.prior_inverse_covariance, self.prior_mean)
-        return self._prior_inverse_covariance_times_mean
-    
-    @property
-    def gaussian_prior(self):
-        """
-        Property storing an ares.inference.Priors.GaussianPrior object
-        describing the priors.
-        """
-        if not hasattr(self, '_gaussian_prior'):
-            self.generate_gaussian_prior()
-        return self._gaussian_prior
-    
-    def generate_gaussian_prior(self, covariance_expansion_factor=1.,\
-        diagonal=False):
-        """
-        Generates a new Gaussian prior from the training set given an expansion
-        factor of the covariance matrix.
-        
-        covariance_expansion_factor: positive number by which to multiply the
-                                     prior covariance matrix
-        diagonal: if True, all off-diagonal elements of the covariance matrix
-                           are set to 0.
-                  otherwise, off-diagonal elements are retained
-        """
-        cov_to_return = self.prior_covariance * covariance_expansion_factor
-        if diagonal:
-            cov_to_return = np.diag(np.diag(cov_to_return))
-        self._gaussian_prior =\
-            GaussianDistribution(self.prior_mean, cov_to_return)
-    
-    @property
-    def normed_importances(self):
-        """
-        Property storing the importances of the modes in this TrainedBasis
-        normalized by dividing by the sum of all importances.
-        """
-        if not hasattr(self, '_normed_importances'):
-            self._normed_importances = self.importances / self.total_importance
-        return self._normed_importances
-    
-    @property
-    def total_importance(self):
-        """
-        Property storing the sum of the importances of all modes.
-        """
-        if not hasattr(self, '_total_importance'):
-            self._total_importance = np.sum(self.full_importances)
-        return self._total_importance
-    
-    @property
-    def truncated_normed_importance_loss(self):
-        """
-        Property storing 1D numpy.ndarray containing values corresponding to
-        the sum of importances of modes of higher order than the given index.
-        """
-        if not hasattr(self, '_truncated_normed_importance_loss'):
-            self._truncated_normed_importance_loss =\
-                1 - np.cumsum(self.normed_importances)
-        return self._truncated_normed_importance_loss
-    
-    def terms_necessary_to_reach_noise_level_multiple(self, multiple):
-        """
-        Function that computes the approximate number of terms needed to reach
-        the given multiple  noise level of the training set that sourced this
-        basis. It is approximate because it is the number needed for the mean
-        squared error across all channels and all training set curves to be
+        Function that computes the approximate number of SVD terms needed to
+        reach the given multiple noise level of the training set that sourced
+        this basis. It is approximate because it is the number needed for the
+        mean squared error across all channels and all training set curves to be
         equal to multiple**2. This allows some individual training set curves
         to be fit slightly worse than the noise level.
         
         multiple: multiple of noise level under consideration
         
-        returns: 
+        returns: Number of SVD modes needed to reach noise level multiple. Note
+                 that this number is the total number of basis vectors minus
+                 the number of fixed basis vectors. If noise level multiple is
+                 never reached, returns None.
         """
         if np.all(self.RMS_spectrum > multiple):
             return None
         else:
-            return np.argmax(self.RMS_spectrum < multiple)
-    
+            return np.argmax(self.RMS_spectrum < multiple) -\
+                self.num_fixed_basis_vectors
+
     @property
-    def terms_necessary_to_reach_noise_level(self):
+    def SVD_terms_necessary_to_reach_noise_level(self):
         """
-        Property storing the approximate number of terms needed to reach the
+        Property storing the approximate number of SVD terms needed to reach the
         noise level of the training set that sourced this basis. It is
         approximate because it is the number needed for the mean squared error
         across all channels and all training set curves to be equal to 1. This
         allows some individual training set curves to be fit slightly worse
-        than the noise level.
+        than the noise level. Note that this number is the total number of basis
+        vectors minus the number of fixed basis vectors
         """
-        if not hasattr(self, '_terms_necessary_to_reach_noise_level'):
-            self._terms_necessary_to_reach_noise_level =\
-                self.terms_necessary_to_reach_noise_level_multiple(1)
-        return self._terms_necessary_to_reach_noise_level
-    
+        if not hasattr(self, '_SVD_terms_necessary_to_reach_noise_level'):
+            self._SVD_terms_necessary_to_reach_noise_level =\
+                self.SVD_terms_necessary_to_reach_noise_level_multiple(1)
+        return self._SVD_terms_necessary_to_reach_noise_level
+
     def weighted_basis_similarity_statistic(self, basis):
         """
         Computes the weighted basis similarity statistic between this
@@ -417,22 +497,8 @@ class TrainedBasis(Basis):
         returns: a statistic between 0 and 1 indicating a weighted similarity
                  based on the training set at the heart of this basis
         """
-        GT_sqrt_Cinv = self.basis / self.error[np.newaxis,:]
-        FT_sqrt_Cinv = basis.basis / self.error[np.newaxis,:]
-        GT_Cinv_F = np.dot(GT_sqrt_Cinv, FT_sqrt_Cinv.T)
-        _FT_Cinv_F_inv = la.inv(np.dot(FT_sqrt_Cinv, FT_sqrt_Cinv.T))
-        GT_Cinv_F__FT_Cinv_F_inv__FT_Cinv_G = np.dot(GT_Cinv_F,\
-            np.dot(_FT_Cinv_F_inv, GT_Cinv_F.T))
-        numerator_mu_term = np.dot(self.prior_mean,\
-            np.dot(GT_Cinv_F__FT_Cinv_F_inv__FT_Cinv_G, self.prior_mean))
-        denominator_mu_term = np.sum(np.power(self.prior_mean, 2))
-        numerator_sigma_term = np.trace(\
-            np.dot(self.prior_covariance, GT_Cinv_F__FT_Cinv_F_inv__FT_Cinv_G))
-        denominator_sigma_term = np.trace(self.prior_covariance)
-        numerator = numerator_mu_term + numerator_sigma_term
-        denominator = denominator_mu_term + denominator_sigma_term
-        return numerator / denominator
-    
+        # TODO
+
     @property
     def RMS_spectrum(self):
         """
@@ -447,7 +513,7 @@ class TrainedBasis(Basis):
             self._RMS_spectrum = np.sqrt(cumulative_squared_importance_loss /\
                 self.training_set_size)
         return self._RMS_spectrum
-    
+
     def plot_RMS_spectrum(self, threshold=1, ax=None, show=False, title='',\
         fontsize=24, plot_reference_lines=True, **kwargs):
         """
@@ -491,7 +557,8 @@ class TrainedBasis(Basis):
         plot_importance_loss=False, ax=None, show=False, title='',\
         fontsize=24, **kwargs):
         """
-        Plots the spectrum of importances of the modes in this TrainedBasis.
+        Plots the spectrum of importances of the modes in this
+        PartiallyTrainedBasis.
         
         normed: if True, importances shown add to 1
         plot_importance_loss: if True, importance loss from truncation at

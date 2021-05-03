@@ -13,8 +13,9 @@ from pylinex.basis.GramSchmidtBasis import GramSchmidtBasis
 from pylinex.basis.FourierBasis import FourierBasis
 from pylinex.basis.LegendreBasis import LegendreBasis
 from pylinex.basis.TrainedBasis import TrainedBasis
+from pylinex.basis.PartiallyTrainedBasis import PartiallyTrainedBasis
 from pylinex.basis.BasisSet import BasisSet
 from pylinex.basis.BasisSum import BasisSum
 from pylinex.basis.EffectiveRank import effective_training_set_rank
 from pylinex.basis.TrainingSetPlot import plot_training_set_with_modes
-
+from pylinex.basis.SVDFunctions import weighted_SVD, weighted_SVD_basis
