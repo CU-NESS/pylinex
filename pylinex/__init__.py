@@ -26,8 +26,9 @@ from pylinex.expander import Expander, NullExpander, PadExpander,\
     DerivativeExpander, ExpanderSum, load_expander_from_hdf5_group,\
     ExpanderSet, ExpanderList
 from pylinex.basis import Basis, PolynomialBasis, GramSchmidtBasis,\
-    FourierBasis, LegendreBasis, TrainedBasis, BasisSet, BasisSum,\
-    effective_training_set_rank, plot_training_set_with_modes
+    FourierBasis, LegendreBasis, TrainedBasis, PartiallyTrainedBasis,\
+    BasisSet, BasisSum, effective_training_set_rank,\
+    plot_training_set_with_modes, weighted_SVD, weighted_SVD_basis
 from pylinex.fitter import TrainingSetIterator, BaseFitter, Fitter, MAAFitter,\
     MAA_bias_statistic_offsets, MAA_self_offsets,\
     plot_training_set_MAA_quantities, MetaFitter, Extractor

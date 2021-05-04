@@ -14,7 +14,8 @@ import matplotlib.pyplot as pl
 from distpy import GaussianDistribution
 from ..util import real_numerical_types, sequence_types, bool_types
 from ..expander import NullExpander
-from .Basis import Basis, weighted_SVD, weighted_SVD_basis
+from .Basis import Basis
+from .SVDFunctions import weighted_SVD, weighted_SVD_basis
 
 class PartiallyTrainedBasis(Basis):
     """
@@ -60,30 +61,24 @@ class PartiallyTrainedBasis(Basis):
         self.expander = expander
         self.error = error
         self.fixed_basis = np.array(fixed_vectors)
-        weighted_fixed_basis = self.fixed_basis / self.error[np.newaxis,:]
-        inverse_self_overlap =\
-                la.inv(np.dot(weighted_fixed_basis, weighted_fixed_basis.T))
-        training_set_overlap =\
-                np.dot(weighted_fixed_basis, training_set.T)
-        fit_parameters = np.dot(inverse_self_overlap, training_set_overlap).T
-        residual_training_set = training_set -\
-                np.dot(fit_parameters, weighted_fixed_basis)
         mean_translated = False
         if type(mean_translation) in bool_types:
             if mean_translation:
                 mean_translated = True
-                translation = np.mean(residual_training_set, axis=0)
+                translation = np.mean(training_set -\
+                    np.dot(np.ones(self.num_fixed_basis_vectors),\
+                    self.fixed_basis), axis=0)
             else:
-                translation = np.zeros(self.training_set_curve_length)
+                translation = np.zeros(self.basis_vector_length)
         else:
             translation = mean_translation
         self._mean_translated = mean_translated
         SVD_basis =\
-            weighted_SVD_basis(residual_training_set -\
-            translation[np.newaxis,:], error=self.error,\
-            Neigen=num_SVD_basis_vectors)
+            weighted_SVD_basis(training_set - translation[np.newaxis,:] -\
+            np.dot(np.ones(self.num_fixed_basis_vectors), self.fixed_basis),\
+        error=self.error, Neigen=num_SVD_basis_vectors)
         self.SVD_basis = SVD_basis[0]
-        self.basis = self.fixed_basis + self.SVD_basis
+        self.basis = np.append(self.fixed_basis, self.SVD_basis, axis=0)
         self.translation = translation
         self.training_set_space_singular_vectors = SVD_basis[2]
         self.full_importances = SVD_basis[1]
@@ -136,7 +131,7 @@ class PartiallyTrainedBasis(Basis):
         """
         if not hasattr(self, '_num_SVD_basis_vectors'):
             raise AttributeError("num_SVD_basis_vectors was referenced " +\
-                "before it was set.")self.fixed_basis / self.error[np.newaxis,:]
+                "before it was set.")
         return self._num_SVD_basis_vectors
 
     @num_SVD_basis_vectors.setter
@@ -173,7 +168,7 @@ class PartiallyTrainedBasis(Basis):
         value: 1D array of same length as expanded training set curves
         """
         expanded_space_size =\
-            self.expander.expanded_space_size(self.training_set_curve_length)
+            self.expander.expanded_space_size(self.basis_vector_length)
         if type(value) is type(None):
             value = np.ones(expanded_space_size)
         elif type(value) in real_numerical_types:
@@ -224,6 +219,18 @@ class PartiallyTrainedBasis(Basis):
             raise ValueError("fixed_basis was not a 2d numpy.ndarray")
 
     @property
+    def expanded_fixed_basis(self):
+        """
+        Property storing the fixed basis vectors after they have been expanded
+        by the expander.
+        """
+        if not hasattr(self, '_expanded_fixed_basis'):
+            self._expanded_fixed_basis =\
+                np.array([self.expander(self.fixed_basis[index])\
+                for index in range(self.num_fixed_basis_vectors)])
+        return self._expanded_fixed_basis
+
+    @property
     def mean_translated(self):
         """
         Property storing a boolean describing whether the mean was subtracted
@@ -266,6 +273,18 @@ class PartiallyTrainedBasis(Basis):
                     "of curves as num_SVD_basis_vectors.")
         else:
             raise ValueError("SVD_basis was not a 2d numpy.ndarray")
+
+    @property
+    def expanded_SVD_basis(self):
+        """
+        Property storing the SVD basis vectors after they have been expanded by
+        the expander.
+        """
+        if not hasattr(self, '_expanded_SVD_basis'):
+            self._expanded_SVD_basis =\
+                np.array([self.expander(self.SVD_basis[index])\
+                for index in range(self.num_SVD_basis_vectors)])
+        return self._expanded_SVD_basis
 
     @property
     def training_set_space_singular_vectors(self):
@@ -321,18 +340,63 @@ class PartiallyTrainedBasis(Basis):
                 self.num_curves * self.num_smaller_channel_set_indices
         return self._training_set_size
 
+    def get_value(self, parameter_values, expanded=False):
+        """
+        Gets the value of this basis given a specific set of coefficients.
+        
+        parameter values: 1 or 2 dimensional numpy.ndarray of shape (...,k)
+                          where k is the number of SVD basis vectors in this
+                          object containing the coefficients by which each SVD
+                          basis vector should be multiplied. 
+        expanded: Boolean determining whether the basis vectors alone should be
+                  used (False) or the expanded basis vectors should be used
+                  (True). Default: True
+        
+        returns: 1D numpy.ndarray of length of the (expanded if expanded True)
+                 basis vectors
+        """
+        if expanded:
+            return np.dot(np.ones(self.num_fixed_basis_vectors),\
+                self.expanded_fixed_basis) + np.dot(parameter_values,\
+                self.expanded_SVD_basis) + self.expanded_translation
+        else:
+            return np.dot(np.ones(self.num_fixed_basis_vectors),\
+                self.fixed_basis) + np.dot(parameter_values, self.SVD_basis) +\
+                self.translation
+
+    def __call__(self, parameter_values, expanded=False):
+        """
+        Gets the value of this basis given a specific set of coefficients.
+        
+        parameter values: 1D numpy.ndarray of length k where k is the number of
+                          SVD basis vectors in this object containing the
+                          coefficients by which each SVD basis vector should be
+                          multiplied.
+        expanded: Boolean determining whether the basis vectors alone should be
+                  used (False) or the expanded basis vectors should be used
+                  (True). Default: True
+        
+        returns: 1D numpy.ndarray of length of the (expanded if expanded True)
+                 basis vectors
+        """
+        return self.get_value(parameter_values, expanded=expanded)
+
     @property
     def prior_mean(self):
         """
         TODO
         """
+        raise NotImplementedError("Priors have not yet been implemented for " +\
+            "the PartiallyTrainedBasis class")
         # TODO
 
-   @property
+    @property
     def prior_covariance(self):
         """
         TODO
         """
+        raise NotImplementedError("Priors have not yet been implemented for " +\
+            "the PartiallyTrainedBasis class")
         # TODO
 
     @property
@@ -340,6 +404,8 @@ class PartiallyTrainedBasis(Basis):
         """
         TODO
         """
+        raise NotImplementedError("Priors have not yet been implemented for " +\
+            "the PartiallyTrainedBasis class")
         # TODO
 
     @property
@@ -347,6 +413,8 @@ class PartiallyTrainedBasis(Basis):
         """
         TODO
         """
+        raise NotImplementedError("Priors have not yet been implemented for " +\
+            "the PartiallyTrainedBasis class")
         # TODO
 
     @property
@@ -354,6 +422,8 @@ class PartiallyTrainedBasis(Basis):
         """
         TODO
         """
+        raise NotImplementedError("Priors have not yet been implemented for " +\
+            "the PartiallyTrainedBasis class")
         # TODO
     
     def generate_gaussian_prior(self, covariance_expansion_factor=1.,\
@@ -361,6 +431,8 @@ class PartiallyTrainedBasis(Basis):
         """
         TODO
         """
+        raise NotImplementedError("Priors have not yet been implemented for " +\
+            "the PartiallyTrainedBasis class")
         # TODO
 
     @property
@@ -497,7 +569,21 @@ class PartiallyTrainedBasis(Basis):
         returns: a statistic between 0 and 1 indicating a weighted similarity
                  based on the training set at the heart of this basis
         """
-        # TODO
+        GT_sqrt_Cinv = self.basis / self.error[np.newaxis,:]
+        FT_sqrt_Cinv = basis.basis / self.error[np.newaxis,:]
+        GT_Cinv_F = np.dot(GT_sqrt_Cinv, FT_sqrt_Cinv.T)
+        _FT_Cinv_F_inv = la.inv(np.dot(FT_sqrt_Cinv, FT_sqrt_Cinv.T))
+        GT_Cinv_F__FT_Cinv_F_inv__FT_Cinv_G = np.dot(GT_Cinv_F,\
+            np.dot(_FT_Cinv_F_inv, GT_Cinv_F.T))
+        numerator_mu_term = np.dot(self.prior_mean,\
+            np.dot(GT_Cinv_F__FT_Cinv_F_inv__FT_Cinv_G, self.prior_mean))
+        denominator_mu_term = np.sum(np.power(self.prior_mean, 2))
+        numerator_sigma_term = np.trace(\
+            np.dot(self.prior_covariance, GT_Cinv_F__FT_Cinv_F_inv__FT_Cinv_G))
+        denominator_sigma_term = np.trace(self.prior_covariance)
+        numerator = numerator_mu_term + numerator_sigma_term
+        denominator = denominator_mu_term + denominator_sigma_term
+        return numerator / denominator
 
     @property
     def RMS_spectrum(self):
