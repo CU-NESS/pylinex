@@ -14,7 +14,7 @@ from distpy import GaussianDistribution
 from ..util import real_numerical_types, sequence_types, bool_types
 from ..expander import NullExpander
 from .Basis import Basis
-from .SVDFunctions import weighted_SVD, weighted_SVD_basis
+from .SVDFunctions import weighted_SVD_basis
 
 class TrainedBasis(Basis):
     """

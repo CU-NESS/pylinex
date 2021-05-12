@@ -15,7 +15,7 @@ from distpy import GaussianDistribution
 from ..util import real_numerical_types, sequence_types, bool_types
 from ..expander import NullExpander
 from .Basis import Basis
-from .SVDFunctions import weighted_SVD, weighted_SVD_basis
+from .SVDFunctions import weighted_SVD_basis
 
 class PartiallyTrainedBasis(Basis):
     """
@@ -52,15 +52,12 @@ class PartiallyTrainedBasis(Basis):
                           This argument can also be given as an array so that
                           the translation can be specifically given by user
         """
-        if fixed_vectors.shape[-1] != training_set.shape[-1]:
+        self.expander = expander
+        self.fixed_basis = fixed_vectors
+        self.error = error
+        if self.basis_vector_length != training_set.shape[-1]:
             raise ValueError("Each curve in fixed_vectors and training_set" +\
                 "must have the same length (i.e. number of channels)")
-        self._basis_vector_length = fixed_vectors.shape[-1]
-        self.num_fixed_basis_vectors = fixed_vectors.shape[0]
-        self.num_SVD_basis_vectors = num_SVD_basis_vectors
-        self.expander = expander
-        self.error = error
-        self.fixed_basis = np.array(fixed_vectors)
         mean_translated = False
         if type(mean_translation) in bool_types:
             if mean_translation:
@@ -76,9 +73,8 @@ class PartiallyTrainedBasis(Basis):
         SVD_basis =\
             weighted_SVD_basis(training_set - translation[np.newaxis,:] -\
             np.dot(np.ones(self.num_fixed_basis_vectors), self.fixed_basis),\
-        error=self.error, Neigen=num_SVD_basis_vectors)
-        self.SVD_basis = SVD_basis[0]
-        self.basis = np.append(self.fixed_basis, self.SVD_basis, axis=0)
+            error=self.error, Neigen=num_SVD_basis_vectors)
+        self.basis = np.append(self.fixed_basis, SVD_basis[0], axis=0)
         self.translation = translation
         self.training_set_space_singular_vectors = SVD_basis[2]
         self.full_importances = SVD_basis[1]
@@ -91,8 +87,7 @@ class PartiallyTrainedBasis(Basis):
         by the user directly.
         """
         if not hasattr(self, '_basis_vector_length'):
-            raise AttributeError("basis_vector_length was referenced " +\
-                "before it was set.")
+            self._basis_vector_length = self.fixed_basis.shape[-1]
         return self._basis_vector_length
 
     @property
@@ -103,25 +98,8 @@ class PartiallyTrainedBasis(Basis):
         set in the initializer and should not be changed by the user directly.
         """
         if not hasattr(self, '_num_fixed_basis_vectors'):
-            raise AttributeError("num_fixed_basis_vectors was referenced " +\
-                "before it was set.")
+            self._num_fixed_basis_vectors = self.fixed_basis.shape[0]
         return self._num_fixed_basis_vectors
-
-    @num_fixed_basis_vectors.setter
-    def num_fixed_basis_vectors(self, value):
-        """
-        Setter for the num_fixed_basis_vectors property.
-
-        value: number of fixed vectors that will be used in the basis
-        """
-        if isinstance(value, int):
-            if value >= 0:
-                self._num_fixed_basis_vectors = value
-            else:
-                raise ValueError("num_fixed_basis_vectors must be greater " +\
-                    "than or equal to 0.")
-        else:
-            raise ValueError("num_fixed_basis_vectors must be an integer.")
 
     @property
     def num_SVD_basis_vectors(self):
@@ -130,25 +108,9 @@ class PartiallyTrainedBasis(Basis):
         set in the initializer and should not be changed by the user directly.
         """
         if not hasattr(self, '_num_SVD_basis_vectors'):
-            raise AttributeError("num_SVD_basis_vectors was referenced " +\
-                "before it was set.")
+            self._num_SVD_basis_vectors =\
+                self.num_basis_vectors - self.num_fixed_basis_vectors
         return self._num_SVD_basis_vectors
-
-    @num_SVD_basis_vectors.setter
-    def num_SVD_basis_vectors(self, value):
-        """
-        Setter for the num_SVD_basis_vectors property.
-
-        value: number of SVD vectors that will be used in the basis
-        """
-        if isinstance(value, int):
-            if value >= 0:
-                self._num_SVD_basis_vectors = value
-            else:
-                raise ValueError("num_SVD_basis_vectors must be greater " +\
-                    "than or equal to 0.")
-        else:
-            raise ValueError("num_SVD_basis_vectors must be an integer.")
 
     @property
     def error(self):
@@ -206,29 +168,9 @@ class PartiallyTrainedBasis(Basis):
         """
         value = np.array(value)
         if value.ndim == 2:
-            if value.shape[0] == self.num_fixed_basis_vectors:
-                if value.shape[-1] == self.basis_vector_length:
-                    self._fixed_basis = value
-                else:
-                    raise ValueError("The vectors in fixed_basis did not " +\
-                        "have the correct length (i.e. number of channels)")
-            else:
-                raise ValueError("fixed_basis did not have the same number " +\
-                    "of curves as num_fixed_basis_vectors.")
+            self._fixed_basis = value
         else:
             raise ValueError("fixed_basis was not a 2d numpy.ndarray")
-
-    @property
-    def expanded_fixed_basis(self):
-        """
-        Property storing the fixed basis vectors after they have been expanded
-        by the expander.
-        """
-        if not hasattr(self, '_expanded_fixed_basis'):
-            self._expanded_fixed_basis =\
-                np.array([self.expander(self.fixed_basis[index])\
-                for index in range(self.num_fixed_basis_vectors)])
-        return self._expanded_fixed_basis
 
     @property
     def mean_translated(self):
@@ -242,49 +184,6 @@ class PartiallyTrainedBasis(Basis):
                 "mean_translated property apparently was not set " +\
                 "automatically in the initializer as it should have been.")
         return self._mean_translated
-
-    @property
-    def SVD_basis(self):
-        """
-        Property storing the basis containing only the SVD vectors from the
-        training set.
-        """
-        if not hasattr(self, '_SVD_basis'):
-            raise AttributeError("SVD_basis was referenced before it was set")
-        return self._SVD_basis
-
-    @SVD_basis.setter
-    def SVD_basis(self, value):
-        """
-        Setter for the SVD_basis property.
-
-        value: 2D numpy.ndarray of shape (n_basis_vectors, n_channels)
-        """
-        value = np.array(value)
-        if value.ndim == 2:
-            if value.shape[0] == self.num_SVD_basis_vectors:
-                if value.shape[-1] == self.basis_vector_length:
-                    self._SVD_basis = value
-                else:
-                    raise ValueError("The vectors in SVD_basis did not " +\
-                        "have the correct length (i.e. number of channels)")
-            else:
-                raise ValueError("SVD_basis did not have the same number " +\
-                    "of curves as num_SVD_basis_vectors.")
-        else:
-            raise ValueError("SVD_basis was not a 2d numpy.ndarray")
-
-    @property
-    def expanded_SVD_basis(self):
-        """
-        Property storing the SVD basis vectors after they have been expanded by
-        the expander.
-        """
-        if not hasattr(self, '_expanded_SVD_basis'):
-            self._expanded_SVD_basis =\
-                np.array([self.expander(self.SVD_basis[index])\
-                for index in range(self.num_SVD_basis_vectors)])
-        return self._expanded_SVD_basis
 
     @property
     def training_set_space_singular_vectors(self):
@@ -307,13 +206,7 @@ class PartiallyTrainedBasis(Basis):
         """
         value = np.array(value)
         if value.ndim == 2:
-            if value.shape[0] == self.num_SVD_basis_vectors:
-                self._training_set_space_singular_vectors = value
-            else:
-                raise ValueError("The number of " +\
-                                 "training_set_space_singular_vectors was " +\
-                                 "not the same as the number of SVD basis " +\
-                                 "vectors.")
+            self._training_set_space_singular_vectors = value
         else:
             raise ValueError("training_set_space_singular_vectors was not " +\
                              "a 2D numpy.ndarray.")
@@ -339,47 +232,6 @@ class PartiallyTrainedBasis(Basis):
             self._training_set_size =\
                 self.num_curves * self.num_smaller_channel_set_indices
         return self._training_set_size
-
-    def get_value(self, parameter_values, expanded=False):
-        """
-        Gets the value of this basis given a specific set of coefficients.
-        
-        parameter values: 1 or 2 dimensional numpy.ndarray of shape (...,k)
-                          where k is the number of SVD basis vectors in this
-                          object containing the coefficients by which each SVD
-                          basis vector should be multiplied. 
-        expanded: Boolean determining whether the basis vectors alone should be
-                  used (False) or the expanded basis vectors should be used
-                  (True). Default: True
-        
-        returns: 1D numpy.ndarray of length of the (expanded if expanded True)
-                 basis vectors
-        """
-        if expanded:
-            return np.dot(np.ones(self.num_fixed_basis_vectors),\
-                self.expanded_fixed_basis) + np.dot(parameter_values,\
-                self.expanded_SVD_basis) + self.expanded_translation
-        else:
-            return np.dot(np.ones(self.num_fixed_basis_vectors),\
-                self.fixed_basis) + np.dot(parameter_values, self.SVD_basis) +\
-                self.translation
-
-    def __call__(self, parameter_values, expanded=False):
-        """
-        Gets the value of this basis given a specific set of coefficients.
-        
-        parameter values: 1D numpy.ndarray of length k where k is the number of
-                          SVD basis vectors in this object containing the
-                          coefficients by which each SVD basis vector should be
-                          multiplied.
-        expanded: Boolean determining whether the basis vectors alone should be
-                  used (False) or the expanded basis vectors should be used
-                  (True). Default: True
-        
-        returns: 1D numpy.ndarray of length of the (expanded if expanded True)
-                 basis vectors
-        """
-        return self.get_value(parameter_values, expanded=expanded)
 
     @property
     def prior_mean(self):
@@ -556,34 +408,6 @@ class PartiallyTrainedBasis(Basis):
             self._SVD_terms_necessary_to_reach_noise_level =\
                 self.SVD_terms_necessary_to_reach_noise_level_multiple(1)
         return self._SVD_terms_necessary_to_reach_noise_level
-
-    def weighted_basis_similarity_statistic(self, basis):
-        """
-        Computes the weighted basis similarity statistic between this
-        TrainedBasis and the given Basis. Note that this is different than the
-        similarity statistic between the given Basis and this TrainedBasis.
-        
-        basis: a Basis object that will be used to fit curves similar to those
-               in this training set
-        
-        returns: a statistic between 0 and 1 indicating a weighted similarity
-                 based on the training set at the heart of this basis
-        """
-        GT_sqrt_Cinv = self.basis / self.error[np.newaxis,:]
-        FT_sqrt_Cinv = basis.basis / self.error[np.newaxis,:]
-        GT_Cinv_F = np.dot(GT_sqrt_Cinv, FT_sqrt_Cinv.T)
-        _FT_Cinv_F_inv = la.inv(np.dot(FT_sqrt_Cinv, FT_sqrt_Cinv.T))
-        GT_Cinv_F__FT_Cinv_F_inv__FT_Cinv_G = np.dot(GT_Cinv_F,\
-            np.dot(_FT_Cinv_F_inv, GT_Cinv_F.T))
-        numerator_mu_term = np.dot(self.prior_mean,\
-            np.dot(GT_Cinv_F__FT_Cinv_F_inv__FT_Cinv_G, self.prior_mean))
-        denominator_mu_term = np.sum(np.power(self.prior_mean, 2))
-        numerator_sigma_term = np.trace(\
-            np.dot(self.prior_covariance, GT_Cinv_F__FT_Cinv_F_inv__FT_Cinv_G))
-        denominator_sigma_term = np.trace(self.prior_covariance)
-        numerator = numerator_mu_term + numerator_sigma_term
-        denominator = denominator_mu_term + denominator_sigma_term
-        return numerator / denominator
 
     @property
     def RMS_spectrum(self):
