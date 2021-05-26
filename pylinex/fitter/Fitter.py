@@ -1,11 +1,14 @@
 """
-File: pylinex/fitter/Fitter.py
-Author: Keith Tauscher
-Date: 3 Sep 2017
+Module containing class which computes fits of data using linear models through
+analytical calculations. It has functions to output the signal estimate (with
+errors), parameter covariance, and more. It can accept the noise level either
+as standard deviations of channels (if uncorrelated) or as a covariance matrix
+in the form of a
+`distpy.util.SparseSquareBlockDiagonalMatrix.SparseSquareBlockDiagonalMatrix`.
 
-Description: File containing a class which computes fits of data using linear
-             models through analytical calculations. It has functions to output
-             the signal estimate (with error), parameter covariance, and more.
+**File**: $PYLINEX/pylinex/fitter/Fitter.py  
+**Author**: Keith Tauscher  
+**Date**: 25 May 2021
 """
 from __future__ import division
 import numpy as np
@@ -24,25 +27,84 @@ except:
 
 class Fitter(BaseFitter, Savable):
     """
-    An object which takes as inputs a BasisSum object and data and error
-    vectors and outputs statistics about the fit of the data assuming the error
-    and using the BasisSum.
+    Class which computes fits of data using linear models through analytical
+    calculations. It has functions to output the signal estimate (with errors),
+    parameter covariance, and more. It can accept the noise level either as
+    standard deviations of channels (if uncorrelated) or as a covariance matrix
+    in the form of a
+    `distpy.util.SparseSquareBlockDiagonalMatrix.SparseSquareBlockDiagonalMatrix`.
     """
     def __init__(self, basis_sum, data, error=None, **priors):
         """
-        Initializes a new Analyzer object using the given inputs.
+        Initializes a new `Fitter` object using the given inputs. The
+        likelihood used by the fit is of the form \\(\\mathcal{L}\
+        (\\boldsymbol{x}) \\propto \\exp{\\left\\{-\\frac{1}{2}\
+        [\\boldsymbol{y}-(\\boldsymbol{G}\\boldsymbol{x} +\
+        \\boldsymbol{\\mu})]^T\\boldsymbol{C}^{-1}[\\boldsymbol{y}-\
+        (\\boldsymbol{G}\\boldsymbol{x}+\\boldsymbol{\\mu})]\\right\\}}\\) and
+        the prior used is \\(\\pi(\\boldsymbol{x}) \\propto\
+        \\exp{\\left\\{-\\frac{1}{2}(\\boldsymbol{x}-\\boldsymbol{\\nu})^T\
+        \\boldsymbol{\\Lambda}^{-1}(\\boldsymbol{x}-\\boldsymbol{\\nu})\
+        \\right\\}}\\). The posterior distribution explored is
+        \\(p(\\boldsymbol{x})=\
+        \\mathcal{L}(\\boldsymbol{x})\\times\\pi(\\boldsymbol{x})\\).
         
-        basis_sum: a BasisSum object (or a Basis object, which is converted
-                   internally to a BasisSum of one Basis with the name 'sole')
-        data: 1D vector of same length as vectors in basis_sum or 2D
-              numpy.ndarray of shape (ncurves, nchannels)
-        error: 1D vector of same length as vectors in basis_sum containing only
-               positive numbers
-        **priors: keyword arguments where the keys are exactly the names of the
-                  basis sets with '_prior' appended to them and the values are
-                  GaussianDistribution objects. If only one basis is given as
-                  the basis_sum, then the priors should either be empty or a
-                  dictionary of the form {'sole_prior': gaussian_distribution}
+        Parameters
+        ----------
+        basis_sum : `pylinex.basis.BasisSum.BasisSum` or\
+        `pylinex.basis.Basis.Basis`
+            the basis used to model the data, represented in equations by
+            \\(\\boldsymbol{G}\\) alongside the translation component
+            \\(\\boldsymbol{\\mu}\\). Two types of inputs are accepted:
+            
+            - If `basis_sum` is a `pylinex.basis.BasisSum.BasisSum`, then it is
+            assumed to have constituent bases for each modeled component
+            alongside `pylinex.expander.Expander.Expander` objects determining
+            how those components enter into the data
+            - If `basis_sum` is a `pylinex.basis.Basis.Basis`, then it is
+            assumed that this single basis represents the only component that
+            needs to be modeled. The
+            `pylinex.fitter.BaseFitter.BaseFitter.basis_sum` property will be
+            set to a `pylinex.basis.BasisSum.BasisSum` object with this
+            `pylinex.basis.Basis.Basis` as its only component, labeled with the
+            string name `"sole"`
+        data : numpy.ndarray
+            the data to fit, represented in equations by \\(\\boldsymbol{y}\\)
+            - if `data` is 1D, then its length should be the same as the
+            (expanded) vectors in `basis_sum`, i.e. the number of rows of
+            \\(\\boldsymbol{G}\\), `nchannels`
+            - if `data` is 2D, then it should have shape `(ncurves, nchannels)`
+            and it will be interpreted as a list of data vectors to fit
+            independently
+        error : numpy.ndarray or\
+        `distpy.util.SparseSquareBlockDiagonalMatrix.SparseSquareBlockDiagonalMatrix`
+            the noise level of the data that determines the covariance matrix,
+            represented in equations by \\(\\boldsymbol{C}\\):
+            
+            - if `error` is a 1D `numpy.ndarray`, it should have the same
+            length as the (expanded) vectors in `basis_sum`, i.e. the number of
+            rows of \\(\\boldsymbol{G}\\), `nchannels` and should only contain
+            positive numbers. In this case, \\(\\boldsymbol{C}\\) is a diagonal
+            matrix whose elements are the squares of the values in `error`
+            - if `error` is a
+            `distpy.util.SparseSquareBlockDiagonalMatrix.SparseSquareBlockDiagonalMatrix`,
+            then it is assumed to represent a block diagonal
+            \\(\\boldsymbol{C}\\) directly
+        priors : dict
+            keyword arguments where the keys are exactly the names of the
+            `basis_sum` with `'_prior'` appended to them and the values are
+            `distpy.distribution.GaussianDistribution.GaussianDistribution`
+            objects. Priors are optional and can be included or excluded for
+            any given component. If `basis_sum` was given as a
+            `pylinex.basis.Basis.Basis`, then `priors` should either be empty
+            or a dictionary of the form
+            `{'sole_prior': gaussian_distribution}`. The means and inverse
+            covariances of all priors are combined into a full parameter prior
+            mean and full parameter prior inverse covariance, represented in
+            equations by \\(\\boldsymbol{\\nu}\\) and
+            \\(\\boldsymbol{\\Lambda}^{-1}\\), respectively. Having no prior is
+            equivalent to having an infinitely wide prior, i.e. a prior with an
+            inverse covariance matrix of \\(\\boldsymbol{0}\\)
         """
         self.basis_sum = basis_sum
         self.priors = priors
@@ -52,8 +114,8 @@ class Fitter(BaseFitter, Savable):
     @property
     def prior_significance(self):
         """
-        Property storing the quantity, mu^T Lambda^{-1} mu, where mu is the
-        prior mean and Lambda is the prior covariance matrix.
+        The prior significance, represented mathematically as
+        \\(\\boldsymbol{\\nu}^T\\boldsymbol{\\Lambda}^{-1}\\boldsymbol{\\nu}.
         """
         if not hasattr(self, '_prior_significance'):
             self._prior_significance = np.dot(self.prior_mean,\
@@ -63,9 +125,10 @@ class Fitter(BaseFitter, Savable):
     @property
     def log_prior_covariance_determinant(self):
         """
-        Property storing the logarithm (base e) of the determinant of the prior
-        parameter covariance matrix. Note that if a given prior is not given,
-        it is simply not used here (to avoid getting 0 as the determinant).
+        The logarithm (base e) of the determinant of the prior
+        parameter covariance matrix, \\(|\\boldsymbol{\\Lambda}|\\). Note that
+        if a given prior is not given, it is simply not used here (to avoid
+        getting 0 or \\(\\infty\\) as the determinant).
         """
         if not hasattr(self, '_log_prior_covariance_determinant'):
             self._log_prior_covariance_determinant = 0
@@ -77,6 +140,13 @@ class Fitter(BaseFitter, Savable):
     
     @property
     def data_significance(self):
+        """
+        The data significance, represented mathematically as
+        \\((\\boldsymbol{y}-\\boldsymbol{\\mu})^T\\boldsymbol{C}^{-1}\
+        (\\boldsymbol{y} - \\boldsymbol{\\mu})\\). It is either a single number
+        (if `Fitter.multiple_data_curves` is True) or a 1D `numpy.ndarray` (if
+        `Fitter.multiple_data_curves` is False)
+        """
         if not hasattr(self, '_data_significance'):
             if self.multiple_data_curves:
                 self._data_significance =\
@@ -90,20 +160,21 @@ class Fitter(BaseFitter, Savable):
     @property
     def num_parameters(self):
         """
-        Property storing the number of parameters of the fit. This is the same
-        as the number of basis vectors in the basis_sum.
+        The number of parameters of the fit. This is the same as the
+        `num_basis_vectors` property of `Fitter.basis_sum`.
         """
         return self.basis_sum.num_basis_vectors
     
     @property
     def posterior_covariance_times_prior_inverse_covariance(self):
         """
-        Property storing the posterior covariance multiplied on the right by
-        the prior inverse covariance. This is a matrix measure of the effect of
-        the data on the distribution of parameters (i.e. it approaches the zero
-        matrix if the data constrains parameters much more powerfully than the
-        prior and approaches the identity matrix if the prior constrains
-        parameters much more powerfully than the data)
+        The posterior covariance multiplied on the right by the prior inverse
+        covariance, represented mathematically as
+        \\(\\boldsymbol{S}\\boldsymbol{\\Lambda}^{-1}\\). This is a matrix
+        measure of the effect of the data on the distribution of parameters
+        (i.e. it approaches the zero matrix if the data constrains parameters
+        much more powerfully than the prior and approaches the identity matrix
+        if the prior constrains parameters much more powerfully than the data).
         """
         if not hasattr(self,\
             '_posterior_covariance_times_prior_inverse_covariance'):
@@ -115,10 +186,12 @@ class Fitter(BaseFitter, Savable):
     @property
     def model_complexity_mean_to_peak_logL(self):
         """
-        Returns a measure of the model complexity which is computed by taking
-        the difference between the mean and peak values of the log likelihood.
-        If this Fitter has no priors, then this property will always simply
-        return the number of parameters.
+        A measure of the model complexity that is computed by taking the
+        difference between the mean and peak values of the log likelihood. If
+        this `Fitter` has no priors, then this property will always simply
+        return the number of parameters, \\(p\\). It is represented
+        mathematically as
+        \\(p-\\text{tr}(\\boldsymbol{S}\\boldsymbol{\\Lambda}^{-1})\\).
         """
         if not hasattr(self, '_model_complexity_mean_to_peak_logL'):
             self._model_complexity_mean_to_peak_logL = self.num_parameters
@@ -130,8 +203,13 @@ class Fitter(BaseFitter, Savable):
     @property
     def model_complexity_logL_variance(self):
         """
-        Returns a measure of the model complexity which is computed by finding
-        the variance of the log likelihood function.
+        A measure of the model complexity which is computed by finding the
+        variance of the log likelihood function. It is represented
+        mathematically as \\(p+2\\ \\boldsymbol{\\delta}\\boldsymbol{C}^{-1}\
+        \\boldsymbol{G}\\boldsymbol{S}\\boldsymbol{G}^T\\boldsymbol{C}^{-1}\
+        \\boldsymbol{\\delta} + \\text{tr}(\\boldsymbol{S}\
+        \\boldsymbol{\\Lambda}^{-1}\\boldsymbol{S}\\boldsymbol{\\Lambda}^{-1})\
+        -2\\ \\text{tr}(\\boldsymbol{S}\\boldsymbol{\\Lambda}^{-1})\\).
         """
         if not hasattr(self, '_model_complexity_logL_variance'):
             self._model_complexity_logL_variance = self.num_parameters
@@ -157,18 +235,24 @@ class Fitter(BaseFitter, Savable):
     @property
     def basis_dot_products(self):
         """
-        Property storing the dot products between the Basis objects underlying
-        the BasisSum this object stores.
+        The dot products between the `pylinex.basis.Basis.Basis` objects
+        underlying the `Fitter.basis_sum` this object stores. See the
+        `pylinex.basis.Basis.Basis.dot` method for details on this calculation.
         """
         if not hasattr(self, '_basis_dot_products'):
-            self._basis_dot_products =\
-                self.basis_sum.basis_dot_products(error=self.error)
+            if self.non_diagonal_noise_covariance:
+                raise NotImplementedError("Basis dot products are not yet " +\
+                    "implemented for non diagonal noise covariance matrices.")
+            else:
+                self._basis_dot_products =\
+                    self.basis_sum.basis_dot_products(error=self.error)
         return self._basis_dot_products
     
     @property
     def basis_dot_product_sum(self):
         """
-        Property storing the sum of all basis_dot_products
+        The sum of all off diagonal elements of the upper triangle of
+        `Fitter.basis_dot_products`.
         """
         if not hasattr(self, '_basis_dot_product_sum'):
             self._basis_dot_product_sum = np.sum(self.basis_dot_products)
@@ -180,8 +264,10 @@ class Fitter(BaseFitter, Savable):
     @property
     def parameter_inverse_covariance(self):
         """
-        Property storing the inverse of the posterior distribution's covariance
-        matrix.
+        The inverse of the posterior distribution's covariance matrix. This is
+        represented mathematically as \\(\\boldsymbol{S}^{-1}=\
+        \\boldsymbol{G}^T\\boldsymbol{C}^{-1}\\boldsymbol{G} +\
+        \\boldsymbol{\\Lambda}^{-1}\\).
         """
         if not hasattr(self, '_parameter_inverse_covariance'):
             self._parameter_inverse_covariance = self.basis_overlap_matrix
@@ -194,8 +280,9 @@ class Fitter(BaseFitter, Savable):
     @property
     def likelihood_parameter_covariance(self):
         """
-        Property storing the parameter covariance implied by the likelihood
-        (always has bigger determinant than the posterior covariance).
+        The parameter covariance implied only by the likelihood, represented
+        mathematically as
+        \\((\\boldsymbol{G}^T\\boldsymbol{C}\\boldsymbol{G})^{-1}\\).
         """
         if not hasattr(self, '_likelihood_parameter_covariance'):
             if self.has_priors:
@@ -210,7 +297,10 @@ class Fitter(BaseFitter, Savable):
     def likelihood_parameter_mean(self):
         """
         Property storing the parameter mean implied by the likelihood (i.e.
-        disregarding priors).
+        disregarding priors). It is represented mathematically as
+        \\((\\boldsymbol{G}^T\\boldsymbol{C}^{-1}\\boldsymbol{G})^{-1}\
+        \\boldsymbol{G}^T\\boldsymbol{C}^{-1}\
+        (\\boldsymbol{y}-\\boldsymbol{\\mu})\\).
         """
         if not hasattr(self, '_likelihood_parameter_mean'):
             if self.has_priors:
@@ -226,7 +316,11 @@ class Fitter(BaseFitter, Savable):
     def likelihood_channel_mean(self):
         """
         Property storing the channel mean associated with the likelihood
-        parameter mean (i.e. the result if there are no priors).
+        parameter mean (i.e. the result if there are no priors). It is
+        represented mathematically as \\(\\boldsymbol{G}\
+        (\\boldsymbol{G}^T\\boldsymbol{C}^{-1}\\boldsymbol{G})^{-1}\
+        \\boldsymbol{G}^T\\boldsymbol{C}^{-1}\
+        (\\boldsymbol{y}-\\boldsymbol{\\mu}) + \\boldsymbol{\\mu}\\).
         """
         if not hasattr(self, '_likelihood_channel_mean'):
             if self.has_priors:
@@ -241,7 +335,12 @@ class Fitter(BaseFitter, Savable):
     def likelihood_channel_bias(self):
         """
         Property storing the channel-space bias associated with the likelihood
-        parameter mean (i.e. the result if there are no priors).
+        parameter mean (i.e. the result if there are no priors). It is
+        represented mathematically as \\(\\boldsymbol{\\delta}_{\\text{NP}}=\
+        \\left[\\boldsymbol{I}-\\boldsymbol{G}\
+        (\\boldsymbol{G}^T\\boldsymbol{C}^{-1}\\boldsymbol{G})^{-1}\
+        \\boldsymbol{G}^T\\boldsymbol{C}^{-1}\\right]\
+        (\\boldsymbol{y}-\\boldsymbol{\\mu})\\).
         """
         if not hasattr(self, '_likelihood_channel_bias'):
             if self.has_priors:
@@ -254,16 +353,14 @@ class Fitter(BaseFitter, Savable):
     @property
     def likelihood_weighted_bias(self):
         """
-        Property storing the likelihood_channel_bias weighted by the error.
+        The likelihood channel bias weighted by the error, represented
+        mathematically as
+        \\(\\boldsymbol{C}^{-1/2}\\boldsymbol{\\delta}_{\\text{NP}}\\).
         """
         if not hasattr(self, '_likelihood_weighted_bias'):
             if self.has_priors:
-                if self.multiple_data_curves:
-                    self._likelihood_weighted_bias =\
-                        self.likelihood_channel_bias / self.error[np.newaxis,:]
-                else:
-                    self._likelihood_weighted_bias =\
-                        self.likelihood_channel_bias / self.error
+                self._likelihood_weighted_bias =\
+                    self.weight(self.likelihood_channel_bias, -1)
             else:
                 self._likelihood_weighted_bias = self.weighted_bias
         return self._likelihood_weighted_bias
@@ -271,9 +368,10 @@ class Fitter(BaseFitter, Savable):
     @property
     def likelihood_bias_statistic(self):
         """
-        Property storing the maximum value of the loglikelihood. This is a
-        number equal to (delta^T C^{-1} delta) where delta is the
-        likelihood_channel_bias. It is equal to -2 times the loglikelihood.
+        The maximum value of the loglikelihood, represented mathematically as
+        \\(\\boldsymbol{\\delta}_{\\text{NP}}^T \\boldsymbol{C}^{-1}\
+        \\boldsymbol{\\delta}_{\\text{NP}}\\). It is equal to -2 times the peak
+        value of the loglikelihood.
         """
         if not hasattr(self, '_likelihood_bias_statistic'):
             if self.has_priors:
@@ -291,8 +389,8 @@ class Fitter(BaseFitter, Savable):
     @property
     def degrees_of_freedom(self):
         """
-        Property storing the difference between the number of channels and the
-        number of parameters.
+        The difference between the number of channels and the number of
+        parameters.
         """
         if not hasattr(self, '_degrees_of_freedom'):
             self._degrees_of_freedom = self.num_channels - self.num_parameters
@@ -301,9 +399,12 @@ class Fitter(BaseFitter, Savable):
     @property
     def normalized_likelihood_bias_statistic(self):
         """
-        Property storing the normalized version of the likelihood bias
-        statistic. This is a statistic that should be close to 1 which measures
-        how well the total data is fit.
+        The normalized version of the likelihood bias statistic. This is a
+        statistic that should be close to 1 which measures how well the total
+        data is fit and is represented mathematically as
+        \\(\\frac{1}{\\text{dof}}\\boldsymbol{\\delta}_{\\text{NP}}^T\
+        \\boldsymbol{C}^{-1}\\boldsymbol{\\delta}_{\\text{NP}}\\), where
+        \\(\\text{dof}\\) and is the number of degrees of freedom.
         """
         if not hasattr(self, '_normalized_likelihood_bias_statistic'):
             self._normalized_likelihood_bias_statistic =\
@@ -313,23 +414,27 @@ class Fitter(BaseFitter, Savable):
     @property
     def chi_squared(self):
         """
-        Property that returns the (non-reduced) chi-squared values of the
-        fit(s) in this Fitter.
+        The (non-reduced) chi-squared value(s) of the fit(s) in this `Fitter`,
+        represented mathematically as
+        \\(\\boldsymbol{\\delta}^T\\boldsymbol{C}^{-1}\\boldsymbol{\\delta}\\).
         """
         return self.bias_statistic
     
     @property
     def reduced_chi_squared(self):
         """
-        Property that returns the reduced chi-squared values of the fit(s) in
-        this Fitter.
+        The reduced chi-squared value(s) of the fit(s) in this `Fitter`,
+        represented mathematically as \\(\\frac{1}{\\text{dof}}\
+        \\boldsymbol{\\delta}^T\\boldsymbol{C}^{-1}\\boldsymbol{\\delta}\\).
         """
         return self.normalized_bias_statistic
     
     @property
     def reduced_chi_squared_expected_mean(self):
         """
-        Property storing the expected mean of the chi_squared property.
+        The expected mean of `Fitter.reduced_chi_squared`, represented
+        mathematically as \\(\\frac{1}{\\text{dof}}[\\text{dof} +\
+        \\text{tr}(\\boldsymbol{S}\\boldsymbol{\\Lambda}^{-1})]\\).
         """
         if not hasattr(self, '_reduced_chi_squared_expected_mean'):
             if self.has_priors:
@@ -344,7 +449,10 @@ class Fitter(BaseFitter, Savable):
     @property
     def reduced_chi_squared_expected_variance(self):
         """
-        Property storing the expected variance of the chi_squared property.
+        The expected variance of `Fitter.reduced_chi_squared`, represented
+        mathematically as \\(\\frac{2}{\\text{dof}^2}[\\text{dof} +\
+        \\text{tr}(\\boldsymbol{S}\\boldsymbol{\\Lambda}^{-1}\
+        \\boldsymbol{S}\\boldsymbol{\\Lambda}^{-1})]\\).
         """
         if not hasattr(self, '_reduced_chi_squared_expected_variance'):
             if self.has_priors:
@@ -361,9 +469,9 @@ class Fitter(BaseFitter, Savable):
     @property
     def reduced_chi_squared_expected_distribution(self):
         """
-        Property storing a GaussianDistribution with mean given by
-        reduced_chi_squared_expected_mean and variance given by
-        reduced_chi_squared_expected_variance.
+        A `distpy.distribution.GaussianDistribution.GaussianDistribution` with
+        mean given by `Fitter.reduced_chi_squared_expected_mean` and variance
+        given by `Fitter.reduced_chi_squared_expected_variance`.
         """
         if not hasattr(self, '_reduced_chi_squared_expected_distribution'):
             if self.has_priors:
@@ -384,20 +492,20 @@ class Fitter(BaseFitter, Savable):
         Fitter.
         """
         if not hasattr(self, '_psi_squared'):
+            
             if self.multiple_data_curves:
                 self._psi_squared =\
-                    np.array([psi_squared(bias, error=self.error)\
-                    for bias in self.channel_bias])
+                    np.array([psi_squared(bias, error=None)\
+                    for bias in self.weighted_bias])
             else:
-                self._psi_squared =\
-                    psi_squared(self.channel_bias, error=self.error)
+                self._psi_squared = psi_squared(self.weighted_bias, error=None)
         return self._psi_squared
     
     @property
     def maximum_loglikelihood(self):
         """
-        Property storing the maximum value of the Gaussian loglikelihood (when
-        the normalizing constant outside the exponential is left off).
+        The maximum value of the Gaussian loglikelihood (when the normalizing
+        constant outside the exponential is left off).
         """
         if not hasattr(self, '_maximum_loglikelihood'):
             self._maximum_loglikelihood =\
@@ -407,8 +515,10 @@ class Fitter(BaseFitter, Savable):
     @property
     def parameter_covariance(self):
         """
-        Property storing the covariance matrix of the posterior parameter
-        distribution.
+        The covariance matrix of the posterior parameter distribution,
+        represented mathematically as \\(\\boldsymbol{S}=(\\boldsymbol{G}^T\
+        \\boldsymbol{C}^{-1}\\boldsymbol{G} +\
+        \\boldsymbol{\\Lambda}^{-1})^{-1}\\).
         """
         if not hasattr(self, '_parameter_covariance'):
             self._parameter_covariance =\
@@ -418,8 +528,9 @@ class Fitter(BaseFitter, Savable):
     @property
     def log_parameter_covariance_determinant(self):
         """
-        Property storing the logarithm (base e) of the determinant of the
-        posterior parameter covariance matrix.
+        The logarithm (base e) of the determinant of the posterior parameter
+        covariance matrix, represented mathematically as
+        \\(\\Vert\\boldsymbol{S}\\Vert\\).
         """
         if not hasattr(self, '_log_parameter_covariance_determinant'):
             self._log_parameter_covariance_determinant =\
@@ -429,11 +540,13 @@ class Fitter(BaseFitter, Savable):
     @property
     def log_parameter_covariance_determinant_ratio(self):
         """
-        Property storing the logarithm (base e) of the ratio of the determinant
-        of the posterior parameter covariance matrix to the determinant of the
-        prior parameter covariance matrix. This can be thought of as the log of
-        the ratio of the hypervolume of the 1 sigma posterior ellipse to the
-        hypervolume of the 1 sigma prior ellipse.
+        The logarithm (base e) of the ratio of the determinant of the posterior
+        parameter covariance matrix to the determinant of the prior parameter
+        covariance matrix. This can be thought of as the log of the ratio of
+        the hypervolume of the 1 sigma posterior ellipse to the hypervolume of
+        the 1 sigma prior ellipse. It is represented mathematically as
+        \\(\\ln{\\left(\\frac{\\Vert\\boldsymbol{S}\\Vert}{\
+        \\Vert\\boldsymbol{\\Lambda}\\Vert}\\right)}\\).
         """
         if not hasattr(self, '_log_parameter_covariance_determinant_ratio'):
             self._log_parameter_covariance_determinant_ratio =\
@@ -444,8 +557,9 @@ class Fitter(BaseFitter, Savable):
     @property
     def channel_error(self):
         """
-        Property storing the error on the estimate of the full data in channel
-        space.
+        The error on the estimate of the full data in channel space,
+        represented mathematically as
+        \\(\\boldsymbol{G}\\boldsymbol{S}\\boldsymbol{G}^T\\).
         """
         if not hasattr(self, '_channel_error'):
             SAT = np.dot(self.parameter_covariance, self.basis_sum.basis)
@@ -456,8 +570,7 @@ class Fitter(BaseFitter, Savable):
     @property
     def channel_RMS(self):
         """
-        Property storing the RMS error on the estimate of the full data in
-        channel space.
+        The RMS error on the estimate of the full data in channel space.
         """
         if not hasattr(self, '_channel_RMS'):
             self._channel_RMS =\
@@ -467,8 +580,15 @@ class Fitter(BaseFitter, Savable):
     @property
     def parameter_mean(self):
         """
-        Property storing the posterior mean parameter vector/matrix. The shape
-        of the result is either (nparams,) or (ncurves, nparams).
+        The posterior mean parameter vector(s). It is represented
+        mathematically as
+        \\(\\boldsymbol{\\gamma} =\
+        (\\boldsymbol{G}^T\\boldsymbol{C}^{-1}\\boldsymbol{G} +\
+        \\boldsymbol{\\Lambda}^{-1})[\\boldsymbol{G}^T\\boldsymbol{C}^{-1}\
+        (\\boldsymbol{y}-\\boldsymbol{\\mu}) +\
+        \\boldsymbol{\\Lambda}^{-1}\\boldsymbol{\\nu}]\\) and is store in a
+        `numpy.ndarray` of shape of the result is either `(nparams,)` or
+        `(ncurves, nparams)`.
         """
         if not hasattr(self, '_parameter_mean'):
             self._parameter_mean =\
@@ -487,8 +607,11 @@ class Fitter(BaseFitter, Savable):
     @property
     def parameter_distribution(self):
         """
-        Property storing a GaussianDistribution object describing the
-        distribution of the parameters of this fitter.
+        Property storing a
+        `distpy.distribution.GaussianDistribution.GaussianDistribution`
+        representing a distribution with the mean and covariance stored in
+        `Fitter.parameter_mean` and `Fitter.parameter_covariance`,
+        respectively.
         """
         if not hasattr(self, '_parameter_distribution'):
             if self.multiple_data_curves:
@@ -502,8 +625,9 @@ class Fitter(BaseFitter, Savable):
     @property
     def posterior_significance(self):
         """
-        Property storing the quantity, x^T S^{-1} x, where x is the posterior
-        mean and S is the posterior parameter covariance matrix.
+        The posterior significance, represented mathematically as
+        \\(\\boldsymbol{z}^T \\boldsymbol{S}^{-1} \\boldsymbol{z}\\),
+        where \\(z\\) is `Fitter.parameter_mean`.
         """
         if not hasattr(self, '_posterior_significance'):
             if self.multiple_data_curves:
@@ -523,8 +647,7 @@ class Fitter(BaseFitter, Savable):
     @property
     def channel_mean(self):
         """
-        Property storing the maximum likelihood estimate of the data in channel
-        space.
+        The posterior estimate of the modeled data in channel space.
         """
         if not hasattr(self, '_channel_mean'):
             self._channel_mean = self.basis_sum.translation +\
@@ -534,8 +657,9 @@ class Fitter(BaseFitter, Savable):
     @property
     def channel_bias(self):
         """
-        Property storing the bias of the estimate of the data (i.e. the maximum
-        likelihood estimate of the data minus the data)
+        The bias of the estimate of the data (i.e. the posterior estimate of
+        the data minus the data), represented mathematically as
+        \\(\\boldsymbol{\\delta}\\).
         """
         if not hasattr(self, '_channel_bias'):
             self._channel_bias = self.data - self.channel_mean
@@ -544,7 +668,7 @@ class Fitter(BaseFitter, Savable):
     @property
     def channel_bias_RMS(self):
         """
-        Property storing the RMS of the channel bias.
+        The RMS of `Fitter.channel_bias`.
         """
         if not hasattr(self, '_channel_bias_RMS'):
             if self.multiple_data_curves:
@@ -559,23 +683,22 @@ class Fitter(BaseFitter, Savable):
     @property
     def weighted_bias(self):
         """
-        Property storing the posterior channel bias weighted down by the
-        errors.
+        The posterior channel bias weighted down by the errors, represented
+        mathematically as \\(\\boldsymbol{C}^{-1}\\boldsymbol{\\delta}\\).
         """
         if not hasattr(self, '_weighted_bias'):
-            if self.multiple_data_curves:
-                self._weighted_bias =\
-                    self.channel_bias / self.error[np.newaxis,:]
-            else:
-                self._weighted_bias = self.channel_bias / self.error
+            self._weighted_bias = self.weight(self.channel_bias, -1)
         return self._weighted_bias
     
     @property
     def bias_statistic(self):
         """
-        Property which stores a statistic known as the "bias statistic". It is
-        a measure of the bias of the full model being fit. It should have a
-        chi^2(N) distribution where N is the number of data points.
+        A statistic known as the "bias statistic", represented mathematically
+        as
+        \\(\\boldsymbol{\\delta}^T\\boldsymbol{C}^{-1}\\boldsymbol{\\delta}\\).
+        It is a measure of the bias of the full model being fit. It should have
+        a \\(\\chi^2(N)\\) distribution where \\(N\\) is the number of degrees
+        of freedom.
         """
         if not hasattr(self, '_bias_statistic'):
             if self.multiple_data_curves:
@@ -588,9 +711,8 @@ class Fitter(BaseFitter, Savable):
     @property
     def loglikelihood_at_posterior_maximum(self):
         """
-        Property storing the value of the Gaussian loglikelihood (without the
-        normalizing factor outside the exponential) at the maximum of the
-        posterior distribution.
+        The value of the Gaussian loglikelihood (without the normalizing factor
+        outside the exponential) at the maximum of the posterior distribution.
         """
         if not hasattr(self, '_loglikelihood_at_posterior_maximum'):
             self._loglikelihood_at_posterior_maximum =\
@@ -600,8 +722,9 @@ class Fitter(BaseFitter, Savable):
     @property
     def normalized_bias_statistic(self):
         """
-        Property which stores a normalized version of the bias statistic. The
-        expectation value of this normed version is 1.
+        The reduced chi-squared value(s) of the fit(s) in this `Fitter`,
+        represented mathematically as \\(\\frac{1}{\\text{dof}}\
+        \\boldsymbol{\\delta}^T\\boldsymbol{C}^{-1}\\boldsymbol{\\delta}\\).
         """
         if not hasattr(self, '_normalized_bias_statistic'):
             self._normalized_bias_statistic =\
@@ -611,18 +734,14 @@ class Fitter(BaseFitter, Savable):
     @property
     def likelihood_significance_difference(self):
         """
-        Property storing the likelihood covariance part of the significance
-        difference. This is equal to (gamma^T C^-1 gamma - y^T C^-1 y) where
-        gamma is the posterior channel mean, C is the likelihood channel
-        covariance (i.e. data error), y is the data.
+        The likelihood covariance part of the significance difference, equal to
+        \\(\\boldsymbol{\\gamma}^T\\boldsymbol{C}\\boldsymbol{\\gamma}-\
+        \\boldsymbol{y}^T\\boldsymbol{C}^{-1}\\boldsymbol{y}\\) where
+        \\(\\boldsymbol{\\gamma}\\) is `Fitter.parameter_mean`.
         """
         if not hasattr(self, '_likelihood_significance_difference'):
-            if self.multiple_data_curves:
-                error_to_divide = self.error[np.newaxis,:]
-            else:
-                error_to_divide = self.error
-            mean_sum = (self.channel_mean + self.data -\
-                (2 * self.basis_sum.translation)) / error_to_divide
+            mean_sum = self.weight(self.channel_mean + self.data -\
+                (2 * self.basis_sum.translation), -1)
             mean_difference = (self.channel_mean - self.data) / error_to_divide
             if self.multiple_data_curves:
                 self._likelihood_significance_difference =\
@@ -636,9 +755,9 @@ class Fitter(BaseFitter, Savable):
     def prior_significance_difference(self):
         """
         Property storing the prior covariance part of the significance
-        difference. This is equal to (nu^T Lambda^-1 nu - mu^T Lambda^-1 mu)
-        where mu is the prior mean, nu is the posterior mean, and Lambda is the
-        prior covariance matrix.
+        difference. This is equal to (\\boldsymbol{\\gamma}^T\
+        \\boldsymbol{\\Lambda}^{-1} \\boldsymbol{\\gamma} -\
+        \\boldsymbol{\\nu}^T \\boldsymbol{\\Lambda}^{-1} \\boldsymbol{\\nu}\\).
         """
         if not hasattr(self, '_prior_significance_difference'):
             if self.multiple_data_curves:
@@ -670,9 +789,12 @@ class Fitter(BaseFitter, Savable):
     @property
     def significance_difference(self):
         """
-        Property storing the difference between the posterior significance and
-        the sum of the data significance and prior significance. It is a term
-        in the log evidence.
+        The difference between the posterior significance and the sum of the
+        data significance and prior significance. It is a term in the log
+        evidence and is given by
+        \\(\\boldsymbol{\\gamma}^T\\boldsymbol{S}^{-1}\\boldsymbol{\\gamma} -\
+        \\boldsymbol{y}^T\\boldsymbol{C}^{-1}\\boldsymbol{y} -\
+        \\boldsymbol{\\nu}^T\\boldsymbol{\\Lambda}^{-1}\\boldsymbol{\\nu}\\).
         """
         if not hasattr(self, '_significance_difference'):
             self._significance_difference =\
@@ -683,25 +805,29 @@ class Fitter(BaseFitter, Savable):
     @property
     def log_evidence(self):
         """
-        Property storing the natural logarithm of the evidence (a.k.a. marginal
-        likelihood) of this fit. The evidence is the integral over parameter
-        space of the likelihood and is often very large.
+        The natural logarithm of the evidence (a.k.a. marginal likelihood) of
+        this fit. The evidence is the integral over parameter space of the
+        product of the likelihood and the prior and is often very large.
         """
         if not hasattr(self, '_log_evidence'):
-            self._log_evidence =\
-                (self.log_parameter_covariance_determinant_ratio +\
+            log_evidence = (self.log_parameter_covariance_determinant_ratio +\
                 self.significance_difference) / 2.
             if self.has_all_priors:
                 # only constants added below, ignore if numerical problems
-                self._log_evidence = self._log_evidence -\
-                    (((self.num_channels * np.log(2 * np.pi)) / 2.) -\
-                    np.sum(np.log(self.error)))
+                log_evidence = log_evidence -\
+                    ((self.num_channels * np.log(2 * np.pi)) / 2.)
+                if self.non_diagonal_noise_covariance:
+                    log_evidence = log_evidence +\
+                        (self.error.sign_and_log_abs_determinant()[1]) / 2
+                else:
+                    log_evidence = log_evidence + np.sum(np.log(self.error))
+            self._log_evidence = log_evidence
         return self._log_evidence
     
     @property
     def log_evidence_per_data_channel(self):
         """
-        Property storing the log_evidence divided by the number of channels.
+        `Fitter.log_evidence` divided by the number of channels.
         """
         if not hasattr(self, '_log_evidence_per_data_channel'):
             self._log_evidence_per_data_channel =\
@@ -711,10 +837,10 @@ class Fitter(BaseFitter, Savable):
     @property
     def evidence(self):
         """
-        Property storing the evidence (a.k.a. marginal likelihood) of this fit.
-        Beware: the evidence is often extremely in magnitude, with log
-        evidences sometimes approaching +-10^7. In these cases, the evidence
-        will end up NaN.
+        The evidence (a.k.a. marginal likelihood) of this fit. Beware: the
+        evidence is often extremely large in magnitude, with log evidences
+        sometimes approaching +-10^7. In these cases, the evidence will end up
+        NaN.
         """
         if not hasattr(self, '_evidence'):
             self._evidence = np.exp(self.log_evidence)
@@ -723,8 +849,8 @@ class Fitter(BaseFitter, Savable):
     @property
     def evidence_per_data_channel(self):
         """
-        Finds the factor by which each data channel multiplies the Bayesian
-        evidence on average (more precisely, geometric mean).
+        The factor by which each data channel multiplies the Bayesian evidence
+        on average (more precisely, the geometric mean of these numbers).
         """
         if not hasattr(self, '_evidence_per_data_channel'):
             self._evidence_per_data_channel =\
@@ -734,9 +860,11 @@ class Fitter(BaseFitter, Savable):
     @property
     def bayesian_information_criterion(self):
         """
-        Property storing the Bayesian Information Criterion (BIC) which is
-        essentially the same as the bias statistic except it includes
-        information about the complexity of the model.
+        The Bayesian Information Criterion (BIC) which is essentially the same
+        as the bias statistic except it includes information about the
+        complexity of the model. It is \\(\\boldsymbol{\\delta}^T\
+        \\boldsymbol{C}^{-1}\\boldsymbol{\\delta} + p\\ln{N}\\), where \\(p\\)
+        is the number of parameters and \\(N\\) is the number of data channels.
         """
         if not hasattr(self, '_bayesian_information_criterion'):
             self._bayesian_information_criterion =\
@@ -747,15 +875,16 @@ class Fitter(BaseFitter, Savable):
     @property
     def BIC(self):
         """
-        Alias for bayesian_information_criterion property.
+        Alias for `Fitter.bayesian_information_criterion`.
         """
         return self.bayesian_information_criterion
     
     @property
     def akaike_information_criterion(self):
         """
-        An information criterion given by -2ln(L_max)+2p where L_max is the
-        maximum likelihood and p is the number of parameters.
+        An information criterion given by \\(\\boldsymbol{\\delta}^T\
+        \\boldsymbol{C}^{-1}\\boldsymbol{\\delta} + 2p\\), where \\(p\\) is the
+        number of parameters.
         """
         if not hasattr(self, '_akaike_information_criterion'):
             self._akaike_information_criterion =\
@@ -765,9 +894,11 @@ class Fitter(BaseFitter, Savable):
     @property
     def AIC(self):
         """
-        Alias for akaike_information_criterion property.
+        Alias for `Fitter.akaike_information_criterion`.
         """
         return self.akaike_information_criterion
+    
+######################## TODO documentation below this line has't been updated!
     
     @property
     def deviance_information_criterion(self):
@@ -827,8 +958,8 @@ class Fitter(BaseFitter, Savable):
     @property
     def bayesian_predictive_information_criterion(self):
         """
-        Property storing the Bayesian Predictive Information Criterion (BPIC),
-        a statistic which gives relatives goodness of fit values.
+        The Bayesian Predictive Information Criterion (BPIC), a statistic which
+        gives relatives goodness of fit values.
         """
         if not hasattr(self, '_bayesian_predictive_information_criterion'):
             self._bayesian_predictive_information_criterion =\
@@ -848,19 +979,27 @@ class Fitter(BaseFitter, Savable):
                 else:
                     self._bayesian_predictive_information_criterion +=\
                         (np.dot(term_v1, term_v2) / self.num_channels)
-            weighted_error = self.channel_error / self.error
-            if self.multiple_data_curves:
-                weighted_error = weighted_error[np.newaxis,:]
-            to_sum = ((weighted_error * self.weighted_bias) ** 2)
-            self._bayesian_predictive_information_criterion +=\
-                (2 * np.sum(to_sum, axis=-1))
-            del to_sum
+            if self.non_diagonal_noise_covariance:
+                doubly_weighted_basis =\
+                    self.weight(self.weight(self.basis_sum.basis, -1), -1)
+                self._bayesian_predictive_information_criterion +=\
+                    (2 * np.einsum('ij,ik,jk,k', self.parameter_covariance,\
+                    doubly_weighted_basis, doubly_weighted_basis,\
+                    self.channel_bias ** 2))
+            else:
+                weighted_error = self.channel_error / self.error
+                if self.multiple_data_curves:
+                    weighted_error = weighted_error[np.newaxis,:]
+                to_sum = ((weighted_error * self.weighted_bias) ** 2)
+                self._bayesian_predictive_information_criterion +=\
+                    (2 * np.sum(to_sum, axis=-1))
+                del to_sum
         return self._bayesian_predictive_information_criterion
     
     @property
     def BPIC(self):
         """
-        Alias for the bayesian_predictive_information_criterion property.
+        Alias for `Fitter.bayesian_predictive_information_criterion`.
         """
         return self.bayesian_predictive_information_criterion
     
@@ -1205,7 +1344,7 @@ class Fitter(BaseFitter, Savable):
             self._subbasis_separation_statistics = {}
         if name not in self._subbasis_separation_statistics:
             weighted_basis =\
-                self.basis_sum[name].expanded_basis / self.error[np.newaxis,:]
+                self.weight(self.basis_sum[name].expanded_basis, -1)
             stat = np.dot(weighted_basis, weighted_basis.T)
             stat = np.sum(stat * self.subbasis_parameter_covariance(name=name))
             stat = np.sqrt(stat / self.degrees_of_freedom)
@@ -1527,10 +1666,17 @@ class Fitter(BaseFitter, Savable):
                     mean - to_subtract + (nsigma * shorter_error),\
                     alpha=noise_level_alpha, color=colors[2])
             elif len(mean) == self.num_channels:
-                ax.fill_between(x_values,\
-                    mean - to_subtract - (nsigma * self.error),\
-                    mean - to_subtract + (nsigma * self.error),\
-                    alpha=noise_level_alpha, color=colors[2])
+                if self.non_diagonal_noise_covariance:
+                    noise_error = np.sqrt(self.error.diagonal)
+                    ax.fill_between(x_values,\
+                        mean - to_subtract - (nsigma * noise_error),\
+                        mean - to_subtract + (nsigma * noise_error),\
+                        alpha=noise_level_alpha, color=colors[2])
+                else:
+                    ax.fill_between(x_values,\
+                        mean - to_subtract - (nsigma * self.error),\
+                        mean - to_subtract + (nsigma * self.error),\
+                        alpha=noise_level_alpha, color=colors[2])
         if not full_error_first:
             ax.fill_between(x_values, mean - to_subtract - (nsigma * error),\
                 mean - to_subtract + (nsigma * error), alpha=full_error_alpha,\

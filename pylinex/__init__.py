@@ -1,13 +1,11 @@
 """
-File: pylinex/__init__.py
-Author: Keith Tauscher
-Date: 4 Mar 2019
+A package which performs linear and nonlinear signal extractions, containing
+classes for defining models, likelihoods, etc. This code is built upon
+`distpy`.
 
-Description: Imports the most important elements from all submodules. The
-             imports written here are designed to support imports of the form,
-             "from pylinex import ______", where ______ is the name of a
-             desired class (e.g. Extractor). There is no need for (and indeed
-             confusion can arise if) imports of specific submodules are done.
+**File**: pylinex/\_\_init\_\_.py  
+**Author**: Keith Tauscher  
+**Date**: 4 Mar 2019
 """
 from pylinex.util import int_types, float_types, real_numerical_types,\
     complex_numerical_types, numerical_types, bool_types, sequence_types,\

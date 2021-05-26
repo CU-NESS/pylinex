@@ -1,14 +1,13 @@
 """
-File: pylinex/fitter/MAAFitter.py
-Author: Keith Tauscher
-Date: 15 Jul 2020
+Module containing class which represents a Minimum Assumption Analysis (MAA)
+fitting class. It assumes there is a desired component and undesired
+component(s) in the data and that the model of the desired component is
+specified entirely by an `pylinex.expander.Expander.Expander` object while the
+undesired component is specified by a `pylinex.basis.BasisSum.BasisSum`.
 
-Description: File containing class which represents a Minimum Assumption
-             Analysis (MAA) fitting class. It assumes there is a desired
-             component and undesired component(s) in the data and that the
-             model of the desired component is specified entirely by an
-             Expander object while the undesired component is specified by a
-             (possibly expanded with an Expander) basis vector set.
+**File**: $PYLINEX/pylinex/fitter/MAAFitter.py  
+**Author**: Keith Tauscher  
+**Date**: 25 May 2021
 """
 from __future__ import division
 import numpy as np
@@ -27,27 +26,86 @@ class MAAFitter(BaseFitter, Savable, Loadable):
     Class which represents a Minimum Assumption Analysis (MAA) fitting class.
     It assumes there is a desired component and undesired component(s) in the
     data and that the model of the desired component is specified entirely by
-    an Expander object while the undesired component is specified by a
-    (possibly expanded with an Expander) basis vector set.
+    an `pylinex.expander.Expander.Expander` object while the undesired
+    component is specified by a `pylinex.basis.BasisSum.BasisSum`.
     """
     def __init__(self, expander, basis_sum, data, error=None, **priors):
         """
-        Initializes a new MAAFitter.
+        Initializes a new `MAAFitter` object using the given inputs. The
+        likelihood used by the fit is of the form \\(\\mathcal{L}\
+        (\\boldsymbol{x},\\boldsymbol{z}) \\propto \\exp{\\left\\{\
+        -\\frac{1}{2}[\\boldsymbol{y}-(\\boldsymbol{G}\\boldsymbol{x} +\
+        \\boldsymbol{\\mu} + \\boldsymbol{\\Psi}\\boldsymbol{z})]^T\
+        \\boldsymbol{C}^{-1}[\\boldsymbol{y}-(\\boldsymbol{G}\\boldsymbol{x}+\
+        \\boldsymbol{\\mu}+\\boldsymbol{\\Psi}\\boldsymbol{z})]\\right\\}}\\)
+        and the prior used is \\(\\pi(\\boldsymbol{x}) \\propto\
+        \\exp{\\left\\{-\\frac{1}{2}(\\boldsymbol{x}-\\boldsymbol{\\nu})^T\
+        \\boldsymbol{\\Lambda}^{-1}(\\boldsymbol{x}-\\boldsymbol{\\nu})\
+        \\right\\}}\\). The posterior distribution explored is
+        \\(p(\\boldsymbol{x},\\boldsymbol{z})=\\mathcal{L}(\\boldsymbol{x},\
+        \\boldsymbol{z})\\times\\pi(\\boldsymbol{x})\\).
         
-        expander: an Expander object that encodes the minimal assumption on the
-                  desired component
-        basis_sum: a BasisSum object (or a Basis object, which is converted
-                   internally to a BasisSum of one Basis with the name 'sole')
-                   that represents the undesired components
-        data: 1D vector of same length as vectors in basis_sum or 2D
-              numpy.ndarray of shape (ncurves, nchannels)
-        error: 1D vector of same length as vectors in basis_sum containing only
-               positive numbers
-        **priors: keyword arguments where the keys are exactly the names of the
-                  basis sets with '_prior' appended to them and the values are
-                  GaussianDistribution objects. If only one basis is given as
-                  the basis_sum, then the priors should either be empty or a
-                  dictionary of the form {'sole_prior': gaussian_distribution}
+        Parameters
+        ----------
+        expander : `pylinex.expander.Expander.Expander`
+            expander encoding how the desired component appears in the data.
+            The expansion matrix is represented mathematically as
+            \\(\\boldsymbol{\\Psi}\\)
+        basis_sum : `pylinex.basis.BasisSum.BasisSum` or\
+        `pylinex.basis.Basis.Basis`
+            the basis used to model the undesired components, represented in
+            equations by \\(\\boldsymbol{G}\\) alongside the translation
+            component \\(\\boldsymbol{\\mu}\\). Two types of inputs are
+            accepted:
+            
+            - If `basis_sum` is a `pylinex.basis.BasisSum.BasisSum`, then it is
+            assumed to have constituent bases for each modeled component
+            alongside `pylinex.expander.Expander.Expander` objects determining
+            how those components enter into the data
+            - If `basis_sum` is a `pylinex.basis.Basis.Basis`, then it is
+            assumed that this single basis represents the only component that
+            needs to be modeled. The
+            `pylinex.fitter.BaseFitter.BaseFitter.basis_sum` property will be
+            set to a `pylinex.basis.BasisSum.BasisSum` object with this
+            `pylinex.basis.Basis.Basis` as its only component, labeled with the
+            string name `"sole"`
+        data : numpy.ndarray
+            the data to fit, represented in equations by \\(\\boldsymbol{y}\\)
+            - if `data` is 1D, then its length should be the same as the
+            (expanded) vectors in `basis_sum`, i.e. the number of rows of
+            \\(\\boldsymbol{G}\\), `nchannels`
+            - if `data` is 2D, then it should have shape `(ncurves, nchannels)`
+            and it will be interpreted as a list of data vectors to fit
+            independently
+        error : numpy.ndarray or\
+        `distpy.util.SparseSquareBlockDiagonalMatrix.SparseSquareBlockDiagonalMatrix`
+            the noise level of the data that determines the covariance matrix,
+            represented in equations by \\(\\boldsymbol{C}\\):
+            
+            - if `error` is a 1D `numpy.ndarray`, it should have the same
+            length as the (expanded) vectors in `basis_sum`, i.e. the number of
+            rows of \\(\\boldsymbol{G}\\), `nchannels` and should only contain
+            positive numbers. In this case, \\(\\boldsymbol{C}\\) is a diagonal
+            matrix whose elements are the squares of the values in `error`
+            - if `error` is a
+            `distpy.util.SparseSquareBlockDiagonalMatrix.SparseSquareBlockDiagonalMatrix`,
+            then it is assumed to represent a block diagonal
+            \\(\\boldsymbol{C}\\) directly
+        priors : dict
+            keyword arguments where the keys are exactly the names of the
+            `basis_sum` with `'_prior'` appended to them and the values are
+            `distpy.distribution.GaussianDistribution.GaussianDistribution`
+            objects. Priors are optional and can be included or excluded for
+            any given component. If `basis_sum` was given as a
+            `pylinex.basis.Basis.Basis`, then `priors` should either be empty
+            or a dictionary of the form
+            `{'sole_prior': gaussian_distribution}`. The means and inverse
+            covariances of all priors are combined into a full parameter prior
+            mean and full parameter prior inverse covariance, represented in
+            equations by \\(\\boldsymbol{\\nu}\\) and
+            \\(\\boldsymbol{\\Lambda}^{-1}\\), respectively. Having no prior is
+            equivalent to having an infinitely wide prior, i.e. a prior with an
+            inverse covariance matrix of \\(\\boldsymbol{0}\\)
         """
         self.basis_sum = basis_sum
         self.priors = priors
@@ -120,7 +178,7 @@ class MAAFitter(BaseFitter, Savable, Loadable):
         """
         if not hasattr(self, '_weighted_expansion_matrix'):
             self._weighted_expansion_matrix =\
-                self.expansion_matrix / self.error[:,np.newaxis]
+                self.weight(self.expansion_matrix, 0)
         return self._weighted_expansion_matrix
     
     @property
@@ -454,11 +512,7 @@ class MAAFitter(BaseFitter, Savable, Loadable):
         Property storing the weighted channel bias.
         """
         if not hasattr(self, '_weighted_channel_bias'):
-            if self.multiple_data_curves:
-                self._weighted_channel_bias =\
-                    self.channel_bias / self.error[np.newaxis,:]
-            else:
-                self._weighted_channel_bias = self.channel_bias / self.error
+            self._weighted_channel_bias = self.weight(self.channel_bias, -1)
         return self._weighted_channel_bias
     
     @property
