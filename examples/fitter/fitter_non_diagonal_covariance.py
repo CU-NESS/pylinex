@@ -14,6 +14,8 @@ import matplotlib.pyplot as pl
 from distpy import SparseSquareBlockDiagonalMatrix, SparseGaussianDistribution
 from pylinex import PolynomialBasis, BasisSum, Fitter
 
+seed = 0
+np.random.seed(seed)
 correlation = 0.5
 quarter_number = 25
 xs = np.linspace(-1, 1, 4 * quarter_number)
@@ -36,8 +38,16 @@ fitter = Fitter(basis_sum, data, error)
 
 fig = pl.figure(figsize=(12,9))
 ax = fig.add_subplot(111)
+ax.scatter(xs, noise, color='k')
+ax.set_title('Noise realization')
+
+
+fig = pl.figure(figsize=(12,9))
+ax = fig.add_subplot(111)
 ax.scatter(xs, data, color='k')
-fitter.plot_subbasis_fit(nsigma=1, name=name, true_curve=None,\
+fitter.plot_subbasis_fit(nsigma=1, name=name, true_curve=noiseless_data,\
     x_values=xs, colors='r', ax=ax, show=False)
+ax.set_title('Fit result')
+
 pl.show()
 

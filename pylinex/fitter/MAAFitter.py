@@ -950,6 +950,52 @@ class MAAFitter(BaseFitter, Savable, Loadable):
         else:
             return ax
     
+    def plot_undesired_reduced_chi_squared_histogram(self, undesired_component,\
+        fig=None, ax=None, figsize=(12,9), xlabel='', ylabel='', title='',\
+        fontsize=24, show=False, **kwargs):
+        """
+        Plots a histogram of the reduced chi squared statistic on the desired
+        component.
+        
+        undesired_component: the true undesired components of the data curves
+        fig: figure to plot onto if it exists (only used if ax is None)
+        ax: axes to plot onto if they exist 
+        figsize: size of figure to create if fig is None
+        xlabel: string label to place on x-axis
+        ylabel: string label to place on y-axis
+        title: string label to use to title the plot
+        fontsize: size of font for axis labels, tick labels, and title
+        show: if True, matplotlib.pyplot.show is called before this function
+                       returns
+              if False (default), axes on which plot was made was returned
+        kwargs: extra keyword arguments to pass to matplotlib.pyplot.hist
+        
+        returns: None if show is True, axes if show is False
+        """
+        if not self.multiple_data_curves:
+            raise NotImplementedError("Cannot plot histogram of undesired " +\
+                "reduced chi squared because there is only one data curve " +\
+                "and therefore only one chi squared value.")
+        if type(ax) is type(None):
+            if type(fig) is type(None):
+                fig = pl.figure(figsize=figsize)
+            ax = fig.add_subplot(111)
+        kwargs['density'] = True
+        kwargs['label'] = '$\chi^2$ values'
+        ax.hist(self.undesired_reduced_chi_squared(undesired_component),\
+            **kwargs)
+        xlim = ax.get_xlim()
+        ax = self.undesired_reduced_chi_squared_expected_distribution.plot(\
+            np.linspace(xlim[0], xlim[1], 1001)[1:], ax=ax, color='k',\
+            fontsize=fontsize, xlabel=xlabel, ylabel=ylabel, title=title,\
+            label='$\chi^2$ distribution')
+        ax.set_xlim(xlim)
+        ax.legend(fontsize=fontsize, frameon=False)
+        if show:
+            pl.show()
+        else:
+            return ax
+    
     def plot_desired_error(self, plot_desired_noise_level=False, fig=None,\
         ax=None, figsize=(12,9), channels=None, yscale='linear', xlabel='',\
         ylabel='', title='', fontsize=24, show=False, **kwargs):

@@ -18,7 +18,7 @@ seed = 0
 np.random.seed(seed)
 fontsize = 24
 
-correlation = 0.9
+correlation = 0.99
 num_fits = 10000
 stride = num_fits // 10
 
@@ -75,6 +75,11 @@ fitter.plot_reduced_chi_squared_histogram(xlabel='$\chi^2$', ylabel='PDF',\
 fitter.plot_desired_reduced_chi_squared_histogram(signals, xlabel='$\chi^2$',\
     ylabel='PDF', title='PDF of desired component $\chi^2$', show=False,\
     bins=100, alpha=0.5, color='C0')
+fitter.plot_undesired_reduced_chi_squared_histogram(\
+    np.array([undesired_expander(nuisance) for nuisance in nuisances]),\
+    xlabel='$\chi^2$', ylabel='PDF',\
+    title='PDF of undesired component $\chi^2$', show=False, bins=100,\
+    alpha=0.5, color='C0')
 which = 10
 fitter.plot_desired_mean(nsigmas=[1,2], alphas=[0.5,0.2], which=which,\
     desired_component=signals[which], channels=channels, xlabel='x',\

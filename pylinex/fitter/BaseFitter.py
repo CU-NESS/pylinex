@@ -265,7 +265,7 @@ class BaseFitter(object):
             after_dims = array.ndim - axis - 1
             error_slice = ((np.newaxis,) * before_dims) + (slice(None),) +\
                 ((np.newaxis,) * after_dims)
-            return array / error[error_slice]
+            return array / self.error[error_slice]
     
     @property
     def translated_data(self):
