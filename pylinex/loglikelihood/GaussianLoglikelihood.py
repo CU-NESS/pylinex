@@ -8,9 +8,10 @@ Description: File containing a class which evaluates a likelihood which is
 """
 import numpy as np
 import numpy.linalg as la
-from distpy import TransformList, WindowedDistribution, GaussianDistribution,\
-    DistributionSet, DistributionList
-from ..util import create_hdf5_dataset, get_hdf5_value
+from distpy import SparseSquareBlockDiagonalMatrix, TransformList,\
+    WindowedDistribution, GaussianDistribution, DistributionSet,\
+    DistributionList
+from ..util import create_hdf5_dataset, get_hdf5_value, sequence_types
 from .LoglikelihoodWithData import LoglikelihoodWithData
 from .LoglikelihoodWithModel import LoglikelihoodWithModel
 
@@ -47,13 +48,26 @@ class GaussianLoglikelihood(LoglikelihoodWithModel):
         
         value: must be a numpy.ndarray of the same shape as the data property
         """
-        value = np.array(value)
-        if value.shape == self.data.shape:
-            self._error = value
-        elif value.shape == (self.data.shape * 2):
-            self._error = value
+        if isinstance(value, SparseSquareBlockDiagonalMatrix):
+            if value.dimension == len(self.data):
+                self._error = value
+            else:
+                raise ValueError(("error was a " +\
+                    "SparseSquareBlockDiagonalMatrix with a dimension " +\
+                    "({0:d}) different than the number of data channels " +\
+                    "({1:d}).").format(value.dimension, len(self.data)))
+        elif type(value) in sequence_types:
+            value = np.array(value)
+            if value.shape == self.data.shape:
+                self._error = value
+            elif value.shape == (self.data.shape * 2):
+                self._error = value
+            else:
+                raise ValueError("error given was not the same shape as " +\
+                    "the data.")
         else:
-            raise ValueError("error given was not the same shape as the data.")
+            raise TypeError("error was neither a sequence nor a " +\
+                "SparseSquareBlockDiagonalMatrix.")
     
     def save_error(self, group, error_link=None):
         """
@@ -64,7 +78,11 @@ class GaussianLoglikelihood(LoglikelihoodWithModel):
         error_link: link to where error is already saved somewhere (if it
                     exists)
         """
-        create_hdf5_dataset(group, 'error', data=self.error, link=error_link)
+        if isinstance(self.error, SparseSquareBlockDiagonalMatrix):
+            self.error.fill_hdf5_group(group.create_group('error'))
+        else:
+            create_hdf5_dataset(group, 'error', data=self.error,\
+                link=error_link)
     
     def fill_hdf5_group(self, group, data_link=None, error_link=None,\
         **model_links):
@@ -90,9 +108,13 @@ class GaussianLoglikelihood(LoglikelihoodWithModel):
         group: hdf5 file group where loglikelihood.save_error(group)
                has previously been called
         
-        returns: error, an array
+        returns: error, an array or SparseSquareBlockDiagonalMatrix
         """
-        return get_hdf5_value(group['error'])
+        try:
+            return get_hdf5_value(group['error'])
+        except AttributeError:
+            return SparseSquareBlockDiagonalMatrix.load_from_hdf5_group(\
+                group['error'])
     
     @staticmethod
     def load_from_hdf5_group(group):
@@ -121,7 +143,9 @@ class GaussianLoglikelihood(LoglikelihoodWithModel):
         2D array.
         """
         if not hasattr(self, '_weighting_matrix'):
-            if self.error.ndim == 1:
+            if isinstance(self.error, SparseSquareBlockDiagonalMatrix):
+                self._weighting_matrix = self.error.inverse_square_root()
+            elif self.error.ndim == 1:
                 raise AttributeError("The weighting_matrix property only " +\
                     "makes sense if the error given was a covariance matrix.")
             else:
@@ -142,7 +166,9 @@ class GaussianLoglikelihood(LoglikelihoodWithModel):
         returns: numpy.ndarray of same shape as quantity containing weighted
                  quantity
         """
-        if self.error.ndim == 1:
+        if isinstance(self.error, SparseSquareBlockDiagonalMatrix):
+            return self.weighting_matrix.__matmul__(quantity.T).T
+        elif self.error.ndim == 1:
             error_index =\
                 ((slice(None),) + ((np.newaxis,) * (quantity.ndim - 1)))
             return quantity / self.error[error_index]
@@ -408,9 +434,14 @@ class GaussianLoglikelihood(LoglikelihoodWithModel):
         """
         if not isinstance(other, GaussianLoglikelihood):
             return False
-        return ((self.model == other.model) and\
-            np.allclose(self.data, other.data) and\
-            np.allclose(self.error, other.error))
+        if not np.allclose(self.data, other.data):
+            return False
+        if (self.model != other.model):
+            return False
+        if isinstance(self.error, SparseSquareBlockDiagonalMatrix):
+            return (self.error == other.error)
+        else:
+            return np.allclose(self.error, other.error)
     
     def change_data(self, new_data):
         """
