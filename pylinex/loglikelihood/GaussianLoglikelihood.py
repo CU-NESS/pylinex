@@ -50,7 +50,12 @@ class GaussianLoglikelihood(LoglikelihoodWithModel):
         """
         if isinstance(value, SparseSquareBlockDiagonalMatrix):
             if value.dimension == len(self.data):
-                self._error = value
+                if value.positive_definite:
+                    self._error = value
+                else:
+                    raise ValueError("The SparseSquareBlockDiagonalMatrix " +\
+                        "object given as error was not positive definite; " +\
+                        "so, it cannot represent a covariance matrix.")
             else:
                 raise ValueError(("error was a " +\
                     "SparseSquareBlockDiagonalMatrix with a dimension " +\
