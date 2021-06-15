@@ -79,7 +79,7 @@ try:
     burn_rule = BurnRule(min_checkpoints=1, desired_fraction=1)
     fitter = NLFitter(file_name, burn_rule=burn_rule)
     fitter.triangle_plot(parameters=loglikelihood.parameters,\
-        figsize=(12, 12), fontsize=28, nbins=np.mean(nterms_maxima),\
+        figsize=(12, 12), fontsize=28, nbins=int(np.mean(nterms_maxima)),\
         plot_type='histogram')
     fitter.plot_chain(parameters='.*', figsize=(12, 12), show=False)
     truncated_basis_sum = loglikelihood.truncated_basis_sum(\

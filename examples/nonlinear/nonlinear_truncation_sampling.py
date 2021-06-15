@@ -121,7 +121,7 @@ try:
     fitter = NLFitter(file_name, burn_rule=burn_rule)
     fitter.plot_diagnostics()
     fitter.triangle_plot(parameters=['even_nterms', 'odd_nterms'],\
-        figsize=(12, 12), fontsize=28, nbins=np.mean(nterms_maxima),\
+        figsize=(12, 12), fontsize=28, nbins=int(np.mean(nterms_maxima)),\
         plot_type='histogram')
     fitter.plot_chain(parameters='^.*_nterms', figsize=(12, 12), show=False)
     print("mcmc_chosen={}".format({parameter: value\
