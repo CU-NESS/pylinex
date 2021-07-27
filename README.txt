@@ -12,15 +12,15 @@ Getting started
 ---------------------
 To clone a copy and install: ::
 
-    hg clone https://bitbucket.org/ktausch/distpy
+    git clone https://bitbucket.org/ktausch/distpy.git
     cd distpy
-    python setup.py develop
+    python setup.py develop --user
     cd ..
-    hg clone https://bitbucket.org/ktausch/pylinex
+    git clone https://bitbucket.org/ktausch/pylinex.git
     cd pylinex
-    python setup.py develop
+    python setup.py develop --user
 
-The first four lines above are necessary only if you do not already have distpy installed.
+The first four lines above are necessary only if you do not already have distpy installed. The --user option can be omitted if you would like to install pylinex globally (this may require sudo privileges).
 
 Dependencies
 --------------------
