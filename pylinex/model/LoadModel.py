@@ -121,7 +121,7 @@ def load_model_from_hdf5_group(group):
                     return SingleConditionalFitModel(model, data, error,\
                         unknown_name_chain, prior=prior)
                 else:
-                    num_unknown = group.attrs['num_unknown']
+                    num_unknown = group.attrs['num_unknown_models']
                     unknown_name_chains_group = group['unknown_name_chains']
                     priors_group = group['priors']
                     (unknown_name_chains, priors) = ([], [])
